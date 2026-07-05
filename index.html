@@ -1,0 +1,163 @@
+import React, { useEffect, useRef, useState } from 'react';
+import PlaceSearch from './PlaceSearch';
+import LayersPanel from './LayersPanel';
+import DirectionsPanel from './DirectionsPanel';
+import FeatureTable from './FeatureTable';
+
+// Mock or import maplibre-gl/openlayers depending on your exact setup
+// Assuming MapLibre GL JS styling or custom Tailwind implementation
+interface Layer {
+  id: string;
+  name: string;
+  visible: boolean;
+  type: 'vector' | 'raster' | 'geojson';
+}
+
+export default function PageMap() {
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const [mapLoaded, setMapLoaded] = useState<boolean>(false);
+  const [activePanel, setActivePanel] = useState<'layers' | 'directions' | 'search'>('layers');
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
+  
+  // State for map configurations
+  const [layers, setLayers] = useState<Layer[]>([
+    { id: 'basemap', name: 'Standard Terrain Base', visible: true, type: 'raster' },
+    { id: 'buildings', name: '3D Buildings (Overture/OSM)', visible: true, type: 'vector' },
+    { id: 'roads', name: 'Transportation Network', visible: true, type: 'vector' },
+    { id: 'custom-pmtiles', name: 'Local Infrastructure PMTiles', visible: false, type: 'vector' },
+  ]);
+
+  // Map Initialization Logic Placeholder
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    // Simulated Map Initialization
+    // In your real code: const map = new maplibregl.Map({ container: mapContainerRef.current, ... });
+    setMapLoaded(true);
+
+    return () => {
+      // Map cleanup logic here
+    };
+  }, []);
+
+  const toggleLayerVisibility = (id: string) => {
+    setLayers(prevLayers =>
+      prevLayers.map(layer =>
+        layer.id === id ? { ...layer, visible: !layer.visible } : layer
+      )
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-screen w-screen bg-[#111111] text-white font-sans overflow-hidden">
+      {/* Top Navigation Control Bar */}
+      <header className="flex items-center justify-between px-6 py-3 bg-[#161616] border-b border-[#262626] z-10">
+        <div className="flex items-center space-x-3">
+          <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
+          <h1 className="text-lg font-bold tracking-wider uppercase text-neutral-200">
+            GeoPro <span className="text-red-600">Engine</span>
+          </h1>
+        </div>
+        
+        <div className="flex items-center space-x-4">
+          <PlaceSearch onLocationSelect={(coords) => console.log('Pan to:', coords)} />
+          <button 
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="px-3 py-1.5 bg-[#222222] hover:bg-red-700 hover:text-white border border-[#333333] rounded text-xs uppercase font-semibold tracking-wider transition-colors duration-200"
+          >
+            {isSidebarOpen ? 'Hide Controls' : 'Show Controls'}
+          </button>
+        </div>
+      </header>
+
+      {/* Main Workspace Split Layout */}
+      <div className="flex flex-1 relative overflow-hidden">
+        
+        {/* Dynamic Sidebar Controls */}
+        <aside 
+          className={`bg-[#161616] border-r border-[#262626] flex flex-col transition-all duration-300 z-10 ${
+            isSidebarOpen ? 'w-80 opacity-100' : 'w-0 opacity-0 pointer-events-none'
+          }`}
+        >
+          {/* Tab Selection Headers */}
+          <div className="flex border-b border-[#262626] text-xs font-bold uppercase tracking-wider bg-[#121212]">
+            <button
+              onClick={() => setActivePanel('layers')}
+              className={`flex-1 py-3 text-center transition-all ${
+                activePanel === 'layers' 
+                  ? 'text-red-500 border-b-2 border-red-600 bg-[#161616]' 
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              Layers
+            </button>
+            <button
+              onClick={() => setActivePanel('directions')}
+              className={`flex-1 py-3 text-center transition-all ${
+                activePanel === 'directions' 
+                  ? 'text-red-500 border-b-2 border-red-600 bg-[#161616]' 
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+            >
+              Routing
+            </button>
+          </div>
+
+          {/* Panel Views Content Context */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {activePanel === 'layers' && (
+              <LayersPanel 
+                layers={layers} 
+                onToggleVisibility={toggleLayerVisibility} 
+              />
+            )}
+            
+            {activePanel === 'directions' && (
+              <DirectionsPanel 
+                onCalculateRoute={(start, end) => console.log('Route requested:', start, end)} 
+              />
+            )}
+          </div>
+
+          {/* Bottom Diagnostics / Status Foot */}
+          <div className="p-3 bg-[#111111] border-t border-[#262626] text-[10px] font-mono text-neutral-500 flex justify-between">
+            <span>Status: {mapLoaded ? 'MAP_READY' : 'INITIALIZING'}</span>
+            <span>EPSG:3857</span>
+          </div>
+        </aside>
+
+        {/* Core Map MapLibre/OpenLayers Viewport Container */}
+        <main className="flex-1 relative bg-[#0d0d0d]">
+          <div 
+            ref={mapContainerRef} 
+            className="absolute inset-0 w-full h-full"
+          />
+          
+          {/* Map Overlay Loading State */}
+          {!mapLoaded && (
+            <div className="absolute inset-0 bg-[#0d0d0d] flex flex-col items-center justify-center space-y-3 z-20">
+              <div className="w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-xs font-mono tracking-widest uppercase text-neutral-400">Loading Geospatial Engine...</p>
+            </div>
+          )}
+
+          {/* Floating Map HUD Utilities */}
+          {mapLoaded && (
+            <div className="absolute top-4 right-4 bg-[#161616]/90 backdrop-blur-md border border-[#262626] p-2.5 rounded-md shadow-2xl flex flex-col space-y-2 z-10 text-[11px] font-mono text-neutral-300">
+              <div className="font-bold border-b border-[#262626] pb-1 mb-1 text-red-500 uppercase tracking-wider">HUD Diagnostics</div>
+              <div>Lat: <span className="text-white">39.1502° N</span></div>
+              <div>Lon: <span className="text-white">123.2078° W</span></div>
+              <div>Zoom: <span className="text-white">14.5</span></div>
+            </div>
+          )}
+
+          {/* Collapsible Feature/Attribute Table Panel */}
+          <div className="absolute bottom-0 left-0 right-0 max-h-48 bg-[#161616] border-t border-[#262626] z-10">
+            <FeatureTable />
+          </div>
+        </main>
+
+      </div>
+    </div>
+  );
+}
