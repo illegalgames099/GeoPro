@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeoPro Engine - Workspace</title>
     
-    <!-- Tailwind CSS CDN for high-fidelity dark utility styling -->
+    <!-- Tailwind CSS CDN for high-fidelity utility styling -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -20,7 +20,7 @@
         }
     </script>
 
-    <!-- Mapbox GL JS Production Assets -->
+    <!-- Mapbox GL JS Core Production Assets -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
 
@@ -28,12 +28,12 @@
     <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
 
     <style>
-        /* Precision scrollbar adjustments for sleek dark telemetry profiles */
+        /* Custom scrollbar tracking for dark telemetry panels */
         .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #0d0d0d; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #222222; border-radius: 3px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ff0000; }
-        .mapboxgl-ctrl-attrib { display: none !important; } /* Clean viewport overlay footprint */
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #dc2626; }
+        .mapboxgl-ctrl-attrib { display: none !important; } 
     </style>
 </head>
 <body class="bg-[#0a0a0a] text-neutral-200 h-screen w-screen overflow-hidden select-none font-sans flex flex-col">
@@ -44,11 +44,11 @@
           <h1 class="text-red-500 font-black tracking-wider text-lg uppercase">
             GeoPro <span class="text-white font-light">Engine</span>
           </h1>
-          <div class="w-72 relative">
+          <div class="w-80 relative">
             <input 
                 type="text" 
                 id="place-search"
-                placeholder="Search coordinates or locations..." 
+                placeholder="Enter coordinates (e.g., 39.15, -123.2)..." 
                 class="w-full bg-[#161616] border border-[#222222] focus:border-red-600 focus:outline-none rounded px-3 py-1.5 text-xs text-white placeholder-neutral-500 transition-colors duration-200"
             />
           </div>
@@ -95,17 +95,14 @@
             <div id="panel-layers-content" class="space-y-4">
                 <div class="text-[10px] font-mono text-neutral-500 uppercase tracking-widest border-b border-[#222222] pb-1">Vector Stack Control</div>
                 <div class="space-y-2">
-                    <!-- Layer Control Row -->
                     <label class="flex items-center justify-between p-2.5 bg-[#161616] border border-[#222222] rounded cursor-pointer hover:border-neutral-700 transition-colors">
-                        <span class="text-xs font-medium">Standard Terrain Base</span>
+                        <span class="text-xs font-medium">Standard Dark Base Map</span>
                         <input type="checkbox" checked disabled class="accent-red-600">
                     </label>
-                    <!-- Interactive Building Layer Switch -->
                     <label class="flex items-center justify-between p-2.5 bg-[#161616] border border-[#222222] rounded cursor-pointer hover:border-neutral-700 transition-colors">
-                        <span class="text-xs font-medium">3D Buildings (Overture/OSM)</span>
+                        <span class="text-xs font-medium">3D Building Extrusions</span>
                         <input type="checkbox" id="layer-toggle-buildings" checked class="accent-red-600 cursor-pointer">
                     </label>
-                    <!-- Custom Local PMTiles Infrastructure Mock -->
                     <label class="flex items-center justify-between p-2.5 bg-[#161616] border border-[#222222] rounded cursor-pointer hover:border-neutral-700 transition-colors">
                         <span class="text-xs font-medium">Local Infrastructure PMTiles</span>
                         <input type="checkbox" id="layer-toggle-pmtiles" class="accent-red-600 cursor-pointer">
@@ -113,7 +110,7 @@
                 </div>
             </div>
 
-            <!-- Routing View Box Component Placeholder -->
+            <!-- Routing View Box Component -->
             <div id="panel-routing-content" class="hidden space-y-3">
                 <div class="text-[10px] font-mono text-neutral-500 uppercase tracking-widest border-b border-[#222222] pb-1">Network Routing Pathing</div>
                 <input type="text" placeholder="Origin Node Alpha" class="w-full bg-[#161616] border border-[#222222] rounded p-2 text-xs text-white focus:outline-none focus:border-red-600" />
@@ -136,11 +133,35 @@
           <!-- Mapbox Render Container Canvas Target -->
           <div id="map" class="w-full h-full absolute inset-0"></div>
 
+          <!-- Token Configuration Shield Setup Overlay -->
+          <div id="token-shield" class="hidden absolute inset-0 bg-[#0a0a0a]/95 backdrop-blur-md flex flex-col items-center justify-center z-50 p-4">
+              <div class="border border-red-900 bg-[#111111] px-6 py-8 rounded-lg max-w-md w-full shadow-2xl relative border-t-4 border-t-red-600">
+                  <h2 class="text-red-500 font-black tracking-widest uppercase mb-2 text-sm">Engine Activation Required</h2>
+                  <p class="text-neutral-400 text-xs leading-relaxed mb-6">
+                      A valid Mapbox Public Access Token is required to authorize and stream spatial tiles. Provide your credential key down below to start up the viewport canvas.
+                  </p>
+                  <div class="space-y-3">
+                      <input 
+                          type="text" 
+                          id="shield-token-input" 
+                          placeholder="pk.eyJ1Ijo..." 
+                          class="w-full bg-[#161616] border border-[#333333] focus:border-red-600 focus:outline-none rounded p-2.5 text-xs font-mono text-white"
+                      />
+                      <button 
+                          id="shield-activate-btn" 
+                          class="w-full bg-red-700 hover:bg-red-600 text-white font-bold uppercase tracking-wider text-xs py-2.5 rounded transition-all shadow-md"
+                      >
+                          Initialize Map Engine
+                      </button>
+                  </div>
+              </div>
+          </div>
+
           <!-- Map Overlay Loading Canvas State -->
-          <div id="map-loader" class="absolute inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center z-40 transition-opacity duration-500">
+          <div id="map-loader" class="absolute inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center z-40 transition-opacity duration-500 pointer-events-none">
               <div class="w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full animate-spin mb-4"></div>
               <span class="text-red-500 font-mono tracking-widest text-xs uppercase animate-pulse">
-                Loading Mapbox Core Engine...
+                Loading Mapbox Engine...
               </span>
           </div>
 
@@ -149,9 +170,9 @@
               <div class="text-red-500 border-b border-[#222222] pb-1 mb-1 font-bold tracking-wider uppercase text-[10px]">
                 HUD Diagnostics
               </div>
-              <div>Lat: <span id="hud-lat" class="text-white">39.1502° N</span></div>
-              <div>Lon: <span id="hud-lng" class="text-white">-123.2078° W</span></div>
-              <div>Zoom: <span id="hud-zoom" class="text-white">14.5</span></div>
+              <div>Lat: <span id="hud-lat" class="text-white">--</span></div>
+              <div>Lon: <span id="hud-lng" class="text-white">--</span></div>
+              <div>Zoom: <span id="hud-zoom" class="text-white">--</span></div>
           </div>
 
           <!-- Floating Control for Attribute Panel Toggle -->
@@ -204,80 +225,105 @@
 
     <!-- Production JavaScript Logic Execution Block -->
     <script>
-        // Provide your valid Mapbox API key directly right here
-        const MAPBOX_ACCESS_TOKEN = 'YOUR_MAPBOX_ACCESS_TOKEN';
+        // Active Mapbox Access Credential
+        let MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
 
-        // Critical Security Token Validation
-        if (!MAPBOX_ACCESS_TOKEN || MAPBOX_ACCESS_TOKEN === 'YOUR_MAPBOX_ACCESS_TOKEN') {
-            document.getElementById('map-loader').innerHTML = `
-                <div class="border border-red-900 bg-red-950/20 px-6 py-8 rounded-lg max-w-md shadow-2xl text-center mx-4">
-                    <h2 class="text-red-500 font-black tracking-widest uppercase mb-2">Configuration Required</h2>
-                    <p class="text-neutral-400 text-xs leading-relaxed mb-4">
-                        Mapbox API Access Token is missing. Open index.html and update the 'MAPBOX_ACCESS_TOKEN' constant string variable to authorize tile rendering engines.
-                    </p>
-                </div>
-            `;
-            throw new Error("Mapbox initialization terminated: Token string target parameter is empty.");
-        }
+        const defaultPosition = { lat: 39.1502, lng: -123.2078, zoom: 14.5 };
+        let map = null;
+        let animationFrameId = null;
 
-        mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
-
-        // 1. Rigorous Deployment of PMTiles Protocol for Mapbox Instance
+        // Protocol assignment handler for PMTiles
         const protocol = new pmtiles.Protocol();
         mapboxgl.addProtocol("pmtiles", protocol.tile);
 
-        // Workspace Default Coordinates
-        const startPosition = { lat: 39.1502, lng: -123.2078, zoom: 14.5 };
-
-        // 2. Initialize Core WebGL Map Canvas Configuration
-        const map = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/mapbox/dark-v11', // Sleek high-contrast layout engine baseline
-            center: [startPosition.lng, startPosition.lat],
-            zoom: startPosition.zoom,
-            pitch: 45,
-            attributionControl: false,
-            trackResize: true
-        });
-
-        let animationFrameId = null;
-
-        // 3. Fire Engine Activation Lifecycle Handles
-        map.on('load', () => {
-            document.getElementById('map-loader').style.opacity = '0';
-            setTimeout(() => document.getElementById('map-loader').remove(), 500);
+        function initializeMapEngine(token) {
+            mapboxgl.accessToken = token;
             
-            document.getElementById('engine-status').textContent = 'MAP_READY';
-            document.getElementById('engine-status').className = 'text-green-500';
-            document.getElementById('hud').classList.remove('hidden');
-            document.getElementById('toggle-table-btn').classList.remove('hidden');
+            document.getElementById('map-loader').style.opacity = '1';
+            document.getElementById('token-shield').classList.add('hidden');
 
-            // Force enable core engine structure extrusion shadows if layer is available
-            if (map.getLayer('building')) {
-                map.setLayoutProperty('building', 'visibility', 'visible');
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/dark-v11',
+                center: [defaultPosition.lng, defaultPosition.lat],
+                zoom: defaultPosition.zoom,
+                pitch: 45,
+                attributionControl: false,
+                trackResize: true
+            });
+
+            map.on('load', () => {
+                // Fade loader screen away smoothly
+                document.getElementById('map-loader').style.opacity = '0';
+                setTimeout(() => {
+                    const loader = document.getElementById('map-loader');
+                    if(loader) loader.classList.add('hidden');
+                }, 500);
+                
+                document.getElementById('engine-status').textContent = 'MAP_READY';
+                document.getElementById('engine-status').className = 'text-green-500';
+                document.getElementById('hud').classList.remove('hidden');
+                document.getElementById('toggle-table-btn').classList.remove('hidden');
+
+                // Enforce building extrusion visibilities
+                if (map.getLayer('building')) {
+                    map.setLayoutProperty('building', 'visibility', 'visible');
+                }
+            });
+
+            // Performant frame loop map tracking bounds configuration
+            map.on('move', () => {
+                if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+                animationFrameId = requestAnimationFrame(() => {
+                    const center = map.getCenter();
+                    document.getElementById('hud-lat').textContent = `${center.lat.toFixed(4)}° N`;
+                    document.getElementById('hud-lng').textContent = `${center.lng.toFixed(4)}° W`;
+                    document.getElementById('hud-zoom').textContent = map.getZoom().toFixed(1);
+                });
+            });
+
+            map.on('error', (err) => {
+                console.error("Mapbox Canvas Error Intercepted:", err);
+                if (err.error && err.error.status === 401) {
+                    alert("Unauthorized Mapbox Access Token. Verify token properties.");
+                    location.reload();
+                }
+            });
+        }
+
+        // Execution Check Logic Setup
+        window.addEventListener('DOMContentLoaded', () => {
+            if (!MAPBOX_ACCESS_TOKEN || MAPBOX_ACCESS_TOKEN === 'YOUR_MAPBOX_ACCESS_TOKEN') {
+                document.getElementById('map-loader').style.opacity = '0';
+                document.getElementById('token-shield').classList.remove('hidden');
+            } else {
+                initializeMapEngine(MAPBOX_ACCESS_TOKEN);
             }
         });
 
-        // Throttled high-performance requestAnimationFrame loop to maintain smooth rendering speeds
-        map.on('move', () => {
-            if (animationFrameId) cancelAnimationFrame(animationFrameId);
-
-            animationFrameId = requestAnimationFrame(() => {
-                const center = map.getCenter();
-                document.getElementById('hud-lat').textContent = `${center.lat.toFixed(4)}° N`;
-                document.getElementById('hud-lng').textContent = `${Math.abs(center.lng).toFixed(4)}° W`;
-                document.getElementById('hud-zoom').textContent = map.getZoom().toFixed(1);
-            });
+        // Shield UI Trigger Configuration Link
+        document.getElementById('shield-activate-btn').addEventListener('click', () => {
+            const inputVal = document.getElementById('shield-token-input').value.trim();
+            if (inputVal) {
+                initializeMapEngine(inputVal);
+            } else {
+                alert("Please drop a valid Mapbox public token value inside the container field box.");
+            }
         });
 
-        // 4. Interface Panel Event Triggers (Vanilla DOM Mapping)
+        // ----------------------------------------------------
+        // Interface Layout UI & Panels Interactive Logic
+        // ----------------------------------------------------
         const sidebar = document.getElementById('sidebar');
         const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
         let isSidebarOpen = true;
 
         function triggerCanvasResize() {
-            map.resize();
-            setTimeout(() => map.resize(), 320); // Sync layout boundaries cleanly after css transition frames end
+            if (map) {
+                map.resize();
+                setTimeout(() => map.resize(), 320);
+            }
         }
 
         toggleSidebarBtn.addEventListener('click', () => {
@@ -294,7 +340,6 @@
             triggerCanvasResize();
         });
 
-        // Collapsible Attribute Data Drawer UI Handles
         const tablePanel = document.getElementById('table-panel');
         const toggleTableBtn = document.getElementById('toggle-table-btn');
         const closeTableBtn = document.getElementById('close-table-btn');
@@ -314,7 +359,6 @@
         toggleTableBtn.addEventListener('click', () => setTableState(!isTableOpen));
         closeTableBtn.addEventListener('click', () => setTableState(false));
 
-        // Tab Switching Event Logic
         const tabLayers = document.getElementById('tab-layers');
         const tabRouting = document.getElementById('tab-routing');
         const panelLayers = document.getElementById('panel-layers-content');
@@ -334,26 +378,33 @@
             panelLayers.classList.add('hidden');
         });
 
-        // 5. Native Mapbox Style Architecture Control Handlers
+        // Layer Switch Handler Action
         document.getElementById('layer-toggle-buildings').addEventListener('change', (e) => {
             const visibilityString = e.target.checked ? 'visible' : 'none';
-            if (map.isStyleLoaded()) {
+            if (map && map.isStyleLoaded()) {
                 if (map.getLayer('building')) {
                     map.setLayoutProperty('building', 'visibility', visibilityString);
                 }
             }
         });
 
-        // Input Geolocation Search Emulation Link 
+        // Smart Coordinate Search Parsing Engine Hook
         document.getElementById('place-search').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                // Hard-coded structural flyTo targeting fallback simulation loop
-                map.flyTo({
-                    center: [startPosition.lng, startPosition.lat],
-                    zoom: 16,
-                    pitch: 60,
-                    essential: true
-                });
+            if (e.key === 'Enter' && map) {
+                const input = e.target.value.trim();
+                const coordMatch = input.match(/^[-+]?([1-9]?\d(\.\d+)?|90(\.0+)?),\s*[-+]?(180(\.0+)?|((1[0-7]\d)|([1-9]?\d))(\.\d+)?)$/);
+                
+                if (coordMatch) {
+                    const parts = input.split(',').map(Number);
+                    map.flyTo({
+                        center: [parts[1], parts[0]],
+                        zoom: 15.5,
+                        pitch: 45,
+                        essential: true
+                    });
+                } else {
+                    map.flyTo({ center: [defaultPosition.lng, defaultPosition.lat], zoom: 14.5, pitch: 45, essential: true });
+                }
             }
         });
     </script>
