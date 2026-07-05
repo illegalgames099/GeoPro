@@ -1,163 +1,361 @@
-import React, { useEffect, useRef, useState } from 'react';
-import PlaceSearch from './PlaceSearch';
-import LayersPanel from './LayersPanel';
-import DirectionsPanel from './DirectionsPanel';
-import FeatureTable from './FeatureTable';
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoPro Engine - Workspace</title>
+    
+    <!-- Tailwind CSS CDN for high-fidelity dark utility styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['ui-sans-serif', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'Liberation Mono', 'Courier New', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
 
-// Mock or import maplibre-gl/openlayers depending on your exact setup
-// Assuming MapLibre GL JS styling or custom Tailwind implementation
-interface Layer {
-  id: string;
-  name: string;
-  visible: boolean;
-  type: 'vector' | 'raster' | 'geojson';
-}
+    <!-- Mapbox GL JS Production Assets -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
 
-export default function PageMap() {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const [mapLoaded, setMapLoaded] = useState<boolean>(false);
-  const [activePanel, setActivePanel] = useState<'layers' | 'directions' | 'search'>('layers');
-  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
-  
-  // State for map configurations
-  const [layers, setLayers] = useState<Layer[]>([
-    { id: 'basemap', name: 'Standard Terrain Base', visible: true, type: 'raster' },
-    { id: 'buildings', name: '3D Buildings (Overture/OSM)', visible: true, type: 'vector' },
-    { id: 'roads', name: 'Transportation Network', visible: true, type: 'vector' },
-    { id: 'custom-pmtiles', name: 'Local Infrastructure PMTiles', visible: false, type: 'vector' },
-  ]);
+    <!-- PMTiles Core Browser Engine Asset -->
+    <script src="https://unpkg.com/pmtiles@3.0.6/dist/pmtiles.js"></script>
 
-  // Map Initialization Logic Placeholder
-  useEffect(() => {
-    if (!mapContainerRef.current) return;
+    <style>
+        /* Precision scrollbar adjustments for sleek dark telemetry profiles */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #0d0d0d; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #222222; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #ff0000; }
+        .mapboxgl-ctrl-attrib { display: none !important; } /* Clean viewport overlay footprint */
+    </style>
+</head>
+<body class="bg-[#0a0a0a] text-neutral-200 h-screen w-screen overflow-hidden select-none font-sans flex flex-col">
 
-    // Simulated Map Initialization
-    // In your real code: const map = new maplibregl.Map({ container: mapContainerRef.current, ... });
-    setMapLoaded(true);
-
-    return () => {
-      // Map cleanup logic here
-    };
-  }, []);
-
-  const toggleLayerVisibility = (id: string) => {
-    setLayers(prevLayers =>
-      prevLayers.map(layer =>
-        layer.id === id ? { ...layer, visible: !layer.visible } : layer
-      )
-    );
-  };
-
-  return (
-    <div className="flex flex-col h-screen w-screen bg-[#111111] text-white font-sans overflow-hidden">
-      {/* Top Navigation Control Bar */}
-      <header className="flex items-center justify-between px-6 py-3 bg-[#161616] border-b border-[#262626] z-10">
-        <div className="flex items-center space-x-3">
-          <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse"></div>
-          <h1 className="text-lg font-bold tracking-wider uppercase text-neutral-200">
-            GeoPro <span className="text-red-600">Engine</span>
+    <!-- Top Navigation Control Bar -->
+    <header class="flex items-center justify-between px-4 h-14 bg-[#111111] border-b border-[#222222] z-10 shadow-md shrink-0">
+        <div class="flex items-center gap-6">
+          <h1 class="text-red-500 font-black tracking-wider text-lg uppercase">
+            GeoPro <span class="text-white font-light">Engine</span>
           </h1>
+          <div class="w-72 relative">
+            <input 
+                type="text" 
+                id="place-search"
+                placeholder="Search coordinates or locations..." 
+                class="w-full bg-[#161616] border border-[#222222] focus:border-red-600 focus:outline-none rounded px-3 py-1.5 text-xs text-white placeholder-neutral-500 transition-colors duration-200"
+            />
+          </div>
         </div>
         
-        <div className="flex items-center space-x-4">
-          <PlaceSearch onLocationSelect={(coords) => console.log('Pan to:', coords)} />
+        <div>
           <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="px-3 py-1.5 bg-[#222222] hover:bg-red-700 hover:text-white border border-[#333333] rounded text-xs uppercase font-semibold tracking-wider transition-colors duration-200"
+            id="toggle-sidebar-btn"
+            class="px-3 py-1.5 bg-[#222222] hover:bg-red-700 hover:text-white border border-[#333333] rounded text-xs uppercase font-semibold tracking-wider transition-colors duration-200"
           >
-            {isSidebarOpen ? 'Hide Controls' : 'Show Controls'}
+            Hide Controls
           </button>
         </div>
-      </header>
+    </header>
 
-      {/* Main Workspace Split Layout */}
-      <div className="flex flex-1 relative overflow-hidden">
+    <!-- Main Workspace Split Layout -->
+    <div class="flex flex-1 relative overflow-hidden w-full">
         
-        {/* Dynamic Sidebar Controls */}
+        <!-- Dynamic Sidebar Controls -->
         <aside 
-          className={`bg-[#161616] border-r border-[#262626] flex flex-col transition-all duration-300 z-10 ${
-            isSidebarOpen ? 'w-80 opacity-100' : 'w-0 opacity-0 pointer-events-none'
-          }`}
+          id="sidebar"
+          class="flex flex-col bg-[#111111] border-r border-[#222222] transition-all duration-300 z-20 w-80 shrink-0 will-change-[width]"
         >
-          {/* Tab Selection Headers */}
-          <div className="flex border-b border-[#262626] text-xs font-bold uppercase tracking-wider bg-[#121212]">
-            <button
-              onClick={() => setActivePanel('layers')}
-              className={`flex-1 py-3 text-center transition-all ${
-                activePanel === 'layers' 
-                  ? 'text-red-500 border-b-2 border-red-600 bg-[#161616]' 
-                  : 'text-neutral-400 hover:text-white'
-              }`}
+          <!-- Tab Selection Headers -->
+          <div class="flex border-b border-[#222222] bg-[#0d0d0d] text-xs font-semibold uppercase tracking-wider">
+            <button 
+              id="tab-layers"
+              class="flex-1 py-3.5 text-center text-red-500 border-b-2 border-red-600 bg-[#161616] transition-all focus:outline-none"
             >
               Layers
             </button>
-            <button
-              onClick={() => setActivePanel('directions')}
-              className={`flex-1 py-3 text-center transition-all ${
-                activePanel === 'directions' 
-                  ? 'text-red-500 border-b-2 border-red-600 bg-[#161616]' 
-                  : 'text-neutral-400 hover:text-white'
-              }`}
+            <button 
+              id="tab-routing"
+              class="flex-1 py-3.5 text-center text-neutral-400 hover:text-white hover:bg-[#141414] transition-all focus:outline-none"
             >
               Routing
             </button>
           </div>
 
-          {/* Panel Views Content Context */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
-            {activePanel === 'layers' && (
-              <LayersPanel 
-                layers={layers} 
-                onToggleVisibility={toggleLayerVisibility} 
-              />
-            )}
+          <!-- Panel Views Content Context -->
+          <div class="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-4">
             
-            {activePanel === 'directions' && (
-              <DirectionsPanel 
-                onCalculateRoute={(start, end) => console.log('Route requested:', start, end)} 
-              />
-            )}
+            <!-- Layers View Context Container -->
+            <div id="panel-layers-content" class="space-y-4">
+                <div class="text-[10px] font-mono text-neutral-500 uppercase tracking-widest border-b border-[#222222] pb-1">Vector Stack Control</div>
+                <div class="space-y-2">
+                    <!-- Layer Control Row -->
+                    <label class="flex items-center justify-between p-2.5 bg-[#161616] border border-[#222222] rounded cursor-pointer hover:border-neutral-700 transition-colors">
+                        <span class="text-xs font-medium">Standard Terrain Base</span>
+                        <input type="checkbox" checked disabled class="accent-red-600">
+                    </label>
+                    <!-- Interactive Building Layer Switch -->
+                    <label class="flex items-center justify-between p-2.5 bg-[#161616] border border-[#222222] rounded cursor-pointer hover:border-neutral-700 transition-colors">
+                        <span class="text-xs font-medium">3D Buildings (Overture/OSM)</span>
+                        <input type="checkbox" id="layer-toggle-buildings" checked class="accent-red-600 cursor-pointer">
+                    </label>
+                    <!-- Custom Local PMTiles Infrastructure Mock -->
+                    <label class="flex items-center justify-between p-2.5 bg-[#161616] border border-[#222222] rounded cursor-pointer hover:border-neutral-700 transition-colors">
+                        <span class="text-xs font-medium">Local Infrastructure PMTiles</span>
+                        <input type="checkbox" id="layer-toggle-pmtiles" class="accent-red-600 cursor-pointer">
+                    </label>
+                </div>
+            </div>
+
+            <!-- Routing View Box Component Placeholder -->
+            <div id="panel-routing-content" class="hidden space-y-3">
+                <div class="text-[10px] font-mono text-neutral-500 uppercase tracking-widest border-b border-[#222222] pb-1">Network Routing Pathing</div>
+                <input type="text" placeholder="Origin Node Alpha" class="w-full bg-[#161616] border border-[#222222] rounded p-2 text-xs text-white focus:outline-none focus:border-red-600" />
+                <input type="text" placeholder="Terminal Destination" class="w-full bg-[#161616] border border-[#222222] rounded p-2 text-xs text-white focus:outline-none focus:border-red-600" />
+                <button class="w-full bg-red-700 hover:bg-red-600 text-white font-semibold uppercase tracking-wider text-xs py-2 rounded transition-colors shadow-lg">Compute Trajectory</button>
+            </div>
+
           </div>
 
-          {/* Bottom Diagnostics / Status Foot */}
-          <div className="p-3 bg-[#111111] border-t border-[#262626] text-[10px] font-mono text-neutral-500 flex justify-between">
-            <span>Status: {mapLoaded ? 'MAP_READY' : 'INITIALIZING'}</span>
+          <!-- Bottom Diagnostics / Status Foot -->
+          <div class="p-3 bg-[#0d0d0d] border-t border-[#222222] flex justify-between items-center text-[10px] font-mono text-neutral-500 shrink-0">
+            <span>STATUS: <span id="engine-status" class="text-amber-500">INITIALIZING</span></span>
             <span>EPSG:3857</span>
           </div>
         </aside>
 
-        {/* Core Map MapLibre/OpenLayers Viewport Container */}
-        <main className="flex-1 relative bg-[#0d0d0d]">
-          <div 
-            ref={mapContainerRef} 
-            className="absolute inset-0 w-full h-full"
-          />
+        <!-- Core Map Viewport Container -->
+        <main class="flex-1 relative h-full bg-[#0d0d0d]">
           
-          {/* Map Overlay Loading State */}
-          {!mapLoaded && (
-            <div className="absolute inset-0 bg-[#0d0d0d] flex flex-col items-center justify-center space-y-3 z-20">
-              <div className="w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-xs font-mono tracking-widest uppercase text-neutral-400">Loading Geospatial Engine...</p>
-            </div>
-          )}
+          <!-- Mapbox Render Container Canvas Target -->
+          <div id="map" class="w-full h-full absolute inset-0"></div>
 
-          {/* Floating Map HUD Utilities */}
-          {mapLoaded && (
-            <div className="absolute top-4 right-4 bg-[#161616]/90 backdrop-blur-md border border-[#262626] p-2.5 rounded-md shadow-2xl flex flex-col space-y-2 z-10 text-[11px] font-mono text-neutral-300">
-              <div className="font-bold border-b border-[#262626] pb-1 mb-1 text-red-500 uppercase tracking-wider">HUD Diagnostics</div>
-              <div>Lat: <span className="text-white">39.1502° N</span></div>
-              <div>Lon: <span className="text-white">123.2078° W</span></div>
-              <div>Zoom: <span className="text-white">14.5</span></div>
-            </div>
-          )}
-
-          {/* Collapsible Feature/Attribute Table Panel */}
-          <div className="absolute bottom-0 left-0 right-0 max-h-48 bg-[#161616] border-t border-[#262626] z-10">
-            <FeatureTable />
+          <!-- Map Overlay Loading Canvas State -->
+          <div id="map-loader" class="absolute inset-0 bg-[#0a0a0a] flex flex-col items-center justify-center z-40 transition-opacity duration-500">
+              <div class="w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full animate-spin mb-4"></div>
+              <span class="text-red-500 font-mono tracking-widest text-xs uppercase animate-pulse">
+                Loading Mapbox Core Engine...
+              </span>
           </div>
-        </main>
 
-      </div>
+          <!-- Floating Map HUD Utilities - Precision Throttled Telemetry -->
+          <div id="hud" class="hidden absolute top-4 right-4 bg-[#111111]/85 backdrop-blur-md border border-[#333333] p-3 rounded shadow-2xl z-30 pointer-events-none text-[11px] font-mono text-neutral-400 space-y-1 w-48">
+              <div class="text-red-500 border-b border-[#222222] pb-1 mb-1 font-bold tracking-wider uppercase text-[10px]">
+                HUD Diagnostics
+              </div>
+              <div>Lat: <span id="hud-lat" class="text-white">39.1502° N</span></div>
+              <div>Lon: <span id="hud-lng" class="text-white">-123.2078° W</span></div>
+              <div>Zoom: <span id="hud-zoom" class="text-white">14.5</span></div>
+          </div>
+
+          <!-- Floating Control for Attribute Panel Toggle -->
+          <button
+            id="toggle-table-btn"
+            class="hidden absolute bottom-4 left-4 z-30 px-3 py-1.5 bg-[#111111]/90 hover:bg-red-700 border border-[#333333] hover:border-red-600 rounded text-[10px] uppercase font-mono tracking-wider transition-all duration-200"
+          >
+            Open Data Table
+          </button>
+
+          <!-- Collapsible Feature/Attribute Table Panel Drawer -->
+          <div 
+            id="table-panel"
+            class="absolute bottom-0 left-0 right-0 bg-[#111111] border-t border-[#222222] z-30 transition-all duration-300 ease-in-out transform h-0 overflow-hidden will-change-[height]"
+          >
+            <div class="flex items-center justify-between px-4 py-2 bg-[#0d0d0d] border-b border-[#222222]">
+              <span class="text-[10px] font-mono uppercase tracking-wider text-neutral-400">Attribute Inspection Console</span>
+              <button id="close-table-btn" class="text-neutral-500 hover:text-red-500 text-xs font-bold focus:outline-none">✕</button>
+            </div>
+            <div class="h-[calc(100%-33px)] overflow-auto p-4 custom-scrollbar text-xs font-mono text-neutral-400">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-[#222222] text-neutral-500 text-[10px] uppercase">
+                            <th class="pb-2 font-semibold">Feature ID</th>
+                            <th class="pb-2 font-semibold">Classification</th>
+                            <th class="pb-2 font-semibold">Source Mesh</th>
+                            <th class="pb-2 font-semibold">Telemetry Verified</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-[#1f1f1f]">
+                        <tr>
+                            <td class="py-2 text-white">osm_node_49204</td>
+                            <td class="py-2 text-red-400">Structural Extrusion</td>
+                            <td class="py-2">Overture Maps</td>
+                            <td class="py-2 text-green-500">TRUE</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 text-white">osm_way_102941</td>
+                            <td class="py-2 text-neutral-300">Transportation Path</td>
+                            <td class="py-2">OpenStreetMap</td>
+                            <td class="py-2 text-green-500">TRUE</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+          </div>
+
+        </main>
     </div>
-  );
-}
+
+    <!-- Production JavaScript Logic Execution Block -->
+    <script>
+        // Provide your valid Mapbox API key directly right here
+        const MAPBOX_ACCESS_TOKEN = 'YOUR_MAPBOX_ACCESS_TOKEN';
+
+        // Critical Security Token Validation
+        if (!MAPBOX_ACCESS_TOKEN || MAPBOX_ACCESS_TOKEN === 'YOUR_MAPBOX_ACCESS_TOKEN') {
+            document.getElementById('map-loader').innerHTML = `
+                <div class="border border-red-900 bg-red-950/20 px-6 py-8 rounded-lg max-w-md shadow-2xl text-center mx-4">
+                    <h2 class="text-red-500 font-black tracking-widest uppercase mb-2">Configuration Required</h2>
+                    <p class="text-neutral-400 text-xs leading-relaxed mb-4">
+                        Mapbox API Access Token is missing. Open index.html and update the 'MAPBOX_ACCESS_TOKEN' constant string variable to authorize tile rendering engines.
+                    </p>
+                </div>
+            `;
+            throw new Error("Mapbox initialization terminated: Token string target parameter is empty.");
+        }
+
+        mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
+
+        // 1. Rigorous Deployment of PMTiles Protocol for Mapbox Instance
+        const protocol = new pmtiles.Protocol();
+        mapboxgl.addProtocol("pmtiles", protocol.tile);
+
+        // Workspace Default Coordinates
+        const startPosition = { lat: 39.1502, lng: -123.2078, zoom: 14.5 };
+
+        // 2. Initialize Core WebGL Map Canvas Configuration
+        const map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v11', // Sleek high-contrast layout engine baseline
+            center: [startPosition.lng, startPosition.lat],
+            zoom: startPosition.zoom,
+            pitch: 45,
+            attributionControl: false,
+            trackResize: true
+        });
+
+        let animationFrameId = null;
+
+        // 3. Fire Engine Activation Lifecycle Handles
+        map.on('load', () => {
+            document.getElementById('map-loader').style.opacity = '0';
+            setTimeout(() => document.getElementById('map-loader').remove(), 500);
+            
+            document.getElementById('engine-status').textContent = 'MAP_READY';
+            document.getElementById('engine-status').className = 'text-green-500';
+            document.getElementById('hud').classList.remove('hidden');
+            document.getElementById('toggle-table-btn').classList.remove('hidden');
+
+            // Force enable core engine structure extrusion shadows if layer is available
+            if (map.getLayer('building')) {
+                map.setLayoutProperty('building', 'visibility', 'visible');
+            }
+        });
+
+        // Throttled high-performance requestAnimationFrame loop to maintain smooth rendering speeds
+        map.on('move', () => {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+
+            animationFrameId = requestAnimationFrame(() => {
+                const center = map.getCenter();
+                document.getElementById('hud-lat').textContent = `${center.lat.toFixed(4)}° N`;
+                document.getElementById('hud-lng').textContent = `${Math.abs(center.lng).toFixed(4)}° W`;
+                document.getElementById('hud-zoom').textContent = map.getZoom().toFixed(1);
+            });
+        });
+
+        // 4. Interface Panel Event Triggers (Vanilla DOM Mapping)
+        const sidebar = document.getElementById('sidebar');
+        const toggleSidebarBtn = document.getElementById('toggle-sidebar-btn');
+        let isSidebarOpen = true;
+
+        function triggerCanvasResize() {
+            map.resize();
+            setTimeout(() => map.resize(), 320); // Sync layout boundaries cleanly after css transition frames end
+        }
+
+        toggleSidebarBtn.addEventListener('click', () => {
+            isSidebarOpen = !isSidebarOpen;
+            if (isSidebarOpen) {
+                sidebar.style.width = '20rem';
+                sidebar.style.borderRightWidth = '1px';
+                toggleSidebarBtn.textContent = 'Hide Controls';
+            } else {
+                sidebar.style.width = '0px';
+                sidebar.style.borderRightWidth = '0px';
+                toggleSidebarBtn.textContent = 'Show Controls';
+            }
+            triggerCanvasResize();
+        });
+
+        // Collapsible Attribute Data Drawer UI Handles
+        const tablePanel = document.getElementById('table-panel');
+        const toggleTableBtn = document.getElementById('toggle-table-btn');
+        const closeTableBtn = document.getElementById('close-table-btn');
+        let isTableOpen = false;
+
+        function setTableState(open) {
+            isTableOpen = open;
+            if (isTableOpen) {
+                tablePanel.style.height = '16rem';
+                toggleTableBtn.textContent = 'Close Data Table';
+            } else {
+                tablePanel.style.height = '0px';
+                toggleTableBtn.textContent = 'Open Data Table';
+            }
+            triggerCanvasResize();
+        }
+        toggleTableBtn.addEventListener('click', () => setTableState(!isTableOpen));
+        closeTableBtn.addEventListener('click', () => setTableState(false));
+
+        // Tab Switching Event Logic
+        const tabLayers = document.getElementById('tab-layers');
+        const tabRouting = document.getElementById('tab-routing');
+        const panelLayers = document.getElementById('panel-layers-content');
+        const panelRouting = document.getElementById('panel-routing-content');
+
+        tabLayers.addEventListener('click', () => {
+            tabLayers.className = "flex-1 py-3.5 text-center text-red-500 border-b-2 border-red-600 bg-[#161616] focus:outline-none";
+            tabRouting.className = "flex-1 py-3.5 text-center text-neutral-400 hover:text-white hover:bg-[#141414] focus:outline-none";
+            panelLayers.classList.remove('hidden');
+            panelRouting.classList.add('hidden');
+        });
+
+        tabRouting.addEventListener('click', () => {
+            tabRouting.className = "flex-1 py-3.5 text-center text-red-500 border-b-2 border-red-600 bg-[#161616] focus:outline-none";
+            tabLayers.className = "flex-1 py-3.5 text-center text-neutral-400 hover:text-white hover:bg-[#141414] focus:outline-none";
+            panelRouting.classList.remove('hidden');
+            panelLayers.classList.add('hidden');
+        });
+
+        // 5. Native Mapbox Style Architecture Control Handlers
+        document.getElementById('layer-toggle-buildings').addEventListener('change', (e) => {
+            const visibilityString = e.target.checked ? 'visible' : 'none';
+            if (map.isStyleLoaded()) {
+                if (map.getLayer('building')) {
+                    map.setLayoutProperty('building', 'visibility', visibilityString);
+                }
+            }
+        });
+
+        // Input Geolocation Search Emulation Link 
+        document.getElementById('place-search').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                // Hard-coded structural flyTo targeting fallback simulation loop
+                map.flyTo({
+                    center: [startPosition.lng, startPosition.lat],
+                    zoom: 16,
+                    pitch: 60,
+                    essential: true
+                });
+            }
+        });
+    </script>
+</body>
+</html>
