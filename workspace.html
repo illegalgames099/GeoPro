@@ -9,7 +9,7 @@
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
 
-    <!-- FIXED: Official Mapbox Geocoder Search Plugin Paths -->
+    <!-- Official Mapbox Geocoder Search Plugin Paths -->
     <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.1.0/mapbox-gl-geocoder.min.js"></script>
     <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.1.0/mapbox-gl-geocoder.css" type="text/css" />
 
@@ -46,7 +46,6 @@
             position: relative;
         }
 
-        /* Floating Responsive Top Menu Command Toggle */
         #mobile-menu-trigger {
             display: none;
             position: absolute;
@@ -66,7 +65,6 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
 
-        /* Core Sidebar Panel Design */
         #sidebar {
             width: 340px;
             height: 100%;
@@ -125,7 +123,7 @@
 
         .search-wrapper { margin-bottom: 24px; min-height: 40px; }
         
-        /* Mapbox Geocoder Dark Theme Overrides */
+        /* Mapbox Geocoder UI Styles */
         .mapboxgl-ctrl-geocoder {
             width: 100% !important;
             max-width: 100% !important;
@@ -141,20 +139,18 @@
             font-size: 0.85rem !important;
             height: 40px !important;
         }
-        .mapboxgl-ctrl-geocoder--input:focus {
-            outline: none !important;
-        }
+        .mapboxgl-ctrl-geocoder--input:focus { outline: none !important; }
         .mapboxgl-ctrl-geocoder--icon-search { fill: var(--text-muted) !important; top: 10px !important; left: 12px !important; }
         .mapboxgl-ctrl-geocoder--button { background: transparent !important; top: 6px !important; }
         .mapboxgl-ctrl-geocoder--icon-close { fill: var(--text-muted) !important; }
         
-        /* Geocoder Suggestions Auto-Complete Menu */
         .mapboxgl-ctrl-geocoder .suggestions {
             background-color: var(--panel-bg) !important;
             border: 1px solid var(--border-color) !important;
             border-top: none !important;
             border-radius: 0 0 4px 4px !important;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
+            z-index: 9999 !important;
         }
         .mapboxgl-ctrl-geocoder .suggestions > li > a {
             color: var(--text-color) !important;
@@ -177,6 +173,7 @@
             border: 1px solid var(--border-color);
         }
 
+        /* Action Controls */
         .action-btn {
             width: 100%;
             background: #1a1a1a;
@@ -197,6 +194,7 @@
             background: var(--accent-color);
             color: #fff;
             border-color: transparent;
+            box-shadow: 0 0 15px rgba(255, 34, 34, 0.3);
         }
 
         .metrics-board {
@@ -226,13 +224,15 @@
             z-index: 5;
         }
 
+        /* Sleek Red Dot Live Position Marker */
         .custom-user-marker {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             background-color: var(--accent-color);
             border: 2px solid #ffffff;
             border-radius: 50%;
-            box-shadow: 0 0 12px var(--accent-color);
+            box-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color);
+            transition: transform 0.1s linear;
         }
 
         @media (max-width: 768px) {
@@ -260,7 +260,6 @@
             </div>
             
             <div class="sidebar-content">
-                <!-- Location & Building Search Container Entry Point -->
                 <div class="control-group">
                     <h3>Spatial Directory Search</h3>
                     <div id="search-container" class="search-wrapper"></div>
@@ -275,15 +274,15 @@
                 </div>
 
                 <div class="control-group">
-                    <h3>100ms Telemetry Pipeline</h3>
+                    <h3>Telemetry Pipeline</h3>
                     <button id="gps-init-btn" class="action-btn">
                         Initialize GPS Tracking
                     </button>
                     
                     <div class="metrics-board">
                         <div class="metric-line">
-                            <span>PIPELINE STATUS:</span>
-                            <span class="metric-val" id="gps-status">UNINITIALIZED</span>
+                            <span>TRACKING ENGINE:</span>
+                            <span class="metric-val" id="gps-status">OFFLINE</span>
                         </div>
                         <div class="metric-line">
                             <span>LATITUDE:</span>
@@ -304,7 +303,6 @@
     </div>
 
     <script>
-        // Token deployment authorization channel
         mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
 
         const map = new mapboxgl.Map({
@@ -325,7 +323,7 @@
             menuBtn.innerText = sidebar.classList.contains('open') ? 'Close' : 'Menu';
         });
 
-        // 2. Defensive Geocoder Mount Sequence
+        // Mount Geocoder Search Bar
         try {
             if (typeof MapboxGeocoder !== 'undefined') {
                 const geocoder = new MapboxGeocoder({
@@ -343,32 +341,30 @@
                         menuBtn.innerText = 'Menu';
                     }
                 });
-            } else {
-                document.getElementById('search-container').innerHTML = 
-                    `<div style="color:var(--accent-color);font-size:0.8rem;padding:10px;background:#200bb94;">Search script failed to load from CDN. Check connectivity.</div>`;
             }
         } catch (err) {
-            console.error("Geocoder Init Failure:", err);
+            console.error("Geocoder failed to mount:", err);
         }
 
-        // 3. User Positioning Hardware Interface Engine
+        // Live Telemetry Architecture
         let livePosition = null;
-        let isTrackingActive = false;
+        let isTrackingActive = false; // Controls hardware watch session
+        let isFollowingActive = false; // Controls camera tracking state
+        
         const markerElement = document.createElement('div');
         markerElement.className = 'custom-user-marker';
         const locationMarker = new mapboxgl.Marker({ element: markerElement });
 
         function startTelemetryPipeline() {
-            // Check context security profiles
             if (window.isSecureContext === false) {
                 document.getElementById('gps-status').innerText = 'SECURE_ERR';
-                alert("🚨 SECURITY BLOCK:\nMobile browsers block GPS unless your site is accessed via an HTTPS connection or localhost.");
+                alert("🚨 SECURITY BLOCK:\nGeolocation requires HTTPS or localhost connections on mobile browsers.");
                 return;
             }
 
             if (!('geolocation' in navigator)) {
                 document.getElementById('gps-status').innerText = 'NOT_SUPPORTED';
-                alert("🚨 HARDWARE ERROR:\nYour current browser variant has stripped out the navigator tracking object.");
+                alert("🚨 HARDWARE ERROR:\nGeolocation engine unavailable on this browser browser.");
                 return;
             }
 
@@ -381,49 +377,56 @@
                     
                     if (!isTrackingActive) {
                         isTrackingActive = true;
+                        isFollowingActive = true;
                         gpsBtn.classList.add('active');
-                        gpsBtn.innerText = 'Center on My Location';
+                        gpsBtn.innerText = 'Stop Following';
                     }
                 },
                 (error) => {
-                    console.error('GPS Error Status:', error);
-                    let errMsg = "Access request error tracking device.";
-                    if (error.code === 1) {
-                        errMsg = "PERMISSION_DENIED. Reset site privacy permissions to allow location.";
-                    } else if (error.code === 2) {
-                        errMsg = "POSITION_UNAVAILABLE. satellite link timed out.";
-                    } else if (error.code === 3) {
-                        errMsg = "TIMEOUT occurred connecting hardware.";
-                    }
-                    
+                    console.error('GPS Link Exception:', error);
                     document.getElementById('gps-status').innerText = 'HARDWARE_ERR';
-                    alert(`🚨 GPS PERMISSION FAILURE:\n${errMsg}`);
                 },
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
 
-            // Synchronous 100ms UI tracker matching layer loop frequencies
+            // 100ms Rendering Engine
             setInterval(() => {
                 if (livePosition) {
                     locationMarker.setLngLat(livePosition);
+                    
                     if (!locationMarker.getMap()) {
                         locationMarker.addTo(map);
-                        map.flyTo({ center: livePosition, zoom: 16, essential: true });
                     }
+                    
+                    // Only locks camera viewport onto coordinates if user wants tracking active
+                    if (isFollowingActive) {
+                        map.setCenter(livePosition);
+                    }
+                    
                     document.getElementById('telemetry-lat').innerText = livePosition[1].toFixed(5);
                     document.getElementById('telemetry-lng').innerText = livePosition[0].toFixed(5);
                 }
             }, 100);
         }
 
+        // State Machine Interface Control
         gpsBtn.addEventListener('click', () => {
             if (!isTrackingActive) {
+                // Initialize the tracking service for the first time
                 startTelemetryPipeline();
-            } else if (livePosition) {
-                map.flyTo({ center: livePosition, zoom: 16, essential: true });
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.remove('open');
-                    menuBtn.innerText = 'Menu';
+            } else {
+                // Toggle follow lock states
+                isFollowingActive = !isFollowingActive;
+                
+                if (isFollowingActive) {
+                    gpsBtn.innerText = 'Stop Following';
+                    gpsBtn.classList.add('active');
+                    if (livePosition) {
+                        map.flyTo({ center: livePosition, zoom: 16, essential: true });
+                    }
+                } else {
+                    gpsBtn.innerText = 'Follow Location';
+                    gpsBtn.classList.remove('active');
                 }
             }
         });
