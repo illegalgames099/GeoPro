@@ -5,13 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GeoPro Workspace</title>
     
-    <!-- Mapbox GL JS Core -->
+    <!-- Mapbox GL JS Core Engine -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
 
-    <!-- Mapbox Geocoder Search Plugin -->
-    <script src="https://api.mapbox.com/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
-    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css" />
+    <!-- FIXED: Official Mapbox Geocoder Search Plugin Paths -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.1.0/mapbox-gl-geocoder.min.js"></script>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.1.0/mapbox-gl-geocoder.css" type="text/css" />
 
     <style>
         :root {
@@ -46,6 +46,7 @@
             position: relative;
         }
 
+        /* Floating Responsive Top Menu Command Toggle */
         #mobile-menu-trigger {
             display: none;
             position: absolute;
@@ -65,6 +66,7 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
 
+        /* Core Sidebar Panel Design */
         #sidebar {
             width: 340px;
             height: 100%;
@@ -121,8 +123,9 @@
             margin-bottom: 12px;
         }
 
-        .search-wrapper { margin-bottom: 24px; }
+        .search-wrapper { margin-bottom: 24px; min-height: 40px; }
         
+        /* Mapbox Geocoder Dark Theme Overrides */
         .mapboxgl-ctrl-geocoder {
             width: 100% !important;
             max-width: 100% !important;
@@ -133,9 +136,36 @@
         }
         .mapboxgl-ctrl-geocoder--input {
             color: var(--text-color) !important;
+            background-color: transparent !important;
             padding: 10px 10px 10px 40px !important;
+            font-size: 0.85rem !important;
+            height: 40px !important;
         }
-        .mapboxgl-ctrl-geocoder--icon-search { fill: var(--text-muted) !important; top: 10px !important; }
+        .mapboxgl-ctrl-geocoder--input:focus {
+            outline: none !important;
+        }
+        .mapboxgl-ctrl-geocoder--icon-search { fill: var(--text-muted) !important; top: 10px !important; left: 12px !important; }
+        .mapboxgl-ctrl-geocoder--button { background: transparent !important; top: 6px !important; }
+        .mapboxgl-ctrl-geocoder--icon-close { fill: var(--text-muted) !important; }
+        
+        /* Geocoder Suggestions Auto-Complete Menu */
+        .mapboxgl-ctrl-geocoder .suggestions {
+            background-color: var(--panel-bg) !important;
+            border: 1px solid var(--border-color) !important;
+            border-top: none !important;
+            border-radius: 0 0 4px 4px !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
+        }
+        .mapboxgl-ctrl-geocoder .suggestions > li > a {
+            color: var(--text-color) !important;
+            padding: 10px 14px !important;
+            font-size: 0.8rem !important;
+        }
+        .mapboxgl-ctrl-geocoder .suggestions > .active > a,
+        .mapboxgl-ctrl-geocoder .suggestions > li > a:hover {
+            background-color: #161616 !important;
+            color: var(--accent-color) !important;
+        }
 
         .toggle-container {
             display: flex;
@@ -230,6 +260,7 @@
             </div>
             
             <div class="sidebar-content">
+                <!-- Location & Building Search Container Entry Point -->
                 <div class="control-group">
                     <h3>Spatial Directory Search</h3>
                     <div id="search-container" class="search-wrapper"></div>
@@ -273,6 +304,7 @@
     </div>
 
     <script>
+        // Token deployment authorization channel
         mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
 
         const map = new mapboxgl.Map({
@@ -293,16 +325,33 @@
             menuBtn.innerText = sidebar.classList.contains('open') ? 'Close' : 'Menu';
         });
 
-        // 2. Mount Geocoding Address Search
-        const geocoder = new MapboxGeocoder({
-            accessToken: mapboxgl.accessToken,
-            mapboxgl: mapboxgl,
-            placeholder: 'Search buildings...',
-            collapsed: false
-        });
-        document.getElementById('search-container').appendChild(geocoder.onAdd(map));
+        // 2. Defensive Geocoder Mount Sequence
+        try {
+            if (typeof MapboxGeocoder !== 'undefined') {
+                const geocoder = new MapboxGeocoder({
+                    accessToken: mapboxgl.accessToken,
+                    mapboxgl: mapboxgl,
+                    placeholder: 'Search location...',
+                    collapsed: false,
+                    marker: { color: '#ff2222' }
+                });
+                document.getElementById('search-container').appendChild(geocoder.onAdd(map));
+                
+                geocoder.on('result', () => {
+                    if (window.innerWidth <= 768) {
+                        sidebar.classList.remove('open');
+                        menuBtn.innerText = 'Menu';
+                    }
+                });
+            } else {
+                document.getElementById('search-container').innerHTML = 
+                    `<div style="color:var(--accent-color);font-size:0.8rem;padding:10px;background:#200bb94;">Search script failed to load from CDN. Check connectivity.</div>`;
+            }
+        } catch (err) {
+            console.error("Geocoder Init Failure:", err);
+        }
 
-        // 3. Telemetry Logic with Active Diagnostics
+        // 3. User Positioning Hardware Interface Engine
         let livePosition = null;
         let isTrackingActive = false;
         const markerElement = document.createElement('div');
@@ -310,17 +359,16 @@
         const locationMarker = new mapboxgl.Marker({ element: markerElement });
 
         function startTelemetryPipeline() {
-            // DIAGNOSTIC CHECK 1: Ensure context is secure (HTTPS or Localhost)
+            // Check context security profiles
             if (window.isSecureContext === false) {
                 document.getElementById('gps-status').innerText = 'SECURE_ERR';
-                alert("🚨 BROWSER SECURITY BLOCK:\nGeolocation requires a secure connection (HTTPS) or localhost. Plain HTTP or raw local file paths (file://) will block the prompt entirely.");
+                alert("🚨 SECURITY BLOCK:\nMobile browsers block GPS unless your site is accessed via an HTTPS connection or localhost.");
                 return;
             }
 
-            // DIAGNOSTIC CHECK 2: Ensure API actually exists in the browser environment
             if (!('geolocation' in navigator)) {
                 document.getElementById('gps-status').innerText = 'NOT_SUPPORTED';
-                alert("🚨 API MISSING:\nYour browser has stripped the Geolocation tracking object entirely. Ensure your site uses HTTPS.");
+                alert("🚨 HARDWARE ERROR:\nYour current browser variant has stripped out the navigator tracking object.");
                 return;
             }
 
@@ -338,23 +386,23 @@
                     }
                 },
                 (error) => {
-                    console.error('GPS Error:', error);
-                    let errMsg = "Unknown error accessing GPS.";
+                    console.error('GPS Error Status:', error);
+                    let errMsg = "Access request error tracking device.";
                     if (error.code === 1) {
-                        errMsg = "PERMISSION_DENIED. You manually blocked location access. Please reset your browser site permissions settings.";
+                        errMsg = "PERMISSION_DENIED. Reset site privacy permissions to allow location.";
                     } else if (error.code === 2) {
-                        errMsg = "POSITION_UNAVAILABLE. Device GPS hardware timed out or failed to acquire satellite locks.";
+                        errMsg = "POSITION_UNAVAILABLE. satellite link timed out.";
                     } else if (error.code === 3) {
-                        errMsg = "TIMEOUT occurred while trying to ping hardware trackers.";
+                        errMsg = "TIMEOUT occurred connecting hardware.";
                     }
                     
                     document.getElementById('gps-status').innerText = 'HARDWARE_ERR';
-                    alert(`🚨 GPS TELEMETRY FAILED:\n${errMsg}`);
+                    alert(`🚨 GPS PERMISSION FAILURE:\n${errMsg}`);
                 },
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
 
-            // 100ms Tracking loop
+            // Synchronous 100ms UI tracker matching layer loop frequencies
             setInterval(() => {
                 if (livePosition) {
                     locationMarker.setLngLat(livePosition);
@@ -381,7 +429,6 @@
         });
 
         map.on('load', () => {
-            // Inject 3D buildings layer
             map.addLayer({
                 'id': '3d-buildings',
                 'source': 'composite',
@@ -397,6 +444,14 @@
                 }
             });
         });
+
+        const updateOverlay = (lngLat) => {
+            document.getElementById('geo-overlay').innerHTML = 
+                `LNG: ${lngLat.lng.toFixed(4)} | LAT: ${lngLat.lat.toFixed(4)}`;
+        };
+
+        map.on('mousemove', (e) => updateOverlay(e.lngLat));
+        map.on('touchmove', (e) => updateOverlay(e.lngLat));
     </script>
 </body>
 </html>
