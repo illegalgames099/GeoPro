@@ -9,7 +9,7 @@ import DirectionsPanel from './DirectionsPanel';
 import FeatureTable from './FeatureTable';
 
 // Provide your Mapbox Public Access Token here
-mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
+mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
 
 interface Layer {
   id: string;
