@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GeoPro Workspace</title>
+    <title>GeoPro Workspace with Navigation</title>
     
     <!-- Mapbox GL JS Core Engine -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
 
-    <!-- Official Mapbox Geocoder Search Plugin Paths -->
-    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.1.0/mapbox-gl-geocoder.min.js"></script>
-    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.1.0/mapbox-gl-geocoder.css" type="text/css" />
+    <!-- Official Mapbox GL Directions Routing Plugin -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.3.1/mapbox-gl-directions.js"></script>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.3.1/mapbox-gl-directions.css" type="text/css" />
 
     <style>
         :root {
@@ -123,44 +123,56 @@
 
         .search-wrapper { margin-bottom: 24px; min-height: 40px; }
         
-        /* Mapbox Geocoder Input Core Formatting */
-        .mapboxgl-ctrl-geocoder {
+        /* ── MAPBOX DIRECTIONS DARK THEME OVERRIDES ── */
+        .mapboxgl-ctrl-directions {
             width: 100% !important;
             max-width: 100% !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+            margin: 0 !important;
+        }
+        .mapboxgl-ctrl-directions .mapboxgl-ctrl-geocoder {
             background-color: #161616 !important;
             border: 1px solid var(--border-color) !important;
             border-radius: 4px !important;
-            box-shadow: none !important;
+            margin-bottom: 8px !important;
         }
-        .mapboxgl-ctrl-geocoder--input {
+        .mapboxgl-ctrl-directions input[type="text"] {
             color: var(--text-color) !important;
-            background-color: transparent !important;
             padding: 10px 10px 10px 40px !important;
             font-size: 0.85rem !important;
             height: 40px !important;
         }
-        .mapboxgl-ctrl-geocoder--input:focus { outline: none !important; }
-        .mapboxgl-ctrl-geocoder--icon-search { fill: var(--text-muted) !important; top: 10px !important; left: 12px !important; }
-        .mapboxgl-ctrl-geocoder--button { background: transparent !important; top: 6px !important; }
-        .mapboxgl-ctrl-geocoder--icon-close { fill: var(--text-muted) !important; }
-        
-        .mapboxgl-ctrl-geocoder .suggestions {
-            background-color: var(--panel-bg) !important;
+        .mapboxgl-ctrl-directions .directions-control-inputs {
+            padding: 0 !important;
+            background: transparent !important;
+        }
+        .mapboxgl-ctrl-directions .mapboxgl-ctrl-geocoder--icon-search {
+            fill: var(--text-muted) !important;
+            top: 10px !important;
+        }
+        .mapboxgl-ctrl-directions .directions-icon {
+            top: 10px !important;
+        }
+        /* Hide profiling buttons to clean up sidebar layout space */
+        .mapboxgl-ctrl-directions .directions-control-profiles {
+            display: none !important;
+        }
+        .mapboxgl-ctrl-directions .directions-control-instructions {
+            background-color: #141414 !important;
             border: 1px solid var(--border-color) !important;
-            border-top: none !important;
-            border-radius: 0 0 4px 4px !important;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
-            z-index: 9999 !important;
-        }
-        .mapboxgl-ctrl-geocoder .suggestions > li > a {
             color: var(--text-color) !important;
-            padding: 10px 14px !important;
-            font-size: 0.8rem !important;
+            border-radius: 4px;
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
         }
-        .mapboxgl-ctrl-geocoder .suggestions > .active > a,
-        .mapboxgl-ctrl-geocoder .suggestions > li > a:hover {
-            background-color: #161616 !important;
-            color: var(--accent-color) !important;
+        .mapboxgl-ctrl-directions .mapbox-directions-instruction {
+            border-bottom: 1px solid #1a1a1a !important;
+            color: var(--text-color) !important;
+        }
+        .mapboxgl-ctrl-directions .mapbox-directions-instruction:hover {
+            background-color: #1c1c1c !important;
         }
 
         .toggle-container {
@@ -223,7 +235,6 @@
             z-index: 5;
         }
 
-        /* High-Visibility Custom Neon Red Dot Element */
         .custom-user-marker {
             display: block;
             width: 16px;
@@ -260,8 +271,9 @@
             </div>
             
             <div class="sidebar-content">
+                <!-- Swapped out simple search for the Directions/Routing Interface Anchor -->
                 <div class="control-group">
-                    <h3>Spatial Directory Search</h3>
+                    <h3>Navigation & Search</h3>
                     <div id="search-container" class="search-wrapper"></div>
                 </div>
 
@@ -323,34 +335,29 @@
             menuBtn.innerText = sidebar.classList.contains('open') ? 'Close' : 'Menu';
         });
 
-        // Search Interface Assembly Channel
+        // ── Initialize Advanced Routing Architecture ──
+        let directions = null;
         try {
-            if (typeof MapboxGeocoder !== 'undefined') {
-                const geocoder = new MapboxGeocoder({
-                    accessToken: mapboxgl.accessToken,
-                    mapboxgl: mapboxgl,
-                    placeholder: 'Search location...',
-                    collapsed: false,
-                    marker: { color: '#ff2222' }
-                });
-                document.getElementById('search-container').appendChild(geocoder.onAdd(map));
-                
-                geocoder.on('result', () => {
-                    if (window.innerWidth <= 768) {
-                        sidebar.classList.remove('open');
-                        menuBtn.innerText = 'Menu';
-                    }
-                });
-            }
-        } catch (err) {
-            console.error("Geocoder interface failure:", err);
+            directions = new MapboxDirections({
+                accessToken: mapboxgl.accessToken,
+                unit: 'imperial',
+                profile: 'mapbox/driving',
+                alternatives: false,
+                congestion: true,
+                controls: { inputs: true, instructions: true, profileSwitcher: false }
+            });
+            
+            // Mount the direction finder fields cleanly inside the layout panel container
+            document.getElementById('search-container').appendChild(directions.onAdd(map));
+        } catch(e) {
+            console.error("Directions engine failed to assemble:", e);
         }
 
         // Live Telemetry Engine State Management
         let livePosition = null;
         let isTrackingActive = false; 
         let isFollowingActive = false; 
-        let isMarkerAdded = false; // Fixed: Tracking state flag instead of phantom method
+        let isMarkerAdded = false; 
         
         const markerElement = document.createElement('div');
         markerElement.className = 'custom-user-marker';
@@ -365,7 +372,7 @@
 
             if (!('geolocation' in navigator)) {
                 document.getElementById('gps-status').innerText = 'NOT_SUPPORTED';
-                alert("🚨 HARDWARE ERROR:\nGeolocation engine unavailable on this browser browser.");
+                alert("🚨 HARDWARE ERROR:\nGeolocation engine unavailable on this browser variant.");
                 return;
             }
 
@@ -381,6 +388,11 @@
                         isFollowingActive = true;
                         gpsBtn.classList.add('active');
                         gpsBtn.innerText = 'Stop Following';
+                        
+                        // Automatically pipe your freshly pulled coordinates straight into the routing engine's origin field!
+                        if (directions) {
+                            directions.setOrigin(livePosition);
+                        }
                     }
                 },
                 (error) => {
@@ -395,7 +407,6 @@
                 if (livePosition) {
                     locationMarker.setLngLat(livePosition);
                     
-                    // Fixed: Safely appends marker element once without executing internal crashes
                     if (!isMarkerAdded) {
                         locationMarker.addTo(map);
                         isMarkerAdded = true;
