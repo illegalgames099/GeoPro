@@ -5,12 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeoPro Workspace</title>
     
-    <!-- Mapbox GL JS Core -->
+    <!-- Mapbox GL JS Core (v3 Natively Handles PMTiles) -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
-    
-    <!-- PMTiles Decryption Protocol Plugin -->
-    <script src="https://unpkg.com/pmtiles@2.11.0/dist/index.js"></script>
 
     <style>
         :root {
@@ -31,7 +28,7 @@
 
         body, html {
             width: 100%;
-            height: 100%;
+            height: 100vh;
             overflow: hidden;
             background-color: var(--bg-color);
             color: var(--text-color);
@@ -40,12 +37,13 @@
         #workspace-container {
             display: flex;
             width: 100%;
-            height: 100%;
+            height: 100vh;
         }
 
         /* Sidebar Control Center Layout */
         #sidebar {
             width: 320px;
+            height: 100%;
             background-color: var(--panel-bg);
             border-right: 1px solid var(--border-color);
             display: flex;
@@ -181,6 +179,7 @@
             flex-grow: 1;
             height: 100%;
             position: relative;
+            background-color: #0e0e0e;
         }
 
         /* Live Location Matrix Display */
@@ -247,14 +246,7 @@
         // Active Mapbox access token applied
         mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
 
-        // 1. Instantiate PMTiles Interface Protocol API
-        const protocol = new pmtiles.Protocol();
-        mapboxgl.addProtocol("pmtiles", protocol.tile);
-
-        // Define your PMTiles URL path here when ready
-        const pmtilesUrl = "pmtiles://https://your-server-or-bucket.com/infrastructure.pmtiles";
-
-        // 2. Initialize Core Map Engine Pipeline targeting Ukiah CA coordinates
+        // 1. Initialize Core Map Engine Pipeline targeting Ukiah CA coordinates
         const map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/dark-v11', 
@@ -265,8 +257,16 @@
         });
 
         map.on('load', () => {
+            // Safe lookup for label layer to insert map features underneath
             const layers = map.getStyle().layers;
-            const labelLayerId = layers.find(layer => layer.type === 'symbol' && layer.layout['text-field']).id;
+            let labelLayerId;
+            
+            for (let i = 0; i < layers.length; i++) {
+                if (layers[i].type === 'symbol' && layers[i].layout && layers[i].layout['text-field']) {
+                    labelLayerId = layers[i].id;
+                    break;
+                }
+            }
 
             // --- A. Inject 3D Mesh Geometry Layer into Engine ---
             map.addLayer({
@@ -294,11 +294,11 @@
 
 
             /* 
-            --- B. PMTiles Source Pipelines (Uncomment below once pmtilesUrl is active) ---
-
+            --- B. PMTiles Source Pipelines (Uncomment below once you have a real hosted .pmtiles file) ---
+            
             map.addSource('local-infrastructure-source', {
                 type: 'vector',
-                url: pmtilesUrl
+                url: 'https://your-server-or-bucket.com/infrastructure.pmtiles' // Mapbox v3 parses directly via file extension!
             });
 
             map.addLayer({
