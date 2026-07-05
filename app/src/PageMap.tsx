@@ -11,6 +11,7 @@ import {
   addProtocol,
   getRTLTextPluginStatus,
   setRTLTextPlugin,
+  Marker,
 } from "maplibre-gl";
 import {
   type Accessor,
@@ -31,6 +32,7 @@ import { ExampleChooser, Frame } from "./Frame";
 import { type LayerVisibility, LayersPanel } from "./LayersPanel";
 import { type Tileset, tilesetFromString } from "./tileset";
 import { colorForIdx, createHash, parseHash, tileInspectUrl } from "./utils";
+import { useUserLocation } from "./useUserLocation";
 
 declare module "solid-js" {
   namespace JSX {
@@ -62,6 +64,9 @@ function MapView(props: {
   >([]);
   const [basemap, setBasemap] = createSignal<boolean>(false);
   const [frozen, setFrozen] = createSignal<boolean>(false);
+  const [userLocationMarker, setUserLocationMarker] = createSignal<Marker | undefined>();
+  
+  const { location, error, loading, requestLocation } = useUserLocation();
 
   const inspectableFeatures = createMemo(() => {
     return hoveredFeatures().map((h) => {
@@ -99,6 +104,19 @@ function MapView(props: {
       ],
       { animate: false },
     );
+  };
+
+  const fitToUserLocation = () => {
+    const loc = location();
+    if (loc && map) {
+      map.fitBounds(
+        [
+          [loc.longitude - 0.01, loc.latitude - 0.01],
+          [loc.longitude + 0.01, loc.latitude + 0.01],
+        ],
+        { animate: true },
+      );
+    }
   };
 
   const removeTileset = () => {
@@ -323,6 +341,20 @@ function MapView(props: {
     }
   });
 
+  createEffect(() => {
+    const loc = location();
+    if (loc && map) {
+      let marker = userLocationMarker();
+      if (!marker) {
+        const el = document.createElement("div");
+        el.className = "w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow-lg";
+        marker = new Marker({ element: el, anchor: "center" });
+        setUserLocationMarker(marker);
+      }
+      marker.setLngLat([loc.longitude, loc.latitude]).addTo(map);
+    }
+  });
+
   onMount(async () => {
     if (!mapContainer) {
       console.error("Could not mount map element");
@@ -481,6 +513,28 @@ function MapView(props: {
           >
             fit to bounds
           </button>
+          <Show when={location()}>
+            <button
+              class="px-4 btn-primary cursor-pointer"
+              type="button"
+              onClick={fitToUserLocation}
+            >
+              go to my location
+            </button>
+          </Show>
+          <Show when={!location()}>
+            <button
+              class="px-4 btn-primary cursor-pointer"
+              type="button"
+              onClick={requestLocation}
+              disabled={loading()}
+            >
+              {loading() ? "getting location..." : "use my location"}
+            </button>
+          </Show>
+          <Show when={error()}>
+            <span class="text-red-400 text-xs">{error()}</span>
+          </Show>
           <span class="app-border rounded px-2 flex items-center">
             <input
               class="mr-1 cursor-pointer"
