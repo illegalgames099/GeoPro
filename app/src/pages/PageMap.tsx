@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 import * as pmtiles from 'pmtiles';
 import 'mapbox-gl/dist/mapbox-gl.css';
@@ -8,8 +8,12 @@ import LayersPanel from './LayersPanel';
 import DirectionsPanel from './DirectionsPanel';
 import FeatureTable from './FeatureTable';
 
-// Insert your Mapbox Public Access Token here
-mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
+// Safe runtime fallback token check
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || 'YOUR_MAPBOX_ACCESS_TOKEN';
+const isTokenMissing = !MAPBOX_TOKEN || MAPBOX_TOKEN === 'YOUR_MAPBOX_ACCESS_TOKEN';
+if (!isTokenMissing) {
+  mapboxgl.accessToken = MAPBOX_TOKEN;
+}
 
 interface Layer {
   id: string;
@@ -27,13 +31,14 @@ interface ViewportState {
 export default function PageMap() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   const [mapLoaded, setMapLoaded] = useState(false);
   const [activePanel, setActivePanel] = useState<'layers' | 'directions' | 'search'>('layers');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isTableOpen, setIsTableOpen] = useState(false);
 
-  // Live viewport monitoring initialized to Ukiah defaults
+  // HUD state tracks local workspace coordinate telemetry safely
   const [viewport, setViewport] = useState<ViewportState>({
     lat: 39.1502,
     lng: -123.2078,
@@ -47,7 +52,7 @@ export default function PageMap() {
     { id: 'custom-pmtiles', name: 'Local Infrastructure PMTiles', visible: false, type: 'vector' },
   ]);
 
-  // 1. Initialize PMTiles Protocol for Mapbox Engine mapping
+  // 1. Initialize PMTiles Protocol globally
   useEffect(() => {
     const protocol = new pmtiles.Protocol();
     mapboxgl.addProtocol("pmtiles", protocol.tile);
@@ -57,17 +62,18 @@ export default function PageMap() {
     };
   }, []);
 
-  // 2. Mapbox Canvas Lifecycle Setup
+  // 2. Mapbox Lifecycle Core Setup
   useEffect(() => {
-    if (!mapContainerRef.current) return;
+    if (isTokenMissing || !mapContainerRef.current) return;
 
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/dark-v11', // High-contrast premium dark theme
+      style: 'mapbox://styles/mapbox/dark-v11', // High-contrast premium dark layout
       center: [viewport.lng, viewport.lat],
       zoom: viewport.zoom,
-      pitch: 45, // Angled view to enhance 3D structures if available
+      pitch: 45,
       attributionControl: false,
+      trackResize: true
     });
 
     mapRef.current = map;
@@ -75,25 +81,30 @@ export default function PageMap() {
     map.on('load', () => {
       setMapLoaded(true);
 
-      // Setup dynamic 3D building extrusion defaults from the Mapbox core style
+      // Force-inject Mapbox core 3D building styling parameters safely if layers exist
       if (map.getLayer('building')) {
-        map.setLayerProperty('building', 'visibility', 'visible');
+        map.setLayoutProperty('building', 'visibility', 'visible');
       }
     });
 
-    // Wire position updates to look at viewport frame changes
+    // Performance-optimized HUD updater utilizing requestAnimationFrame to debounce re-renders
     const handleMapMove = () => {
-      const center = map.getCenter();
-      setViewport({
-        lng: center.lng,
-        lat: center.lat,
-        zoom: map.getZoom(),
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+
+      animationFrameRef.current = requestAnimationFrame(() => {
+        const center = map.getCenter();
+        setViewport({
+          lng: center.lng,
+          lat: center.lat,
+          zoom: map.getZoom(),
+        });
       });
     };
 
     map.on('move', handleMapMove);
 
     return () => {
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
       map.off('move', handleMapMove);
       if (mapRef.current) {
         mapRef.current.remove();
@@ -102,20 +113,34 @@ export default function PageMap() {
     };
   }, []);
 
-  // 3. Dynamic Layer Control Adjustments
-  const toggleLayerVisibility = (id: string) => {
+  // 3. Fix Layout Canvas Stretching Bug on Panel Toggles
+  useEffect(() => {
+    if (!mapRef.current || !mapLoaded) return;
+    
+    // Resize map canvas immediately and right after transition speeds finish (300ms)
+    mapRef.current.resize();
+    const resizeTimer = setTimeout(() => {
+      mapRef.current?.resize();
+    }, 320);
+
+    return () => clearTimeout(resizeTimer);
+  }, [isSidebarOpen, isTableOpen, mapLoaded]);
+
+  // 4. Memoized Layer Action Toggles
+  const toggleLayerVisibility = useCallback((id: string) => {
     setLayers((prevLayers) =>
       prevLayers.map((layer) => {
         if (layer.id === id) {
           const nextVisibility = !layer.visible;
           const visibilityString = nextVisibility ? 'visible' : 'none';
 
-          if (mapRef.current) {
-            // Fallback check for Mapbox core building layer configurations
-            if (id === 'buildings' && mapRef.current.getLayer('building')) {
-              mapRef.current.setLayoutProperty('building', 'visibility', visibilityString);
-            } else if (mapRef.current.getLayer(id)) {
-              mapRef.current.setLayoutProperty(id, 'visibility', visibilityString);
+          const map = mapRef.current;
+          if (map && map.isStyleLoaded()) {
+            // Defensive layer verification mapping routines
+            if (id === 'buildings' && map.getLayer('building')) {
+              map.setLayoutProperty('building', 'visibility', visibilityString);
+            } else if (map.getLayer(id)) {
+              map.setLayoutProperty(id, 'visibility', visibilityString);
             }
           }
           return { ...layer, visible: nextVisibility };
@@ -123,10 +148,10 @@ export default function PageMap() {
         return layer;
       })
     );
-  };
+  }, []);
 
-  // Fly-to action for search selection jumps
-  const handlePanToCoordinates = (coords: [number, number]) => {
+  // 5. Memoized Navigational Fly-to Actions
+  const handlePanToCoordinates = useCallback((coords: [number, number]) => {
     if (mapRef.current) {
       mapRef.current.flyTo({
         center: coords,
@@ -135,7 +160,24 @@ export default function PageMap() {
         pitch: 30,
       });
     }
-  };
+  }, []);
+
+  // Early return if security authorization is completely missing
+  if (isTokenMissing) {
+    return (
+      <div className="h-screen w-screen bg-[#0a0a0a] flex flex-col items-center justify-center p-6 text-center font-sans">
+        <div className="border border-red-900 bg-red-950/20 px-6 py-8 rounded-lg max-w-md shadow-2xl">
+          <h2 className="text-red-500 font-black tracking-widest uppercase mb-2">Configuration Required</h2>
+          <p className="text-neutral-400 text-xs leading-relaxed mb-4">
+            Mapbox API Access Token is missing or invalid. Please populate your environment configuration file or insert your credential parameter to spin up the engine instance canvas.
+          </p>
+          <div className="text-[10px] bg-[#111111] p-2 rounded font-mono text-neutral-500 border border-[#222222]">
+            VITE_MAPBOX_ACCESS_TOKEN Token Check Fail
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen w-screen bg-[#0a0a0a] text-neutral-200 overflow-hidden select-none font-sans">
@@ -151,9 +193,9 @@ export default function PageMap() {
           </div>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div>
           <button 
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
+            onClick={() => setIsSidebarOpen(prev => !prev)} 
             className="px-3 py-1.5 bg-[#222222] hover:bg-red-700 hover:text-white border border-[#333333] rounded text-xs uppercase font-semibold tracking-wider transition-colors duration-200"
           >
             {isSidebarOpen ? 'Hide Controls' : 'Show Controls'}
@@ -166,7 +208,7 @@ export default function PageMap() {
         
         {/* Dynamic Sidebar Controls */}
         <aside 
-          className={`flex flex-col bg-[#111111] border-r border-[#222222] transition-all duration-300 z-20 ${
+          className={`flex flex-col bg-[#111111] border-r border-[#222222] transition-all duration-300 z-20 will-change-[width] ${
             isSidebarOpen ? 'w-80' : 'w-0 overflow-hidden border-r-0'
           }`}
         >
@@ -227,7 +269,7 @@ export default function PageMap() {
             </div>
           )}
 
-          {/* Floating Map HUD Utilities - Real Telemetry Driven */}
+          {/* Floating Map HUD Utilities - Throttled Precision Telemetry */}
           {mapLoaded && (
             <div className="absolute top-4 right-4 bg-[#111111]/85 backdrop-blur-md border border-[#333333] p-3 rounded shadow-2xl z-30 pointer-events-none text-[11px] font-mono text-neutral-400 space-y-1 w-48">
               <div className="text-red-500 border-b border-[#222222] pb-1 mb-1 font-bold tracking-wider uppercase text-[10px]">
@@ -242,7 +284,7 @@ export default function PageMap() {
           {/* Floating Control for Attribute Panel Toggle */}
           {mapLoaded && (
             <button
-              onClick={() => setIsTableOpen(!isTableOpen)}
+              onClick={() => setIsTableOpen(prev => !prev)}
               className="absolute bottom-4 left-4 z-30 px-3 py-1.5 bg-[#111111]/90 hover:bg-red-700 border border-[#333333] hover:border-red-600 rounded text-[10px] uppercase font-mono tracking-wider transition-all duration-200"
             >
               {isTableOpen ? 'Close Data Table' : 'Open Data Table'}
@@ -251,7 +293,7 @@ export default function PageMap() {
 
           {/* Collapsible Feature/Attribute Table Panel */}
           <div 
-            className={`absolute bottom-0 left-0 right-0 bg-[#111111] border-t border-[#222222] z-30 transition-all duration-300 ease-in-out transform ${
+            className={`absolute bottom-0 left-0 right-0 bg-[#111111] border-t border-[#222222] z-30 transition-all duration-300 ease-in-out transform will-change-[height] ${
               isTableOpen ? 'h-64' : 'h-0 overflow-hidden border-t-0'
             }`}
           >
