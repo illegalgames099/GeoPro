@@ -123,7 +123,7 @@
 
         .search-wrapper { margin-bottom: 24px; min-height: 40px; }
         
-        /* Mapbox Geocoder UI Styles */
+        /* Mapbox Geocoder Input Core Formatting */
         .mapboxgl-ctrl-geocoder {
             width: 100% !important;
             max-width: 100% !important;
@@ -173,7 +173,6 @@
             border: 1px solid var(--border-color);
         }
 
-        /* Action Controls */
         .action-btn {
             width: 100%;
             background: #1a1a1a;
@@ -224,15 +223,16 @@
             z-index: 5;
         }
 
-        /* Sleek Red Dot Live Position Marker */
+        /* High-Visibility Custom Neon Red Dot Element */
         .custom-user-marker {
-            width: 14px;
-            height: 14px;
-            background-color: var(--accent-color);
+            display: block;
+            width: 16px;
+            height: 16px;
+            background-color: #ff2222;
             border: 2px solid #ffffff;
             border-radius: 50%;
-            box-shadow: 0 0 10px var(--accent-color), 0 0 20px var(--accent-color);
-            transition: transform 0.1s linear;
+            box-shadow: 0 0 10px #ff2222, 0 0 20px #ff2222;
+            cursor: pointer;
         }
 
         @media (max-width: 768px) {
@@ -323,7 +323,7 @@
             menuBtn.innerText = sidebar.classList.contains('open') ? 'Close' : 'Menu';
         });
 
-        // Mount Geocoder Search Bar
+        // Search Interface Assembly Channel
         try {
             if (typeof MapboxGeocoder !== 'undefined') {
                 const geocoder = new MapboxGeocoder({
@@ -343,13 +343,14 @@
                 });
             }
         } catch (err) {
-            console.error("Geocoder failed to mount:", err);
+            console.error("Geocoder interface failure:", err);
         }
 
-        // Live Telemetry Architecture
+        // Live Telemetry Engine State Management
         let livePosition = null;
-        let isTrackingActive = false; // Controls hardware watch session
-        let isFollowingActive = false; // Controls camera tracking state
+        let isTrackingActive = false; 
+        let isFollowingActive = false; 
+        let isMarkerAdded = false; // Fixed: Tracking state flag instead of phantom method
         
         const markerElement = document.createElement('div');
         markerElement.className = 'custom-user-marker';
@@ -389,16 +390,17 @@
                 { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
             );
 
-            // 100ms Rendering Engine
+            // High-Frequency 100ms Rendering Sync Loop
             setInterval(() => {
                 if (livePosition) {
                     locationMarker.setLngLat(livePosition);
                     
-                    if (!locationMarker.getMap()) {
+                    // Fixed: Safely appends marker element once without executing internal crashes
+                    if (!isMarkerAdded) {
                         locationMarker.addTo(map);
+                        isMarkerAdded = true;
                     }
                     
-                    // Only locks camera viewport onto coordinates if user wants tracking active
                     if (isFollowingActive) {
                         map.setCenter(livePosition);
                     }
@@ -409,13 +411,11 @@
             }, 100);
         }
 
-        // State Machine Interface Control
+        // State Machine Controller Interface
         gpsBtn.addEventListener('click', () => {
             if (!isTrackingActive) {
-                // Initialize the tracking service for the first time
                 startTelemetryPipeline();
             } else {
-                // Toggle follow lock states
                 isFollowingActive = !isFollowingActive;
                 
                 if (isFollowingActive) {
