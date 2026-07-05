@@ -183,11 +183,11 @@ export function Frame(props: {
     return false;
   };
 
-  let pageTitle = "PMTiles viewer";
+  let pageTitle = "GeoPro Map Viewer";
   if (props.page === "archive") {
-    pageTitle = "PMTiles archive inspector";
+    pageTitle = "GeoPro Archive Inspector";
   } else if (props.page === "tile") {
-    pageTitle = "PMTiles tile inspector";
+    pageTitle = "GeoPro Tile Inspector";
   }
 
   return (
@@ -245,12 +245,12 @@ export function Frame(props: {
                 load
               </button>
               <a
-                href="https://github.com/protomaps/PMTiles"
+                href="https://github.com/illegalgames099/GeoPro"
                 target="_blank"
                 rel="noreferrer"
                 class="hidden md:inline text-xs mx-4"
               >
-                @{GIT_SHA}
+                GeoPro @{GIT_SHA}
               </a>
             </form>
           </div>
