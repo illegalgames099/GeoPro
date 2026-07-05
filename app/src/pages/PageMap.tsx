@@ -1,47 +1,140 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
+
+// Authenticated Mapbox access token
+mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
 
 export default function PageMap() {
   const navigate = useNavigate();
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const markerRef = useRef<mapboxgl.Marker | null>(null);
+  
   const [controlsVisible, setControlsVisible] = useState(true);
   const [activePipeline, setActivePipeline] = useState<'layers' | 'telemetry'>('layers');
+  const [mapLoaded, setMapLoaded] = useState(false);
   
-  // High-frequency telemetry states
+  // High-frequency telemetry states (20 Hz loop)
   const [isTracking, setIsTracking] = useState(true);
-  const [currentCoords, setCurrentCoords] = useState({ lat: 39.1502, lon: -123.2078 });
+  const [currentCoords, setCurrentCoords] = useState({ lat: 39.1502, lon: -123.2078 }); // Center coordinates for Ukiah, CA
   const [tickCount, setTickCount] = useState(0);
 
-  // High-fidelity map layers state
   const [layers, setLayers] = useState([
-    { id: 'buildings', name: 'Overture 3D Building Meshes', active: true, count: '14,205 nodes' },
+    { id: 'mapbox-3d-buildings', name: 'Mapbox 3D Extrusion Mesh', active: true, count: 'Engine Native' },
     { id: 'osm-roads', name: 'OSM Road Network Geometry', active: true, count: '3,841 vectors' },
     { id: 'intercell-nodes', name: 'Intercell Solar Hardware Nodes', active: true, count: '12 assets' },
   ]);
 
-  // 50ms High-Frequency Tracking Loop
+  // 1. Initialize Mapbox Instance
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: 'mapbox://styles/mapbox/dark-v11', // High-contrast premium dark theme
+      center: [-123.2078, 39.1502], // [longitude, latitude]
+      zoom: 14.5,
+      pitch: 45, // Angled projection to clearly emphasize 3D dimensions
+      bearing: -15,
+      attributionControl: false
+    });
+
+    mapRef.current = map;
+
+    map.on('load', () => {
+      setMapLoaded(true);
+
+      // Create a dedicated red custom HTML element for the telemetry marker
+      const el = document.createElement('div');
+      el.className = 'telemetry-ping';
+      el.style.width = '14px';
+      el.style.height = '14px';
+      el.style.backgroundColor = '#dc2626'; // Brand-specific high-vis pure red
+      el.style.borderRadius = '50%';
+      el.style.border = '2px solid #ffffff';
+      el.style.boxShadow = '0 0 12px #dc2626, 0 0 4px #000000';
+      el.style.transition = 'transform 0.03s linear'; // Ultra-smooth low-latency transitions
+
+      // Add high-frequency tracker marker to the map layer instance
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat([-123.2078, 39.1502])
+        .addTo(map);
+
+      markerRef.current = marker;
+
+      // Add Mapbox 3D Building Layer directly on engine loading
+      const currentLayers = map.getStyle().layers;
+      const labelLayerId = currentLayers?.find(layer => layer.type === 'symbol' && layer.layout?.['text-field'])?.id;
+
+      map.addLayer(
+        {
+          id: '3d-buildings',
+          source: 'composite',
+          'source-layer': 'building',
+          filter: ['==', 'extrude', 'true'],
+          type: 'fill-extrusion',
+          minzoom: 12,
+          paint: {
+            'fill-extrusion-color': '#1f1f1f',
+            'fill-extrusion-height': ['get', 'height'],
+            'fill-extrusion-base': ['get', 'min_height'],
+            'fill-extrusion-opacity': 0.75
+          }
+        },
+        labelLayerId
+      );
+    });
+
+    return () => {
+      if (mapRef.current) {
+        mapRef.current.remove();
+      }
+    };
+  }, []);
+
+  // 2. Strict 50ms High-Frequency Tracking Execution Cycle (20 Hz)
   useEffect(() => {
     let trackingInterval: NodeJS.Timeout;
 
-    if (isTracking) {
+    if (isTracking && mapLoaded) {
       trackingInterval = setInterval(() => {
-        // High-precision delta updates simulating high-speed path traversal
         setCurrentCoords(prev => {
-          const microDeltaLat = (Math.random() - 0.45) * 0.00008; 
-          const microDeltaLon = (Math.random() - 0.52) * 0.00012;
-          return {
-            lat: parseFloat((prev.lat + microDeltaLat).toFixed(6)),
-            lon: parseFloat((prev.lon + microDeltaLon).toFixed(6))
-          };
+          // Generate sharp localized path vectors mimicking streaming field hardware
+          const microDeltaLat = (Math.random() - 0.48) * 0.00007; 
+          const microDeltaLon = (Math.random() - 0.50) * 0.00009;
+          
+          const nextLat = parseFloat((prev.lat + microDeltaLat).toFixed(6));
+          const nextLon = parseFloat((prev.lon + microDeltaLon).toFixed(6));
+
+          // Direct imperatively piped Mapbox update bypassing React rendering lags entirely
+          if (markerRef.current) {
+            markerRef.current.setLngLat([nextLon, nextLat]);
+          }
+
+          return { lat: nextLat, lon: nextLon };
         });
+        
         setTickCount(t => t + 1);
-      }, 50); // Exact 50 millisecond clock cycle
+      }, 50); // Exact 50 millisecond interval clock
     }
 
     return () => clearInterval(trackingInterval);
-  }, [isTracking]);
+  }, [isTracking, mapLoaded]);
 
   const toggleLayer = (id: string) => {
     setLayers(layers.map(l => l.id === id ? { ...l, active: !l.active } : l));
+    
+    // Toggle actual native Mapbox engine layers
+    if (mapRef.current && id === 'mapbox-3d-buildings') {
+      const visibility = mapRef.current.getLayoutProperty('3d-buildings', 'visibility');
+      mapRef.current.setLayoutProperty(
+        '3d-buildings', 
+        'visibility', 
+        visibility === 'none' ? 'visible' : 'none'
+      );
+    }
   };
 
   return (
@@ -57,8 +150,8 @@ export default function PageMap() {
             &lt; Return to Hub
           </button>
           <div className="h-4 w-px bg-[#222222] hidden md:block"></div>
-          <span className="font-bold text-white tracking-wider uppercase hidden md:inline">
-            GeoPro Spatial Map <span className="text-red-600">Engine Instance</span>
+          <span className="font-bold text-white tracking-wider uppercase hidden md:inline font-sans">
+            StudioOS <span className="text-red-600">Mapbox Pipeline</span>
           </span>
         </div>
 
@@ -89,7 +182,6 @@ export default function PageMap() {
         <aside className={`bg-[#0F0F0F] border-b md:border-b-0 md:border-r border-[#222222] flex flex-col shrink-0 transition-all duration-200 z-20 ${
           controlsVisible ? 'w-full md:w-80 h-1/2 md:h-full opacity-100' : 'w-0 h-0 opacity-0 pointer-events-none overflow-hidden'
         }`}>
-          {/* Sub-panel Toggles */}
           <div className="flex bg-[#141414] border-b border-[#222222] text-[10px] font-bold uppercase tracking-wider">
             <button 
               onClick={() => setActivePipeline('layers')}
@@ -105,7 +197,6 @@ export default function PageMap() {
             </button>
           </div>
 
-          {/* Context Switching Panel Content */}
           <div className="flex-1 p-4 overflow-y-auto space-y-4">
             {activePipeline === 'layers' ? (
               <div className="space-y-3">
@@ -115,7 +206,7 @@ export default function PageMap() {
                     <div key={layer.id} className="p-3 bg-[#141414] border border-[#222222] rounded flex items-start justify-between space-x-3 hover:border-[#333333] transition-colors">
                       <div className="space-y-1">
                         <div className="font-sans font-bold text-white leading-tight">{layer.name}</div>
-                        <div className="text-[10px] text-neutral-500">Cached: {layer.count}</div>
+                        <div className="text-[10px] text-neutral-500">Source: {layer.count}</div>
                       </div>
                       <input 
                         type="checkbox"
@@ -136,15 +227,14 @@ export default function PageMap() {
                   <div>POLLING_CLOCK: <span className="text-red-500">50ms (20 Hz)</span></div>
                   <div>TOTAL_TICKS: <span className="text-neutral-300">{tickCount}</span></div>
                   <div className="pt-2 border-t border-[#222222] mt-2 flex items-center justify-between text-[10px]">
-                    <span>STREAM MATRIX:</span>
-                    <span className="text-green-400 font-bold">SYNCHRONIZED</span>
+                    <span>MAPBOX ENGINE:</span>
+                    <span className="text-green-400 font-bold">WebGL_ACCELERATED</span>
                   </div>
                 </div>
               </div>
             )}
           </div>
 
-          {/* Terminal Console Activity Log */}
           <div className="p-3 bg-[#131313] border-t border-[#222222] text-[10px] text-neutral-500 font-mono hidden md:block">
             <div className="text-red-600 font-bold mb-0.5">SYSTEM_STREAM_LOG</div>
             <div className="truncate text-neutral-400">&gt; Refresh interval set to strict 50ms pipeline.</div>
@@ -155,19 +245,22 @@ export default function PageMap() {
         {/* Primary Map Viewport Target Container */}
         <main className="flex-1 relative bg-[#090909]">
           
-          {/* Simulated Spatial Field Layout */}
-          <div className="absolute inset-0 w-full h-full bg-[radial-gradient(#1c1c1c_1px,transparent_1px)] [background-size:24px_24px] opacity-40 flex items-center justify-center">
-            <div className="text-center space-y-2 pointer-events-none px-4">
-              <div className="text-[11px] tracking-widest uppercase text-neutral-600 font-bold">Spatial Vector Engine Viewport</div>
-              <div className="text-[10px] text-neutral-700 font-mono">Position matrix updating at 20 cycles per second</div>
+          {/* Mapbox GL Canvas Mount Target */}
+          <div ref={mapContainerRef} className="absolute inset-0 w-full h-full" />
+
+          {/* Map Loading overlay state */}
+          {!mapLoaded && (
+            <div className="absolute inset-0 bg-[#0A0A0A] z-30 flex flex-col items-center justify-center space-y-2">
+              <div className="w-5 h-5 border-2 border-red-600 border-t-transparent rounded-full animate-spin"></div>
+              <div className="text-[10px] tracking-widest text-neutral-500 uppercase">Compiling WebGL Layer...</div>
             </div>
-          </div>
+          )}
 
           {/* Floating Heads-Up Display Telemetry Windows */}
           <div className="absolute top-4 right-4 bg-[#111111]/90 backdrop-blur-md border border-[#222222] p-3 rounded shadow-2xl space-y-1.5 z-10 text-[10px] font-mono text-neutral-400 min-w-[180px]">
             <div className="font-bold text-red-500 uppercase tracking-widest border-b border-[#222222] pb-1 mb-1 text-[9px] flex justify-between">
               <span>ENGINE HUD</span>
-              <span className="animate-ping text-red-600">●</span>
+              <span className={isTracking ? 'animate-pulse text-red-600' : 'text-neutral-600'}>●</span>
             </div>
             <div>LAT: <span className="text-white font-sans font-bold">{currentCoords.lat}</span></div>
             <div>LON: <span className="text-white font-sans font-bold">{currentCoords.lon}</span></div>
@@ -178,7 +271,7 @@ export default function PageMap() {
           <div className="absolute bottom-0 left-0 right-0 h-32 bg-[#111111] border-t border-[#222222] z-10 flex flex-col">
             <div className="px-4 py-2 bg-[#141414] border-b border-[#222222] text-[10px] font-bold uppercase tracking-wider text-neutral-400 flex justify-between items-center">
               <span>Geospatial Feature Attributes Terminal</span>
-              <span className="text-[9px] font-mono text-red-500">Live delta sync active</span>
+              <span className="text-[9px] font-mono text-red-500">Live Mapbox delta sync active</span>
             </div>
             <div className="flex-1 overflow-auto p-2">
               <table className="w-full text-left font-mono text-[11px] text-neutral-400">
@@ -198,10 +291,10 @@ export default function PageMap() {
                     <td className="text-green-400 font-bold">STREAMING</td>
                   </tr>
                   <tr>
-                    <td className="py-1 text-neutral-500">Infrastructure Relay Asset</td>
+                    <td className="py-1 text-neutral-400">Ukiah Infrastructure Relay</td>
+                    <td className="text-neutral-500">39.1502° N, -123.2078° W</td>
                     <td className="text-neutral-600">Static Base Bind</td>
-                    <td className="text-neutral-600">Locked</td>
-                    <td className="text-neutral-600">STANDBY</td>
+                    <td className="text-neutral-500">STANDBY</td>
                   </tr>
                 </tbody>
               </table>
