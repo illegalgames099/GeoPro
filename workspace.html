@@ -244,21 +244,21 @@
     </div>
 
     <script>
-        // INSERT ACCREDITED ACCESS ACCESS TOKEN HERE
-        mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN_HERE';
+        // Active Mapbox access token applied
+        mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
 
         // 1. Instantiate PMTiles Interface Protocol API
         const protocol = new pmtiles.Protocol();
         mapboxgl.addProtocol("pmtiles", protocol.tile);
 
-        // Map remote or internal local cloud storage directories containing vector archives
+        // Define your PMTiles URL path here when ready
         const pmtilesUrl = "pmtiles://https://your-server-or-bucket.com/infrastructure.pmtiles";
 
-        // 2. Initialize Core Map Engine Pipeline targeting Ukiah CA coordinates[cite: 6]
+        // 2. Initialize Core Map Engine Pipeline targeting Ukiah CA coordinates
         const map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/dark-v11', 
-            center: [-123.2078, 39.1502],[cite: 6]
+            center: [-123.2078, 39.1502],
             zoom: 14.5,
             pitch: 50,
             bearing: -12
@@ -293,17 +293,18 @@
             }, labelLayerId);
 
 
-            // --- B. Register Remote PMTiles Data Pipeline Sources ---
+            /* 
+            --- B. PMTiles Source Pipelines (Uncomment below once pmtilesUrl is active) ---
+
             map.addSource('local-infrastructure-source', {
                 type: 'vector',
                 url: pmtilesUrl
             });
 
-            // Geometry paint layers mapping architectural paths or grid alignments
             map.addLayer({
                 id: 'local-infrastructure-layer',
                 source: 'local-infrastructure-source',
-                'source-layer': 'layer1', // Update according to local source-layer generation parameters
+                'source-layer': 'layer1', 
                 type: 'line',
                 layout: {
                     'line-join': 'round',
@@ -316,7 +317,6 @@
                 }
             });
 
-            // Set default runtime status configuration states
             const pmtilesCheckbox = document.getElementById('layer-toggle-pmtiles');
             map.setLayoutProperty(
                 'local-infrastructure-layer', 
@@ -324,17 +324,17 @@
                 pmtilesCheckbox.checked ? 'visible' : 'none'
             );
 
+            pmtilesCheckbox.addEventListener('change', (e) => {
+                map.setLayoutProperty('local-infrastructure-layer', 'visibility', e.target.checked ? 'visible' : 'none');
+            });
+            */
+
 
             // --- C. Event Tracking Handlers ---
 
-            // 3D Matrix Rendering Switches
+            // 3D Matrix Rendering Switch
             document.getElementById('layer-toggle-3d').addEventListener('change', (e) => {
                 map.setLayoutProperty('3d-buildings', 'visibility', e.target.checked ? 'visible' : 'none');
-            });
-
-            // PMTiles Asset Layer Visibility Switches
-            pmtilesCheckbox.addEventListener('change', (e) => {
-                map.setLayoutProperty('local-infrastructure-layer', 'visibility', e.target.checked ? 'visible' : 'none');
             });
         });
 
