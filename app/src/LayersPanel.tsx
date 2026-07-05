@@ -1,137 +1,38 @@
-import {
-  type Accessor,
-  For,
-  type Setter,
-  Show,
-  createEffect,
-  createMemo,
-  createSignal,
-} from "solid-js";
-import { colorForIdx } from "./utils";
+import React from 'react';
 
-export interface LayerVisibility {
-  id: string;
-  visible: boolean;
+interface LayersPanelProps {
+  visibleLayers: { buildings: boolean; roads: boolean; infrastructure: boolean; terrain: boolean };
+  setVisibleLayers: React.Dispatch<React.SetStateAction<{ buildings: boolean; roads: boolean; infrastructure: boolean; terrain: boolean }>>;
 }
 
-export function LayersPanel(props: {
-  layerVisibility: Accessor<LayerVisibility[]>;
-  setLayerVisibility: Setter<LayerVisibility[]>;
-  layerFeatureCounts?: Record<string, number>;
-
-  basemapOption?: boolean;
-  basemap?: Accessor<boolean>;
-  setBasemap?: Setter<boolean>;
-}) {
-  let checkallRef: HTMLInputElement | undefined;
-  const [expanded, setExpanded] = createSignal<boolean>(true);
-
-  const onChange = (id: string) => {
-    const newLayerVisibility = props
-      .layerVisibility()
-      .map((l: LayerVisibility) =>
-        l.id === id ? { ...l, visible: !l.visible } : l,
-      );
-    props.setLayerVisibility(newLayerVisibility);
+export default function LayersPanel({ visibleLayers, setVisibleLayers }: LayersPanelProps) {
+  const toggleLayer = (key: keyof typeof visibleLayers) => {
+    setVisibleLayers(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const allChecked = createMemo(() => {
-    const visibleLayersCount = props
-      .layerVisibility()
-      .filter((l: LayerVisibility) => l.visible).length;
-    return visibleLayersCount === props.layerVisibility().length;
-  });
-
-  const toggleAll = () => {
-    props.setLayerVisibility(
-      props
-        .layerVisibility()
-        .map((l: LayerVisibility) => ({ ...l, visible: !allChecked() })),
-    );
-  };
-
-  createEffect(() => {
-    const visibleLayersCount = props
-      .layerVisibility()
-      .filter((l) => l.visible).length;
-    const indeterminate =
-      visibleLayersCount > 0 &&
-      visibleLayersCount !== props.layerVisibility().length;
-    if (checkallRef) {
-      checkallRef.indeterminate = indeterminate;
-    }
-  });
+  const layersConfig = [
+    { label: 'Structural Shells (3D Extrusions)', key: 'buildings' as const },
+    { label: 'Transportation Network Grid', key: 'roads' as const },
+    { label: 'Cellular Distribution Array', key: 'infrastructure' as const },
+    { label: 'High-Fidelity Elevation Contours', key: 'terrain' as const },
+  ];
 
   return (
-    <div class="app-bg rounded app-border flex flex-col overflow-y-scroll max-h-100">
-      <button
-        type="button"
-        classList={{
-          "app-well": true,
-          "rounded-t": expanded(),
-          rounded: !expanded(),
-          "cursor-pointer": true,
-          "min-w-8": true,
-        }}
-        onClick={() => setExpanded(!expanded())}
-      >
-        {expanded() ? "-" : "+"}
-      </button>
-      <Show when={expanded()}>
-        <div class="px-2 md:px-4 pb-2 md:pb-4">
-          <Show when={props.basemapOption}>
-            <div>
-              <input
-                type="checkbox"
-                id="background"
-                checked={props.basemap?.()}
-                onChange={() => props.setBasemap?.(!props.basemap?.())}
-              />
-              <label class="ml-2 text-sm" for="background">
-                Background
-              </label>
-            </div>
-          </Show>
-          <div>
-            <input
-              type="checkbox"
-              id="checkall"
-              ref={checkallRef}
-              checked={allChecked()}
-              onChange={toggleAll}
+    <div style={{ position: 'absolute', top: '20px', left: '20px', width: '320px', backgroundColor: 'rgba(17, 17, 20, 0.95)', borderLeft: '3px solid #e51a1a', padding: '20px', borderRadius: '0 4px 4px 0', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', zIndex: 5 }}>
+      <h2 style={{ fontSize: '14px', fontWeight: 'bold', textTransform: 'uppercase', color: '#ffffff', margin: '0 0 16px 0', letterSpacing: '0.05em' }}>Geospatial Overlays</h2>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {layersConfig.map(layer => (
+          <label key={layer.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer', padding: '8px', borderRadius: '4px', backgroundColor: '#18181b', transition: 'background 0.2s' }}>
+            <span style={{ fontSize: '13px', color: visibleLayers[layer.key] ? '#ffffff' : '#71717a' }}>{layer.label}</span>
+            <input 
+              type="checkbox" 
+              checked={visibleLayers[layer.key]} 
+              onChange={() => toggleLayer(layer.key)}
+              style={{ accentColor: '#e51a1a', width: '16px', height: '16px', cursor: 'pointer' }}
             />
-            <label class="ml-2 text-sm" for="checkall">
-              All Layers
-            </label>
-          </div>
-          <For each={props.layerVisibility()}>
-            {(l, i) => (
-              <div class="ml-2">
-                <input
-                  type="checkbox"
-                  id={`check_${l.id}`}
-                  checked={l.visible}
-                  onChange={() => onChange(l.id)}
-                />
-                <label class="ml-2 text-sm" for={`check_${l.id}`}>
-                  <span
-                    class="inline-block mr-2 w-[10px] h-[10px]"
-                    style={{ "background-color": colorForIdx(i()) }}
-                  />
-                  {l.id}
-                  <Show when={props.layerFeatureCounts}>
-                    {(layerFeatureCounts) => (
-                      <span class="ml-1">
-                        ({layerFeatureCounts()[l.id] || 0})
-                      </span>
-                    )}
-                  </Show>
-                </label>
-              </div>
-            )}
-          </For>
-        </div>
-      </Show>
+          </label>
+        ))}
+      </div>
     </div>
   );
 }
