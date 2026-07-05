@@ -8,7 +8,7 @@ import LayersPanel from './LayersPanel';
 import DirectionsPanel from './DirectionsPanel';
 import FeatureTable from './FeatureTable';
 
-// Secure your Mapbox access token here
+// Insert your Mapbox Public Access Token here
 mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
 
 interface Layer {
@@ -33,14 +33,13 @@ export default function PageMap() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isTableOpen, setIsTableOpen] = useState(false);
 
-  // Live viewport monitoring tracking localized coordinate defaults
+  // Live viewport monitoring initialized to Ukiah defaults
   const [viewport, setViewport] = useState<ViewportState>({
     lat: 39.1502,
     lng: -123.2078,
     zoom: 14.5,
   });
 
-  // State mapping for geographical layers
   const [layers, setLayers] = useState<Layer[]>([
     { id: 'basemap', name: 'Standard Terrain Base', visible: true, type: 'raster' },
     { id: 'buildings', name: '3D Buildings (Overture/OSM)', visible: true, type: 'vector' },
@@ -48,7 +47,7 @@ export default function PageMap() {
     { id: 'custom-pmtiles', name: 'Local Infrastructure PMTiles', visible: false, type: 'vector' },
   ]);
 
-  // 1. Initialize PMTiles Protocol for Mapbox GL JS engine mapping
+  // 1. Initialize PMTiles Protocol for Mapbox Engine mapping
   useEffect(() => {
     const protocol = new pmtiles.Protocol();
     mapboxgl.addProtocol("pmtiles", protocol.tile);
@@ -82,7 +81,7 @@ export default function PageMap() {
       }
     });
 
-    // Wire core position updates to look at viewport frame changes
+    // Wire position updates to look at viewport frame changes
     const handleMapMove = () => {
       const center = map.getCenter();
       setViewport({
@@ -112,7 +111,7 @@ export default function PageMap() {
           const visibilityString = nextVisibility ? 'visible' : 'none';
 
           if (mapRef.current) {
-            // Check Mapbox core building layer references
+            // Fallback check for Mapbox core building layer configurations
             if (id === 'buildings' && mapRef.current.getLayer('building')) {
               mapRef.current.setLayoutProperty('building', 'visibility', visibilityString);
             } else if (mapRef.current.getLayer(id)) {
@@ -144,7 +143,7 @@ export default function PageMap() {
       {/* Top Navigation Control Bar */}
       <header className="flex items-center justify-between px-4 h-14 bg-[#111111] border-b border-[#222222] z-10 shadow-md">
         <div className="flex items-center gap-6">
-          <h1 className="text-red-500 font-black tracking-wider text-lg uppercase select-none">
+          <h1 className="text-red-500 font-black tracking-wider text-lg uppercase">
             GeoPro <span className="text-white font-light">Engine</span>
           </h1>
           <div className="w-72">
