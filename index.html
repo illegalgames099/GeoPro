@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GeoPro | Next-Gen Geospatial Engine</title>
+    <title>GeoPro | Spatial Analytics Platform</title>
     <style>
         :root {
-            --bg-color: #060606;
-            --panel-bg: #121212;
-            --accent-color: #ff3333;
-            --accent-hover: #d62222;
+            --bg-color: #050505;
+            --panel-bg: rgba(13, 13, 13, 0.75);
+            --accent-color: #ff2222;
+            --accent-glow: rgba(255, 34, 34, 0.3);
             --text-color: #f5f5f5;
-            --text-muted: #7c7c7c;
-            --border-color: #1f1f1f;
+            --text-muted: #8c8c8c;
+            --border-color: #1a1a1a;
         }
 
         * {
@@ -29,15 +29,41 @@
             overflow-x: hidden;
         }
 
+        /* Tech Cyber Grid Background */
+        .grid-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(to right, rgba(255, 34, 34, 0.02) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(255, 34, 34, 0.02) 1px, transparent 1px);
+            background-size: 40px 40px;
+            z-index: -2;
+        }
+
+        .glow-effect {
+            position: fixed;
+            top: -10%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80vw;
+            height: 60vh;
+            background: radial-gradient(circle, rgba(255,34,34,0.07) 0%, rgba(0,0,0,0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
         /* Navigation */
         nav {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 25px 5%;
+            padding: 20px 6%;
             border-bottom: 1px solid var(--border-color);
-            background: rgba(6, 6, 6, 0.8);
-            backdrop-filter: blur(10px);
+            background: rgba(5, 5, 5, 0.8);
+            backdrop-filter: blur(12px);
             position: fixed;
             width: 100%;
             top: 0;
@@ -45,26 +71,46 @@
         }
 
         .logo {
-            font-size: 1.4rem;
-            font-weight: 800;
-            letter-spacing: 1.5px;
+            font-size: 1.3rem;
+            font-weight: 900;
+            letter-spacing: 2px;
             text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .logo::before {
+            content: '';
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--accent-color);
+            box-shadow: 0 0 8px var(--accent-color);
         }
 
         .logo span {
             color: var(--accent-color);
         }
 
-        .nav-links a {
-            color: var(--text-muted);
+        .cta-nav-btn {
+            background: transparent;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
             text-decoration: none;
-            margin-left: 30px;
-            font-size: 0.9rem;
-            transition: color 0.2s;
+            padding: 8px 20px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.2s ease;
         }
 
-        .nav-links a:hover {
-            color: var(--text-color);
+        .cta-nav-btn:hover {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 10px var(--accent-glow);
+            background: rgba(255, 34, 34, 0.05);
         }
 
         /* Hero Section */
@@ -75,111 +121,124 @@
             justify-content: center;
             align-items: center;
             text-align: center;
-            padding: 0 20px;
-            position: relative;
-        }
-
-        header::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 500px;
-            height: 500px;
-            background: radial-gradient(circle, rgba(255,51,51,0.05) 0%, rgba(0,0,0,0) 70%);
-            z-index: -1;
+            padding: 120px 20px 60px 20px;
         }
 
         .hero-tag {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
-            letter-spacing: 3px;
+            letter-spacing: 4px;
             color: var(--accent-color);
-            margin-bottom: 20px;
+            margin-bottom: 24px;
             font-weight: 700;
+            background: rgba(255, 34, 34, 0.1);
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 34, 34, 0.2);
         }
 
         header h1 {
-            font-size: 4rem;
+            font-size: 4.5rem;
             font-weight: 900;
-            letter-spacing: -1px;
-            margin-bottom: 20px;
+            letter-spacing: -1.5px;
+            margin-bottom: 24px;
             text-transform: uppercase;
+            line-height: 1.1;
+        }
+
+        header h1 span {
+            color: var(--accent-color);
+            text-shadow: 0 0 20px var(--accent-glow);
         }
 
         header p {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
             color: var(--text-muted);
-            max-width: 600px;
-            margin-bottom: 40px;
+            max-width: 650px;
+            margin-bottom: 44px;
+            font-weight: 400;
         }
 
-        .cta-btn {
+        .cta-main-btn {
             background-color: var(--accent-color);
             color: #fff;
             text-decoration: none;
-            padding: 14px 36px;
+            padding: 16px 40px;
             border-radius: 4px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-            transition: background 0.2s, transform 0.2s;
-            box-shadow: 0 4px 15px rgba(255, 51, 51, 0.2);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 20px rgba(255, 34, 34, 0.3);
+            border: 1px solid transparent;
         }
 
-        .cta-btn:hover {
-            background-color: var(--accent-hover);
+        .cta-main-btn:hover {
+            background-color: #d11111;
             transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(255, 34, 34, 0.5);
         }
 
         /* Features Section */
         .features {
-            padding: 100px 5%;
-            background: #0a0a0a;
-            border-top: 1px solid var(--border-color);
-        }
-
-        .section-title {
-            text-align: center;
-            margin-bottom: 60px;
-        }
-
-        .section-title h2 {
-            font-size: 2rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            padding: 100px 6%;
+            position: relative;
         }
 
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
             max-width: 1200px;
             margin: 0 auto;
         }
 
         .card {
             background: var(--panel-bg);
+            backdrop-filter: blur(10px);
             border: 1px solid var(--border-color);
-            padding: 40px 30px;
+            padding: 45px 35px;
             border-radius: 6px;
-            transition: border-color 0.3s, transform 0.3s;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--accent-color);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
         }
 
         .card:hover {
-            border-color: var(--accent-color);
-            transform: translateY(-5px);
+            border-color: #333;
+            transform: translateY(-4px);
+            background: rgba(20, 20, 20, 0.8);
+        }
+
+        .card:hover::before {
+            transform: scaleX(1);
         }
 
         .card-icon {
             color: var(--accent-color);
-            font-size: 1.5rem;
-            margin-bottom: 20px;
-            font-weight: bold;
+            font-family: monospace;
+            font-size: 0.9rem;
+            font-weight: 700;
+            margin-bottom: 25px;
+            letter-spacing: 1px;
         }
 
         .card h3 {
-            font-size: 1.2rem;
+            font-size: 1.25rem;
             margin-bottom: 15px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -194,53 +253,52 @@
             text-align: center;
             padding: 40px 20px;
             color: var(--text-muted);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             border-top: 1px solid var(--border-color);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
         }
     </style>
 </head>
 <body>
 
+    <div class="grid-bg"></div>
+    <div class="glow-effect"></div>
+
     <nav>
         <div class="logo">Geo<span>Pro</span></div>
-        <div class="nav-links">
-            <a href="#features">Features</a>
-            <a href="workspace.html" class="cta-btn" style="padding: 8px 16px; margin-left: 20px; box-shadow: none;">Launch</a>
-        </div>
+        <a href="workspace.html" class="cta-nav-btn">Launch System</a>
     </nav>
 
     <header>
-        <div class="hero-tag">Spatial Analytics & Mapping Architecture</div>
-        <h1>Geo<span>Pro</span></h1>
-        <p>A precision interface designed to map, render, and manipulate complex geographic datasets in high-fidelity 3D vector environments.</p>
-        <a href="workspace.html" class="cta-btn">Enter Workspace</a>
+        <div class="hero-tag">High-Frequency Spatial Mapping</div>
+        <h1>Engineered for <span>Precision</span></h1>
+        <p>Stream massive geographic vectors, isolate local infrastructure assets, and capture hyper-responsive telemetry metrics inside a synchronized 3D runtime environment.</p>
+        <a href="workspace.html" class="cta-main-btn">Open Workspace</a>
     </header>
 
-    <section id="features" class="features">
-        <div class="section-title">
-            <h2>Engine Architecture</h2>
-        </div>
+    <section class="features">
         <div class="grid">
             <div class="card">
-                <div class="card-icon">// 01</div>
-                <h3>PMTiles Streaming</h3>
-                <p>Native integration with single-file archive architectures. Stream multi-gigabyte infrastructure geometries instantly over the cloud.</p>
+                <div class="card-icon">// TELEMETRY_CORE</div>
+                <h3>100ms Synchronicity</h3>
+                <p>Run real-time location telemetry on high-frequency hardware pooling loops for precision spatial coordination.</p>
             </div>
             <div class="card">
-                <div class="card-icon">// 02</div>
-                <h3>3D Building Extrusions</h3>
-                <p>Dynamic height matrix computations rendering architectural scale models directly from composite multi-polygon map inputs.</p>
+                <div class="card-icon">// INDEX_GEO_SEARCH</div>
+                <h3>Integrated Geocoding</h3>
+                <p>Instantly resolve complex commercial assets, parcel boundaries, and multi-tier address structures on the fly.</p>
             </div>
             <div class="card">
-                <div class="card-icon">// 03</div>
-                <h3>Localized Pipelines</h3>
-                <p>Engine pre-centered on target coordination sectors to efficiently track, manage, and scale micro-infrastructure environments.</p>
+                <div class="card-icon">// RENDER_3D_EXTRUSION</div>
+                <h3>Mesh Extrusions</h3>
+                <p>Isolate structural layouts and extrude dense volumetric building footprints mapped straight against global basemaps.</p>
             </div>
         </div>
     </section>
 
     <footer>
-        &copy; 2026 GeoPro. Built for high-frequency environment tracking.
+        &copy; 2026 GeoPro Architecture Pipeline. All rights reserved.
     </footer>
 
 </body>
