@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
-import * as pmtiles from 'pmtiles'; 
+import * as pmtiles from 'pmtiles';
 import 'mapbox-gl/dist/mapbox-gl.css';
 
 import PlaceSearch from './PlaceSearch';
@@ -8,8 +8,8 @@ import LayersPanel from './LayersPanel';
 import DirectionsPanel from './DirectionsPanel';
 import FeatureTable from './FeatureTable';
 
-// Provide your Mapbox Public Access Token here
-mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
+// Secure your Mapbox access token here
+mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
 
 interface Layer {
   id: string;
@@ -18,7 +18,7 @@ interface Layer {
   type: 'vector' | 'raster' | 'geojson';
 }
 
-interface MapViewport {
+interface ViewportState {
   lat: number;
   lng: number;
   zoom: number;
@@ -27,19 +27,20 @@ interface MapViewport {
 export default function PageMap() {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
-  
+
   const [mapLoaded, setMapLoaded] = useState(false);
-  const [activePanel, setActivePanel] = useState<'layers' | 'directions'>('layers');
+  const [activePanel, setActivePanel] = useState<'layers' | 'directions' | 'search'>('layers');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isTableOpen, setIsTableOpen] = useState(false);
-  
-  // HUD state tracking (Initialized to Ukiah workspace defaults)
-  const [viewport, setViewport] = useState<MapViewport>({
+
+  // Live viewport monitoring tracking localized coordinate defaults
+  const [viewport, setViewport] = useState<ViewportState>({
     lat: 39.1502,
     lng: -123.2078,
-    zoom: 14.5
+    zoom: 14.5,
   });
 
+  // State mapping for geographical layers
   const [layers, setLayers] = useState<Layer[]>([
     { id: 'basemap', name: 'Standard Terrain Base', visible: true, type: 'raster' },
     { id: 'buildings', name: '3D Buildings (Overture/OSM)', visible: true, type: 'vector' },
@@ -47,7 +48,7 @@ export default function PageMap() {
     { id: 'custom-pmtiles', name: 'Local Infrastructure PMTiles', visible: false, type: 'vector' },
   ]);
 
-  // 1. Register the PMTiles Protocol for Mapbox GL JS
+  // 1. Initialize PMTiles Protocol for Mapbox GL JS engine mapping
   useEffect(() => {
     const protocol = new pmtiles.Protocol();
     mapboxgl.addProtocol("pmtiles", protocol.tile);
@@ -57,35 +58,44 @@ export default function PageMap() {
     };
   }, []);
 
-  // 2. Mapbox Initialization Lifecycle
+  // 2. Mapbox Canvas Lifecycle Setup
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
-      style: 'mapbox://styles/mapbox/dark-v11', // Sleek high-contrast Mapbox dark style
+      style: 'mapbox://styles/mapbox/dark-v11', // High-contrast premium dark theme
       center: [viewport.lng, viewport.lat],
       zoom: viewport.zoom,
-      attributionControl: false
+      pitch: 45, // Angled view to enhance 3D structures if available
+      attributionControl: false,
     });
 
     mapRef.current = map;
 
     map.on('load', () => {
       setMapLoaded(true);
+
+      // Setup dynamic 3D building extrusion defaults from the Mapbox core style
+      if (map.getLayer('building')) {
+        map.setLayerProperty('building', 'visibility', 'visible');
+      }
     });
 
-    // Capture precise map movement to stream telemetry directly to HUD
-    map.on('move', () => {
+    // Wire core position updates to look at viewport frame changes
+    const handleMapMove = () => {
       const center = map.getCenter();
       setViewport({
         lng: center.lng,
         lat: center.lat,
-        zoom: map.getZoom()
+        zoom: map.getZoom(),
       });
-    });
+    };
+
+    map.on('move', handleMapMove);
 
     return () => {
+      map.off('move', handleMapMove);
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -93,25 +103,38 @@ export default function PageMap() {
     };
   }, []);
 
-  // 3. Toggle Mapbox Layer Layout Visibility Rules
+  // 3. Dynamic Layer Control Adjustments
   const toggleLayerVisibility = (id: string) => {
-    setLayers(prevLayers => prevLayers.map(layer => {
-      if (layer.id === id) {
-        const nextVisibility = !layer.visible;
-        
-        if (mapRef.current && mapRef.current.getLayer(id)) {
-          mapRef.current.setLayoutProperty(id, 'visibility', nextVisibility ? 'visible' : 'none');
+    setLayers((prevLayers) =>
+      prevLayers.map((layer) => {
+        if (layer.id === id) {
+          const nextVisibility = !layer.visible;
+          const visibilityString = nextVisibility ? 'visible' : 'none';
+
+          if (mapRef.current) {
+            // Check Mapbox core building layer references
+            if (id === 'buildings' && mapRef.current.getLayer('building')) {
+              mapRef.current.setLayoutProperty('building', 'visibility', visibilityString);
+            } else if (mapRef.current.getLayer(id)) {
+              mapRef.current.setLayoutProperty(id, 'visibility', visibilityString);
+            }
+          }
+          return { ...layer, visible: nextVisibility };
         }
-        return { ...layer, visible: nextVisibility };
-      }
-      return layer;
-    }));
+        return layer;
+      })
+    );
   };
 
-  // Fly-to animation wrapper for searches and routing jumps
+  // Fly-to action for search selection jumps
   const handlePanToCoordinates = (coords: [number, number]) => {
     if (mapRef.current) {
-      mapRef.current.flyTo({ center: coords, zoom: 15, essential: true });
+      mapRef.current.flyTo({
+        center: coords,
+        zoom: 15.5,
+        essential: true,
+        pitch: 30,
+      });
     }
   };
 
@@ -121,7 +144,7 @@ export default function PageMap() {
       {/* Top Navigation Control Bar */}
       <header className="flex items-center justify-between px-4 h-14 bg-[#111111] border-b border-[#222222] z-10 shadow-md">
         <div className="flex items-center gap-6">
-          <h1 className="text-red-500 font-black tracking-wider text-lg uppercase">
+          <h1 className="text-red-500 font-black tracking-wider text-lg uppercase select-none">
             GeoPro <span className="text-white font-light">Engine</span>
           </h1>
           <div className="w-72">
@@ -129,7 +152,7 @@ export default function PageMap() {
           </div>
         </div>
         
-        <div>
+        <div className="flex items-center gap-3">
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)} 
             className="px-3 py-1.5 bg-[#222222] hover:bg-red-700 hover:text-white border border-[#333333] rounded text-xs uppercase font-semibold tracking-wider transition-colors duration-200"
@@ -172,8 +195,8 @@ export default function PageMap() {
             </button>
           </div>
 
-          {/* Panel Content Viewports */}
-          <div className="flex-1 overflow-y-auto p-4">
+          {/* Panel Views Content Context */}
+          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
             {activePanel === 'layers' && (
               <LayersPanel layers={layers} onToggleLayer={toggleLayerVisibility} />
             )} 
@@ -182,7 +205,7 @@ export default function PageMap() {
             )}
           </div>
 
-          {/* Diagnostics Status Footer */}
+          {/* Bottom Diagnostics / Status Foot */}
           <div className="p-3 bg-[#0d0d0d] border-t border-[#222222] flex justify-between items-center text-[10px] font-mono text-neutral-500">
             <span>STATUS: <span className={mapLoaded ? 'text-green-500' : 'text-amber-500'}>{mapLoaded ? 'MAP_READY' : 'INITIALIZING'}</span></span>
             <span>EPSG:3857</span>
@@ -192,12 +215,12 @@ export default function PageMap() {
         {/* Core Map Viewport Container */}
         <main className="flex-1 relative h-full bg-[#0d0d0d]">
           
-          {/* Mapbox Render Canvas Target */}
+          {/* Mapbox Render Container Canvas Target */}
           <div ref={mapContainerRef} className="w-full h-full absolute inset-0" />
 
           {/* Map Overlay Loading State */}
           {!mapLoaded && (
-            <div className="absolute inset-0 bg-[#0a0a0a]/90 backdrop-blur-sm flex flex-col items-center justify-center z-40">
+            <div className="absolute inset-0 bg-[#0a0a0a]/90 backdrop-blur-sm flex flex-col items-center justify-center z-40 transition-opacity duration-500">
               <div className="w-8 h-8 border-2 border-red-600 border-t-transparent rounded-full animate-spin mb-4"></div>
               <span className="text-red-500 font-mono tracking-widest text-xs uppercase animate-pulse">
                 Loading Mapbox Engine...
@@ -205,9 +228,9 @@ export default function PageMap() {
             </div>
           )}
 
-          {/* Floating Map HUD Utilities - Driven by real Mapbox viewport data */}
+          {/* Floating Map HUD Utilities - Real Telemetry Driven */}
           {mapLoaded && (
-            <div className="absolute top-4 right-4 bg-[#111111]/85 backdrop-blur-md border border-[#333333] p-3 rounded shadow-2xl z-30 text-[11px] font-mono text-neutral-400 space-y-1 w-48 pointer-events-none">
+            <div className="absolute top-4 right-4 bg-[#111111]/85 backdrop-blur-md border border-[#333333] p-3 rounded shadow-2xl z-30 pointer-events-none text-[11px] font-mono text-neutral-400 space-y-1 w-48">
               <div className="text-red-500 border-b border-[#222222] pb-1 mb-1 font-bold tracking-wider uppercase text-[10px]">
                 HUD Diagnostics
               </div>
