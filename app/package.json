@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@alenaksu/json-viewer": "^2.1.2",
+    "@mapbox/mapbox-gl-directions": "^4.11.0",
     "@mapbox/sphericalmercator": "^2.0.1",
     "@mapbox/vector-tile": "^2.0.3",
     "@protomaps/basemaps": "5.2.0",
@@ -21,6 +22,7 @@
     "d3-scale-chromatic": "^3.1.0",
     "d3-selection": "^3.0.0",
     "d3-zoom": "^3.0.0",
+    "mapbox-gl": "^3.5.0",
     "maplibre-gl": "5.19.0",
     "pbf": "^4.0.1",
     "pmtiles": "^4.4.0",

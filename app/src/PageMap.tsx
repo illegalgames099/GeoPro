@@ -1,18 +1,15 @@
 /* @refresh reload */
-import "maplibre-gl/dist/maplibre-gl.css";
+import "mapbox-gl/dist/mapbox-gl.css";
 import "./index.css";
-import { layers, namedFlavor } from "@protomaps/basemaps";
 import {
   AttributionControl,
   type MapGeoJSONFeature,
-  Map as MaplibreMap,
+  Map as MapboxMap,
   NavigationControl,
   Popup,
-  addProtocol,
-  getRTLTextPluginStatus,
-  setRTLTextPlugin,
   Marker,
-} from "maplibre-gl";
+  LngLatLike,
+} from "mapbox-gl";
 import {
   type Accessor,
   type Setter,
@@ -33,6 +30,8 @@ import { type LayerVisibility, LayersPanel } from "./LayersPanel";
 import { type Tileset, tilesetFromString } from "./tileset";
 import { colorForIdx, createHash, parseHash, tileInspectUrl } from "./utils";
 import { useUserLocation } from "./useUserLocation";
+import { PlaceSearch, type SearchResult } from "./PlaceSearch";
+import { DirectionsPanel } from "./DirectionsPanel";
 
 declare module "solid-js" {
   namespace JSX {
@@ -57,15 +56,25 @@ function MapView(props: {
   let hiddenRef: HTMLDivElement | undefined;
   const [zoom, setZoom] = createSignal<number>(0);
   const [layerVisibility, setLayerVisibility] = createSignal<LayerVisibility[]>(
-    [],
+    []
   );
   const [hoveredFeatures, setHoveredFeatures] = createSignal<
     MapGeoJSONFeature[]
   >([]);
   const [basemap, setBasemap] = createSignal<boolean>(false);
   const [frozen, setFrozen] = createSignal<boolean>(false);
-  const [userLocationMarker, setUserLocationMarker] = createSignal<Marker | undefined>();
-  
+  const [useSatellite, setUseSatellite] = createSignal<boolean>(false);
+  const [userLocationMarker, setUserLocationMarker] = createSignal<
+    Marker | undefined
+  >();
+  const [origin, setOrigin] = createSignal<[number, number] | undefined>();
+  const [destination, setDestination] = createSignal<
+    [number, number] | undefined
+  >();
+  const [showDirections, setShowDirections] = createSignal(false);
+  const [originMarker, setOriginMarker] = createSignal<Marker | undefined>();
+  const [destMarker, setDestMarker] = createSignal<Marker | undefined>();
+
   const { location, error, loading, requestLocation } = useUserLocation();
 
   const inspectableFeatures = createMemo(() => {
@@ -85,10 +94,7 @@ function MapView(props: {
     maxWidth: "none",
   });
 
-  const protocol = new Protocol({ metadata: true });
-  addProtocol("pmtiles", protocol.tile);
-
-  let map: MaplibreMap;
+  let map: MapboxMap;
   let initialLoad = true;
 
   const roundZoom = () => {
@@ -102,7 +108,7 @@ function MapView(props: {
         [bounds[0], bounds[1]],
         [bounds[2], bounds[3]],
       ],
-      { animate: false },
+      { animate: false }
     );
   };
 
@@ -114,7 +120,54 @@ function MapView(props: {
           [loc.longitude - 0.01, loc.latitude - 0.01],
           [loc.longitude + 0.01, loc.latitude + 0.01],
         ],
-        { animate: true },
+        { animate: true }
+      );
+    }
+  };
+
+  const handlePlaceSelect = (result: SearchResult, type: "origin" | "dest") => {
+    const coords: [number, number] = [result.longitude, result.latitude];
+
+    if (type === "origin") {
+      setOrigin(coords);
+      const existing = originMarker();
+      if (existing) existing.remove();
+      const el = document.createElement("div");
+      el.className =
+        "w-6 h-6 bg-green-500 rounded-full border-2 border-white shadow-lg";
+      const marker = new Marker({ element: el }).setLngLat(coords).addTo(map);
+      setOriginMarker(marker);
+    } else {
+      setDestination(coords);
+      const existing = destMarker();
+      if (existing) existing.remove();
+      const el = document.createElement("div");
+      el.className =
+        "w-6 h-6 bg-red-500 rounded-full border-2 border-white shadow-lg";
+      const marker = new Marker({ element: el }).setLngLat(coords).addTo(map);
+      setDestMarker(marker);
+    }
+  };
+
+  const toggleSatellite = () => {
+    if (!map) return;
+    const currentStyle = map.getStyle();
+    if (useSatellite()) {
+      setUseSatellite(false);
+      map.setStyle({
+        version: 8,
+        glyphs:
+          "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
+        sprite:
+          "https://protomaps.github.io/basemaps-assets/sprites/v4/black",
+        sources: currentStyle.sources,
+        layers: currentStyle.layers,
+      });
+    } else {
+      setUseSatellite(true);
+      const mapboxAccessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || "";
+      map.setStyle(
+        `mapbox://styles/mapbox/satellite-v9?access_token=${mapboxAccessToken}`
       );
     }
   };
@@ -131,6 +184,9 @@ function MapView(props: {
   };
 
   const addTileset = async (tileset: Tileset) => {
+    const protocol = new Protocol({ metadata: true });
+    map.addProtocol("pmtiles", protocol.tile);
+
     const archiveForProtocol = tileset.archiveForProtocol();
     if (archiveForProtocol) {
       protocol.add(archiveForProtocol);
@@ -192,7 +248,15 @@ function MapView(props: {
           "source-layer": vectorLayer,
           paint: {
             "circle-color": colorForIdx(i),
-            "circle-radius": ["interpolate", ["linear"], ["zoom"], 4, 2, 12, 4],
+            "circle-radius": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              4,
+              2,
+              12,
+              4,
+            ],
             "circle-opacity": 0.5,
             "circle-stroke-color": "white",
             "circle-stroke-width": [
@@ -203,68 +267,6 @@ function MapView(props: {
             ],
           },
           filter: ["==", ["geometry-type"], "Point"],
-        });
-      }
-      for (const [i, vectorLayer] of vectorLayers.entries()) {
-        map.addLayer({
-          id: `tileset_line_label_${vectorLayer}`,
-          type: "symbol",
-          source: "tileset",
-          "source-layer": vectorLayer,
-          layout: {
-            "text-field": ["get", "name"],
-            "text-font": ["Noto Sans Regular"],
-            "text-size": 10,
-            "symbol-placement": "line",
-          },
-          paint: {
-            "text-color": colorForIdx(i),
-            "text-halo-color": "black",
-            "text-halo-width": 2,
-          },
-          filter: ["==", ["geometry-type"], "LineString"],
-        });
-        map.addLayer({
-          id: `tileset_point_label_${vectorLayer}`,
-          type: "symbol",
-          source: "tileset",
-          "source-layer": vectorLayer,
-          layout: {
-            "text-field": ["get", "name"],
-            "text-font": ["Noto Sans Regular"],
-            "text-size": 10,
-            "text-offset": [0, -1],
-          },
-          paint: {
-            "text-color": colorForIdx(i),
-            "text-halo-color": "black",
-            "text-halo-width": 2,
-          },
-          filter: ["==", ["geometry-type"], "Point"],
-        });
-        map.addLayer({
-          id: `tileset_polygon_label_${vectorLayer}`,
-          type: "symbol",
-          source: "tileset",
-          "source-layer": vectorLayer,
-          layout: {
-            "text-field": ["get", "name"],
-            "text-font": ["Noto Sans Regular"],
-            "text-max-angle": 85,
-            "text-offset": [0, 1],
-            "text-anchor": "bottom",
-            "text-rotation-alignment": "map",
-            "text-keep-upright": true,
-            "text-size": 10,
-            "symbol-placement": "line",
-            "symbol-spacing": 250,
-          },
-          paint: {
-            "text-color": colorForIdx(i),
-            "text-halo-color": "black",
-            "text-halo-width": 2,
-          },
-          filter: ["==", ["geometry-type"], "Polygon"],
         });
       }
     } else {
@@ -335,9 +337,6 @@ function MapView(props: {
       setVisibility(`tileset_fill_${id}`, visibility);
       setVisibility(`tileset_line_${id}`, visibility);
       setVisibility(`tileset_circle_${id}`, visibility);
-      setVisibility(`tileset_line_label_${id}`, visibility);
-      setVisibility(`tileset_point_label_${id}`, visibility);
-      setVisibility(`tileset_polygon_label_${id}`, visibility);
     }
   });
 
@@ -347,7 +346,8 @@ function MapView(props: {
       let marker = userLocationMarker();
       if (!marker) {
         const el = document.createElement("div");
-        el.className = "w-3 h-3 bg-blue-500 rounded-full border-2 border-white shadow-lg";
+        el.className =
+          "w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg";
         marker = new Marker({ element: el, anchor: "center" });
         setUserLocationMarker(marker);
       }
@@ -361,43 +361,20 @@ function MapView(props: {
       return;
     }
 
-    if (getRTLTextPluginStatus() === "unavailable") {
-      setRTLTextPlugin(
-        "https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.min.js",
-        true,
+    const mapboxAccessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || "";
+    if (!mapboxAccessToken) {
+      console.warn(
+        "Mapbox access token not found. Set VITE_MAPBOX_ACCESS_TOKEN environment variable."
       );
     }
 
-    map = new MaplibreMap({
-      hash: "map",
+    map = new MapboxMap({
+      accessToken: mapboxAccessToken,
       container: mapContainer,
+      style: "mapbox://styles/mapbox/streets-v12",
+      center: [-74.5, 40],
+      zoom: 9,
       attributionControl: false,
-      style: {
-        version: 8,
-        glyphs:
-          "https://protomaps.github.io/basemaps-assets/fonts/{fontstack}/{range}.pbf",
-        sprite: "https://protomaps.github.io/basemaps-assets/sprites/v4/black",
-        sources: {
-          basemap: {
-            type: "vector",
-            tiles: [
-              "https://api.protomaps.com/tiles/v4/{z}/{x}/{y}.mvt?key=1003762824b9687f",
-            ],
-            maxzoom: 15,
-            attribution:
-              "Background © <a href='https://openstreetmap.org/copyright'>OpenStreetMap</a>",
-          },
-        },
-        layers: layers("basemap", namedFlavor("black"), { lang: "en" }).map(
-          (l) => {
-            if (!("layout" in l)) {
-              l.layout = {};
-            }
-            if (l.layout) l.layout.visibility = "none";
-            return l;
-          },
-        ),
-      },
     });
 
     map.addControl(new NavigationControl({}), "top-left");
@@ -415,74 +392,6 @@ function MapView(props: {
     map.on("zoom", (e) => {
       setZoom(e.target.getZoom());
     });
-    map.on("mousemove", async (e) => {
-      if (frozen()) return;
-      if (!props.inspectFeatures()) {
-        return;
-      }
-
-      for (const hoveredFeature of hoveredFeatures()) {
-        if (hoveredFeature.id === undefined) continue;
-        map.setFeatureState(hoveredFeature, { hover: false });
-      }
-
-      const { x, y } = e.point;
-      const r = 2; // radius around the point
-      let features = map.queryRenderedFeatures([
-        [x - r, y - r],
-        [x + r, y + r],
-      ]);
-      features = features.filter((feature) => feature.source === "tileset");
-
-      for (const feature of features) {
-        if (feature.id === undefined) continue;
-        map.setFeatureState(feature, { hover: true });
-      }
-
-      setHoveredFeatures(features);
-
-      const currentZoom = zoom();
-      const sp = new SphericalMercator();
-      const maxZoom = await props.tileset().getMaxZoom();
-      const z = Math.max(0, Math.min(maxZoom, Math.floor(currentZoom)));
-      const result = sp.px([e.lngLat.lng, e.lngLat.lat], z);
-      const tileX = Math.floor(result[0] / 256);
-      const tileY = Math.floor(result[1] / 256);
-
-      if (hiddenRef) {
-        hiddenRef.innerHTML = "";
-        render(
-          () => (
-            <div>
-              <FeatureTable features={inspectableFeatures()} />
-              <a
-                class="block text-xs btn-primary mt-2 text-center px-2"
-                target="_blank"
-                rel="noreferrer"
-                href={tileInspectUrl(props.tileset().getStateUrl(), [
-                  z,
-                  tileX,
-                  tileY,
-                ])}
-              >
-                Tile {z}/{tileX}/{tileY}
-              </a>
-              <div class="text-xs text-center mt-2 font-mono">
-                {e.lngLat.lng.toFixed(4)},{e.lngLat.lat.toFixed(4)}
-              </div>
-            </div>
-          ),
-          hiddenRef,
-        );
-        popup.setHTML(hiddenRef.innerHTML);
-        popup.setLngLat(e.lngLat);
-        popup.addTo(map);
-      }
-    });
-
-    map.on("click", () => {
-      setFrozen(!frozen());
-    });
 
     map.on("load", async () => {
       await addTileset(props.tileset());
@@ -491,147 +400,111 @@ function MapView(props: {
   });
 
   return (
-    <div class="flex flex-col md:flex-row w-full h-full">
-      <div class="flex-1 flex flex-col">
-        <div
-          classList={{
-            "flex-none": true,
-            "pb-4": true,
-            "pt-4": !props.iframe,
-            "px-4": !props.iframe,
-            flex: true,
-            "justify-between": true,
-            "text-xs": true,
-            "md:text-base": true,
-            "space-x-2": true,
-          }}
-        >
-          <button
-            class="px-4 btn-primary cursor-pointer"
-            type="button"
-            onClick={fitToBounds}
-          >
-            fit to bounds
-          </button>
-          <Show when={location()}>
-            <button
-              class="px-4 btn-primary cursor-pointer"
-              type="button"
-              onClick={fitToUserLocation}
-            >
-              go to my location
-            </button>
-          </Show>
-          <Show when={!location()}>
-            <button
-              class="px-4 btn-primary cursor-pointer"
-              type="button"
-              onClick={requestLocation}
-              disabled={loading()}
-            >
-              {loading() ? "getting location..." : "use my location"}
-            </button>
-          </Show>
-          <Show when={error()}>
-            <span class="text-red-400 text-xs">{error()}</span>
-          </Show>
-          <span class="app-border rounded px-2 flex items-center">
-            <input
-              class="mr-1 cursor-pointer"
-              id="inspectFeatures"
-              checked={props.inspectFeatures()}
-              type="checkbox"
-              onChange={() => {
-                props.setInspectFeatures(!props.inspectFeatures());
-              }}
-            />
-            <label for="inspectFeatures" class="cursor-pointer">
-              Inspect features
+    <div class="flex flex-col md:flex-row w-full h-full bg-gray-100 dark:bg-gray-900">
+      <div class="md:w-96 bg-white dark:bg-gray-800 shadow-lg p-4 overflow-y-auto">
+        <h2 class="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+          GeoPro Navigator
+        </h2>
+
+        <div class="space-y-4">
+          <div>
+            <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+              From
             </label>
-          </span>
-          <span class="app-border rounded px-2 flex items-center">
-            <input
-              class="mr-1 cursor-pointer"
-              id="showTileBoundaries"
-              checked={props.showTileBoundaries()}
-              type="checkbox"
-              onChange={() => {
-                props.setShowTileBoundaries(!props.showTileBoundaries());
-              }}
+            <PlaceSearch
+              onSelect={(result) => handlePlaceSelect(result, "origin")}
             />
-            <label class="cursor-pointer" for="showTileBoundaries">
-              Show tile bounds
-            </label>
-          </span>
-          <button
-            class="px-4 py-1 btn-secondary cursor-pointer"
-            onClick={() => {
-              props.setShowMetadata(!props.showMetadata());
-            }}
-            type="button"
-          >
-            view metadata
-          </button>
-        </div>
-        <div class="relative flex-1 h-full">
-          <div
-            ref={mapContainer}
-            classList={{
-              "h-full": true,
-              "flex-1": true,
-              "bg-gray-900": !props.iframe,
-              "bg-black": props.iframe,
-              inspectFeatures: props.inspectFeatures(),
-              frozen: frozen(),
-            }}
-          />
-          <div class="hidden" ref={hiddenRef} />
-          <div class="absolute right-2 top-2 z-0">
-            <LayersPanel
-              layerVisibility={layerVisibility}
-              setLayerVisibility={setLayerVisibility}
-              basemapOption
-              basemap={basemap}
-              setBasemap={setBasemap}
-            />
+            <Show when={origin()}>
+              <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {origin()?.[1].toFixed(4)}, {origin()?.[0].toFixed(4)}
+              </div>
+            </Show>
           </div>
-          <div class="absolute left-3 top-28">
+
+          <div>
+            <label class="block text-sm font-semibold text-gray-900 dark:text-white mb-2">
+              To
+            </label>
+            <PlaceSearch
+              onSelect={(result) => handlePlaceSelect(result, "dest")}
+            />
+            <Show when={destination()}>
+              <div class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {destination()?.[1].toFixed(4)}, {destination()?.[0].toFixed(4)}
+              </div>
+            </Show>
+          </div>
+
+          <Show when={origin() && destination()}>
             <button
-              type="button"
-              class="flex items-center rounded app-border cursor-pointer"
-              onClick={roundZoom}
+              onClick={() => setShowDirections(!showDirections())}
+              class="w-full px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-semibold rounded-lg"
             >
-              <span class="app-well px-1 rounded-l">Z</span>
-              <span class="px-2 text-base text-white rounded-r-md rounded-r">
-                {zoom().toFixed(2)}
-              </span>
+              {showDirections() ? "Hide" : "Show"} Directions
             </button>
+          </Show>
+
+          <Show when={showDirections()}>
+            <DirectionsPanel
+              origin={origin()}
+              destination={destination()}
+            />
+          </Show>
+
+          <hr class="border-gray-300 dark:border-gray-600" />
+
+          <div class="space-y-2">
+            <button
+              onClick={() => setShowDirections(!showDirections())}
+              class="w-full px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white font-semibold rounded-lg"
+            >
+              🛰️ {useSatellite() ? "Street" : "Satellite"} View
+            </button>
+
+            <Show when={!location()}>
+              <button
+                onClick={requestLocation}
+                disabled={loading()}
+                class="w-full px-4 py-2 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white font-semibold rounded-lg"
+              >
+                {loading() ? "Getting location..." : "📍 Use My Location"}
+              </button>
+            </Show>
+
+            <Show when={location()}>
+              <button
+                onClick={fitToUserLocation}
+                class="w-full px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-semibold rounded-lg"
+              >
+                🎯 Go to My Location
+              </button>
+            </Show>
+
+            <Show when={error()}>
+              <div class="text-red-500 text-sm p-2 bg-red-50 dark:bg-red-900/20 rounded">
+                {error()}
+              </div>
+            </Show>
           </div>
         </div>
       </div>
-      <Show when={props.showMetadata()}>
-        <div class="md:w-1/2 z-[999] app-bg">
-          <JsonView tileset={props.tileset} />
-        </div>
-      </Show>
+
+      <div class="flex-1 relative">
+        <div
+          ref={mapContainer}
+          classList={{
+            "h-full": true,
+            "w-full": true,
+          }}
+        />
+      </div>
     </div>
   );
 }
 
-const JsonView = (props: { tileset: Accessor<Tileset> }) => {
-  const [data] = createResource(async () => {
-    return await props.tileset().getMetadata();
-  });
-
-  return <json-viewer data={data()} />;
-};
-
 function PageMap() {
   let hash = parseHash(location.hash);
 
-  // the previous version of the PMTiles viewer
-  // used query params ?url= instead of #url=
-  // this makes it backward compatible so old-style links still work.
   const href = new URL(window.location.href);
   const queryParamUrl = href.searchParams.get("url");
   if (queryParamUrl) {
@@ -647,16 +520,16 @@ function PageMap() {
 
   const mapHashPassed = hash.map !== undefined;
   const [tileset, setTileset] = createSignal<Tileset | undefined>(
-    hash.url ? tilesetFromString(decodeURIComponent(hash.url)) : undefined,
+    hash.url ? tilesetFromString(decodeURIComponent(hash.url)) : undefined
   );
   const [showMetadata, setShowMetadata] = createSignal<boolean>(
-    hash.showMetadata === "true" || false,
+    hash.showMetadata === "true" || false
   );
   const [showTileBoundaries, setShowTileBoundaries] = createSignal<boolean>(
-    hash.showTileBoundaries === "true",
+    hash.showTileBoundaries === "true"
   );
   const [inspectFeatures, setInspectFeatures] = createSignal<boolean>(
-    hash.inspectFeatures === "true",
+    hash.inspectFeatures === "true"
   );
 
   createEffect(() => {
