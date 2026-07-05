@@ -5,18 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeoPro Workspace</title>
     
-    <!-- Mapbox GL JS Core (v3 Natively Handles PMTiles) -->
+    <!-- Mapbox GL JS Core -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+
+    <!-- Mapbox Geocoder Search Plugin -->
+    <script src="https://api.mapbox.com/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css" />
 
     <style>
         :root {
             --bg-color: #0a0a0a;
-            --panel-bg: #141414;
-            --accent-color: #ff3333;
-            --border-color: #242424;
+            --panel-bg: #111111;
+            --accent-color: #ff2222;
+            --border-color: #222222;
             --text-color: #e5e5e5;
-            --text-muted: #777;
+            --text-muted: #666;
         }
 
         * {
@@ -42,7 +46,7 @@
 
         /* Sidebar Control Center Layout */
         #sidebar {
-            width: 320px;
+            width: 340px;
             height: 100%;
             background-color: var(--panel-bg);
             border-right: 1px solid var(--border-color);
@@ -61,9 +65,9 @@
         }
 
         .sidebar-header h1 {
-            font-size: 1.15rem;
+            font-size: 1.1rem;
             font-weight: 800;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             text-transform: uppercase;
         }
 
@@ -74,12 +78,13 @@
         .back-home {
             color: var(--text-muted);
             text-decoration: none;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
             border: 1px solid var(--border-color);
-            padding: 4px 8px;
+            padding: 5px 10px;
             border-radius: 4px;
-            transition: color 0.2s, border-color 0.2s;
+            font-weight: 600;
+            transition: all 0.2s ease;
         }
 
         .back-home:hover {
@@ -94,15 +99,59 @@
         }
 
         .control-group {
-            margin-bottom: 30px;
+            margin-bottom: 28px;
         }
 
         .control-group h3 {
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             text-transform: uppercase;
             color: var(--text-muted);
             letter-spacing: 1px;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
+        }
+
+        /* Re-styled Custom Search Layout overrides */
+        .search-wrapper {
+            margin-bottom: 24px;
+        }
+        .mapboxgl-ctrl-geocoder {
+            width: 100% !important;
+            max-width: 100% !important;
+            background-color: #161616 !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 4px !important;
+            box-shadow: none !important;
+        }
+        .mapboxgl-ctrl-geocoder--input {
+            color: var(--text-color) !important;
+            padding: 10px 10px 10px 40px !important;
+            font-size: 0.85rem !important;
+        }
+        .mapboxgl-ctrl-geocoder--input:focus {
+            outline: none !important;
+            border-color: var(--accent-color) !important;
+        }
+        .mapboxgl-ctrl-geocoder--icon-search {
+            fill: var(--text-muted) !important;
+            top: 10px !important;
+        }
+        .mapboxgl-ctrl-geocoder .suggestions {
+            background-color: #161616 !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 4px !important;
+        }
+        .mapboxgl-ctrl-geocoder .suggestions > li > a {
+            color: #bbb !important;
+            font-size: 0.8rem !important;
+        }
+        .mapboxgl-ctrl-geocoder .suggestions > .active > a,
+        .mapboxgl-ctrl-geocoder .suggestions > li > a:hover {
+            background-color: #222 !important;
+            color: var(--accent-color) !important;
+        }
+        .mapboxgl-ctrl-geocoder--icon-close {
+            fill: var(--text-muted) !important;
+            margin-top: 5px !important;
         }
 
         /* Interface Toggle Layouts */
@@ -110,23 +159,22 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: #1a1a1a;
+            background: #161616;
             padding: 14px 12px;
             border-radius: 4px;
             border: 1px solid var(--border-color);
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             cursor: pointer;
             transition: background 0.2s;
         }
 
         .toggle-container:hover {
-            background: #222;
+            background: #1c1c1c;
         }
 
         .toggle-label {
             font-size: 0.85rem;
             font-weight: 500;
-            letter-spacing: 0.3px;
         }
 
         .switch {
@@ -150,7 +198,7 @@
             right: 0;
             bottom: 0;
             background-color: #333;
-            transition: .25s;
+            transition: .2s;
             border-radius: 20px;
         }
 
@@ -162,7 +210,7 @@
             left: 3px;
             bottom: 3px;
             background-color: #fff;
-            transition: .25s;
+            transition: .2s;
             border-radius: 50%;
         }
 
@@ -174,6 +222,23 @@
             transform: translateX(18px);
         }
 
+        /* System Metrics Board */
+        .metrics-board {
+            background: #161616;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 14px;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+        .metric-line {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+        }
+        .metric-line:last-child { margin-bottom: 0; }
+        .metric-val { color: var(--accent-color); font-weight: bold; }
+
         /* Map Window */
         #map {
             flex-grow: 1;
@@ -182,7 +247,7 @@
             background-color: #0e0e0e;
         }
 
-        /* Live Location Matrix Display */
+        /* Live Cursor Tracking Display */
         #geo-overlay {
             position: absolute;
             bottom: 24px;
@@ -199,6 +264,33 @@
             backdrop-filter: blur(5px);
             letter-spacing: 0.5px;
         }
+
+        /* Custom High-Frequency Location Pulse Marker UI Element */
+        .custom-user-marker {
+            width: 16px;
+            height: 16px;
+            background-color: var(--accent-color);
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--accent-color);
+            position: relative;
+        }
+        .custom-user-marker::after {
+            content: '';
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            border: 2px solid var(--accent-color);
+            border-radius: 50%;
+            top: -10px;
+            left: -10px;
+            animation: markerPulse 1.2s infinite ease-out;
+            opacity: 0;
+        }
+        @keyframes markerPulse {
+            0% { transform: scale(0.5); opacity: 0.8; }
+            100% { transform: scale(1.8); opacity: 0; }
+        }
     </style>
 </head>
 <body>
@@ -208,14 +300,19 @@
         <div id="sidebar">
             <div class="sidebar-header">
                 <h1>Geo<span>Pro</span></h1>
-                <a href="index.html" class="back-home">Home</a>
+                <a href="index.html" class="back-home">Exit</a>
             </div>
             
             <div class="sidebar-content">
+                <!-- Dedicated Search Architecture Mount -->
                 <div class="control-group">
-                    <h3>Data Visualization</h3>
+                    <h3>Spatial Directory Search</h3>
+                    <div id="search-container" class="search-wrapper"></div>
+                </div>
+
+                <div class="control-group">
+                    <h3>Data Layers</h3>
                     
-                    <!-- 3D Boundary Height Rendering Extrusions -->
                     <label class="toggle-container">
                         <span class="toggle-label">3D Building Extrusions</span>
                         <div class="switch">
@@ -224,7 +321,6 @@
                         </div>
                     </label>
 
-                    <!-- Streamed Vector Local Files Architecture -->
                     <label class="toggle-container">
                         <span class="toggle-label">Local Infrastructure (PMTiles)</span>
                         <div class="switch">
@@ -232,6 +328,24 @@
                             <span class="slider"></span>
                         </div>
                     </label>
+                </div>
+
+                <div class="control-group">
+                    <h3>100ms Telemetry Pipeline</h3>
+                    <div class="metrics-board">
+                        <div class="metric-line">
+                            <span>GPS FEED STABLE:</span>
+                            <span class="metric-val" id="gps-status">OFFLINE</span>
+                        </div>
+                        <div class="metric-line">
+                            <span>LATITUDE:</span>
+                            <span class="metric-val" id="telemetry-lat">0.00000</span>
+                        </div>
+                        <div class="metric-line">
+                            <span>LONGITUDE:</span>
+                            <span class="metric-val" id="telemetry-lng">0.00000</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -243,10 +357,10 @@
     </div>
 
     <script>
-        // Active Mapbox access token applied
+        // Verified active Mapbox Access Token Applied
         mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
 
-        // 1. Initialize Core Map Engine Pipeline targeting Ukiah CA coordinates
+        // 1. Initialize Core Map Engine Pipeline
         const map = new mapboxgl.Map({
             container: 'map',
             style: 'mapbox://styles/mapbox/dark-v11', 
@@ -256,8 +370,58 @@
             bearing: -12
         });
 
+        // 2. Mount Geocoding Address & Business Search directly within Sidebar Node
+        const geocoder = new MapboxGeocoder({
+            accessToken: mapboxgl.accessToken,
+            mapboxgl: mapboxgl,
+            placeholder: 'Search buildings, businesses...',
+            marker: { color: '#ff2222' },
+            collapsed: false
+        });
+        document.getElementById('search-container').appendChild(geocoder.onAdd(map));
+
+        // 3. High-Frequency Telemetry Setup (100ms Tracking Matrix Loop)
+        let livePosition = null;
+        const markerElement = document.createElement('div');
+        markerElement.className = 'custom-user-marker';
+        const locationMarker = new mapboxgl.Marker({ element: markerElement });
+
+        // Hardware Watch Pipeline
+        if ('geolocation' in navigator) {
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    livePosition = [position.coords.longitude, position.coords.latitude];
+                    document.getElementById('gps-status').innerText = 'ACTIVE_ON_TICK';
+                },
+                (error) => {
+                    console.warn('Telemetry connection dropped: ', error.message);
+                    document.getElementById('gps-status').innerText = 'ERROR_BLOCKED';
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+
+            // 100ms Synchronous Hardware Refresh Loop
+            setInterval(() => {
+                if (livePosition) {
+                    locationMarker.setLngLat(livePosition);
+                    
+                    // Bind element to frame context if not yet active
+                    if (!locationMarker.getMap()) {
+                        locationMarker.addTo(map);
+                        // Initial snap alignment focus
+                        map.flyTo({ center: livePosition, zoom: 16 });
+                    }
+                    
+                    // Flush immediate data changes straight down to UI Metric boards
+                    document.getElementById('telemetry-lat').innerText = livePosition[1].toFixed(5);
+                    document.getElementById('telemetry-lng').innerText = livePosition[0].toFixed(5);
+                }
+            }, 100);
+        } else {
+            document.getElementById('gps-status').innerText = 'UNSUPPORTED';
+        }
+
         map.on('load', () => {
-            // Safe lookup for label layer to insert map features underneath
             const layers = map.getStyle().layers;
             let labelLayerId;
             
@@ -277,7 +441,7 @@
                 'type': 'fill-extrusion',
                 'minzoom': 14,
                 'paint': {
-                    'fill-extrusion-color': '#1f1f1f',
+                    'fill-extrusion-color': '#1a1a1a',
                     'fill-extrusion-height': [
                         'interpolate', ['linear'], ['zoom'],
                         14, 0,
@@ -288,51 +452,11 @@
                         14, 0,
                         14.5, ['get', 'min_height']
                     ],
-                    'fill-extrusion-opacity': 0.8
+                    'fill-extrusion-opacity': 0.85
                 }
             }, labelLayerId);
 
-
-            /* 
-            --- B. PMTiles Source Pipelines (Uncomment below once you have a real hosted .pmtiles file) ---
-            
-            map.addSource('local-infrastructure-source', {
-                type: 'vector',
-                url: 'https://your-server-or-bucket.com/infrastructure.pmtiles' // Mapbox v3 parses directly via file extension!
-            });
-
-            map.addLayer({
-                id: 'local-infrastructure-layer',
-                source: 'local-infrastructure-source',
-                'source-layer': 'layer1', 
-                type: 'line',
-                layout: {
-                    'line-join': 'round',
-                    'line-cap': 'round'
-                },
-                paint: {
-                    'line-color': '#ff3333', 
-                    'line-width': 2,
-                    'line-opacity': 0.85
-                }
-            });
-
-            const pmtilesCheckbox = document.getElementById('layer-toggle-pmtiles');
-            map.setLayoutProperty(
-                'local-infrastructure-layer', 
-                'visibility', 
-                pmtilesCheckbox.checked ? 'visible' : 'none'
-            );
-
-            pmtilesCheckbox.addEventListener('change', (e) => {
-                map.setLayoutProperty('local-infrastructure-layer', 'visibility', e.target.checked ? 'visible' : 'none');
-            });
-            */
-
-
-            // --- C. Event Tracking Handlers ---
-
-            // 3D Matrix Rendering Switch
+            // --- B. Controls Visibility Switches ---
             document.getElementById('layer-toggle-3d').addEventListener('change', (e) => {
                 map.setLayoutProperty('3d-buildings', 'visibility', e.target.checked ? 'visible' : 'none');
             });
