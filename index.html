@@ -121,7 +121,7 @@
             justify-content: center;
             align-items: center;
             text-align: center;
-            padding: 120px 20px 60px 20px;
+            padding: 120px 24px 60px 24px;
         }
 
         .hero-tag {
@@ -182,13 +182,13 @@
 
         /* Features Section */
         .features {
-            padding: 100px 6%;
+            padding: 80px 6%;
             position: relative;
         }
 
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
             gap: 25px;
             max-width: 1200px;
             margin: 0 auto;
@@ -258,6 +258,27 @@
             letter-spacing: 0.5px;
             text-transform: uppercase;
         }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2.8rem;
+            }
+            header p {
+                font-size: 1rem;
+                margin-bottom: 32px;
+            }
+            .cta-main-btn {
+                padding: 14px 32px;
+                font-size: 0.85rem;
+            }
+            .features {
+                padding: 40px 6%;
+            }
+            .card {
+                padding: 30px 24px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -267,7 +288,7 @@
 
     <nav>
         <div class="logo">Geo<span>Pro</span></div>
-        <a href="workspace.html" class="cta-nav-btn">Launch System</a>
+        <a href="workspace.html" class="cta-nav-btn">Launch</a>
     </nav>
 
     <header>
