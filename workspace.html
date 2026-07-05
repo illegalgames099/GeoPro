@@ -18,6 +18,7 @@
             --bg-color: #0a0a0a;
             --panel-bg: #111111;
             --accent-color: #ff2222;
+            --accent-dim: #991111;
             --border-color: #222222;
             --text-color: #e5e5e5;
             --text-muted: #666;
@@ -163,24 +164,6 @@
             fill: var(--text-muted) !important;
             top: 10px !important;
         }
-        .mapboxgl-ctrl-geocoder .suggestions {
-            background-color: #161616 !important;
-            border: 1px solid var(--border-color) !important;
-            border-radius: 4px !important;
-        }
-        .mapboxgl-ctrl-geocoder .suggestions > li > a {
-            color: #bbb !important;
-            font-size: 0.8rem !important;
-        }
-        .mapboxgl-ctrl-geocoder .suggestions > .active > a,
-        .mapboxgl-ctrl-geocoder .suggestions > li > a:hover {
-            background-color: #222 !important;
-            color: var(--accent-color) !important;
-        }
-        .mapboxgl-ctrl-geocoder--icon-close {
-            fill: var(--text-muted) !important;
-            margin-top: 5px !important;
-        }
 
         /* Interface Toggle Layouts */
         .toggle-container {
@@ -196,58 +179,37 @@
             transition: background 0.2s;
         }
 
-        .toggle-container:hover {
-            background: #1c1c1c;
-        }
-
-        .toggle-label {
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 36px;
-            height: 18px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
+        /* Action Buttons */
+        .action-btn {
+            width: 100%;
+            background: #1a1a1a;
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            padding: 12px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #333;
-            transition: .2s;
-            border-radius: 20px;
+            transition: all 0.2s ease;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
 
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 12px;
-            width: 12px;
-            left: 3px;
-            bottom: 3px;
-            background-color: #fff;
-            transition: .2s;
-            border-radius: 50%;
+        .action-btn:hover {
+            border-color: var(--accent-color);
+            background: rgba(255, 34, 34, 0.05);
         }
 
-        input:checked + .slider {
-            background-color: var(--accent-color);
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(18px);
+        .action-btn.active {
+            background: var(--accent-color);
+            color: #fff;
+            border-color: transparent;
+            box-shadow: 0 0 15px rgba(255, 34, 34, 0.3);
         }
 
         /* System Metrics Board */
@@ -275,7 +237,7 @@
             background-color: #0e0e0e;
         }
 
-        /* Live Cursor Tracking Display */
+        /* Live Tracking Display Overlay */
         #geo-overlay {
             position: absolute;
             bottom: 24px;
@@ -293,7 +255,7 @@
             letter-spacing: 0.5px;
         }
 
-        /* Custom High-Frequency Location Pulse Marker UI Element */
+        /* Custom High-Frequency Location Pulse Marker */
         .custom-user-marker {
             width: 16px;
             height: 16px;
@@ -343,17 +305,6 @@
                 bottom: 30px;
                 right: 10px;
             }
-            /* Reposition native Mapbox layout attributions away from overlay target */
-            .mapboxgl-ctrl-bottom-right {
-                bottom: 0 !important;
-                scale: 0.85;
-                transform-origin: bottom right;
-            }
-            .mapboxgl-ctrl-bottom-left {
-                bottom: 0 !important;
-                scale: 0.85;
-                transform-origin: bottom left;
-            }
         }
     </style>
 </head>
@@ -379,7 +330,6 @@
 
                 <div class="control-group">
                     <h3>Data Layers</h3>
-                    
                     <label class="toggle-container">
                         <span class="toggle-label">3D Building Extrusions</span>
                         <div class="switch">
@@ -387,22 +337,19 @@
                             <span class="slider"></span>
                         </div>
                     </label>
-
-                    <label class="toggle-container">
-                        <span class="toggle-label">Local Infrastructure (PMTiles)</span>
-                        <div class="switch">
-                            <input type="checkbox" id="layer-toggle-pmtiles">
-                            <span class="slider"></span>
-                        </div>
-                    </label>
                 </div>
 
                 <div class="control-group">
                     <h3>100ms Telemetry Pipeline</h3>
+                    <!-- Direct User Action Prompt Component for GPS Request -->
+                    <button id="gps-init-btn" class="action-btn">
+                        Initialize GPS Tracking
+                    </button>
+                    
                     <div class="metrics-board">
                         <div class="metric-line">
                             <span>GPS FEED STABLE:</span>
-                            <span class="metric-val" id="gps-status">OFFLINE</span>
+                            <span class="metric-val" id="gps-status">LOCKED</span>
                         </div>
                         <div class="metric-line">
                             <span>LATITUDE:</span>
@@ -424,7 +371,6 @@
     </div>
 
     <script>
-        // Verified active Mapbox Access Token Applied
         mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
 
         // 1. Initialize Core Map Engine Pipeline
@@ -440,28 +386,22 @@
         // Mobile Sidebar Transition Interface Handler Logic
         const menuBtn = document.getElementById('mobile-menu-trigger');
         const sidebar = document.getElementById('sidebar');
+        const gpsBtn = document.getElementById('gps-init-btn');
         
         menuBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             sidebar.classList.toggle('open');
             menuBtn.innerText = sidebar.classList.contains('open') ? 'Close' : 'Menu';
-            if (sidebar.classList.contains('open')) {
-                menuBtn.classList.add('active-state');
-            } else {
-                menuBtn.classList.remove('active-state');
-            }
         });
 
-        // Close panel when interacting directly with the canvas viewport map area on mobile devices
         map.on('click', () => {
             if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
                 sidebar.classList.remove('open');
                 menuBtn.innerText = 'Menu';
-                menuBtn.classList.remove('active-state');
             }
         });
 
-        // 2. Mount Geocoding Address & Business Search directly within Sidebar Node
+        // 2. Mount Geocoding Address & Business Search
         const geocoder = new MapboxGeocoder({
             accessToken: mapboxgl.accessToken,
             mapboxgl: mapboxgl,
@@ -471,52 +411,78 @@
         });
         document.getElementById('search-container').appendChild(geocoder.onAdd(map));
 
-        // Auto-close navigation sidebar on low-resolution devices after a search choice execution occurs
         geocoder.on('result', () => {
             if (window.innerWidth <= 768) {
                 sidebar.classList.remove('open');
                 menuBtn.innerText = 'Menu';
-                menuBtn.classList.remove('active-state');
             }
         });
 
-        // 3. High-Frequency Telemetry Setup (100ms Tracking Matrix Loop)
+        // 3. User-Triggered High-Frequency Telemetry Setup
         let livePosition = null;
+        let isTrackingActive = false;
         const markerElement = document.createElement('div');
         markerElement.className = 'custom-user-marker';
         const locationMarker = new mapboxgl.Marker({ element: markerElement });
 
-        // Hardware Watch Pipeline
-        if ('geolocation' in navigator) {
-            navigator.geolocation.watchPosition(
-                (position) => {
-                    livePosition = [position.coords.longitude, position.coords.latitude];
-                    document.getElementById('gps-status').innerText = 'ACTIVE_ON_TICK';
-                },
-                (error) => {
-                    console.warn('Telemetry connection dropped: ', error.message);
-                    document.getElementById('gps-status').innerText = 'ERROR_BLOCKED';
-                },
-                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
-            );
+        function startTelemetryPipeline() {
+            if ('geolocation' in navigator) {
+                document.getElementById('gps-status').innerText = 'PROMPTING...';
+                
+                // This call fires the browser's hardware location request popup frame
+                navigator.geolocation.watchPosition(
+                    (position) => {
+                        livePosition = [position.coords.longitude, position.coords.latitude];
+                        document.getElementById('gps-status').innerText = 'ACTIVE_ON_TICK';
+                        
+                        if (!isTrackingActive) {
+                            isTrackingActive = true;
+                            gpsBtn.classList.add('active');
+                            gpsBtn.innerText = 'Center on My Location';
+                        }
+                    },
+                    (error) => {
+                        console.warn('Telemetry connection dropped: ', error.message);
+                        document.getElementById('gps-status').innerText = 'DENIED_OR_FAIL';
+                        gpsBtn.innerText = 'GPS Initialization Failed';
+                        gpsBtn.classList.remove('active');
+                    },
+                    { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                );
 
-            // 100ms Synchronous Hardware Refresh Loop
-            setInterval(() => {
-                if (livePosition) {
-                    locationMarker.setLngLat(livePosition);
-                    
-                    if (!locationMarker.getMap()) {
-                        locationMarker.addTo(map);
-                        map.flyTo({ center: livePosition, zoom: 16 });
+                // 100ms Synchronous Hardware Refresh Loop Process
+                setInterval(() => {
+                    if (livePosition) {
+                        locationMarker.setLngLat(livePosition);
+                        
+                        if (!locationMarker.getMap()) {
+                            locationMarker.addTo(map);
+                            map.flyTo({ center: livePosition, zoom: 16, essential: true });
+                        }
+                        
+                        document.getElementById('telemetry-lat').innerText = livePosition[1].toFixed(5);
+                        document.getElementById('telemetry-lng').innerText = livePosition[0].toFixed(5);
                     }
-                    
-                    document.getElementById('telemetry-lat').innerText = livePosition[1].toFixed(5);
-                    document.getElementById('telemetry-lng').innerText = livePosition[0].toFixed(5);
-                }
-            }, 100);
-        } else {
-            document.getElementById('gps-status').innerText = 'UNSUPPORTED';
+                }, 100);
+            } else {
+                document.getElementById('gps-status').innerText = 'UNSUPPORTED';
+                gpsBtn.innerText = 'GPS Hardware Missing';
+            }
         }
+
+        // Direct interaction event handler listener required by mobile environments
+        gpsBtn.addEventListener('click', () => {
+            if (!isTrackingActive) {
+                startTelemetryPipeline();
+            } else if (livePosition) {
+                // If permission is already functional, pan straight back to user position frames
+                map.flyTo({ center: livePosition, zoom: 16, essential: true });
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.remove('open');
+                    menuBtn.innerText = 'Menu';
+                }
+            }
+        });
 
         map.on('load', () => {
             const layers = map.getStyle().layers;
@@ -529,7 +495,7 @@
                 }
             }
 
-            // --- A. Inject 3D Mesh Geometry Layer into Engine ---
+            // Inject 3D Mesh Geometry Layer into Engine
             map.addLayer({
                 'id': '3d-buildings',
                 'source': 'composite',
@@ -553,13 +519,11 @@
                 }
             }, labelLayerId);
 
-            // --- B. Controls Visibility Switches ---
             document.getElementById('layer-toggle-3d').addEventListener('change', (e) => {
                 map.setLayoutProperty('3d-buildings', 'visibility', e.target.checked ? 'visible' : 'none');
             });
         });
 
-        // Frame update rendering tick coordinate monitoring loops (Supports Touch move adjustments)
         const updateOverlay = (lngLat) => {
             document.getElementById('geo-overlay').innerHTML = 
                 `LNG: ${lngLat.lng.toFixed(4)} | LAT: ${lngLat.lat.toFixed(4)}`;
