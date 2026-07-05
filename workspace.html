@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GeoPro Workspace</title>
     
     <!-- Mapbox GL JS Core -->
@@ -28,6 +28,7 @@
             margin: 0;
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body, html {
@@ -42,6 +43,32 @@
             display: flex;
             width: 100%;
             height: 100vh;
+            position: relative;
+        }
+
+        /* Floating Mobile Menu Trigger Button */
+        #mobile-menu-trigger {
+            display: none;
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            z-index: 30;
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
+            padding: 10px 16px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            transition: border-color 0.2s;
+        }
+
+        #mobile-menu-trigger:has(.active-state) {
+            border-color: var(--accent-color);
         }
 
         /* Sidebar Control Center Layout */
@@ -52,8 +79,9 @@
             border-right: 1px solid var(--border-color);
             display: flex;
             flex-direction: column;
-            z-index: 10;
+            z-index: 20;
             box-shadow: 10px 0 30px rgba(0,0,0,0.6);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .sidebar-header {
@@ -110,7 +138,7 @@
             margin-bottom: 12px;
         }
 
-        /* Re-styled Custom Search Layout overrides */
+        /* Search Interface Mount Point Overrides */
         .search-wrapper {
             margin-bottom: 24px;
         }
@@ -291,11 +319,50 @@
             0% { transform: scale(0.5); opacity: 0.8; }
             100% { transform: scale(1.8); opacity: 0; }
         }
+
+        /* Mobile Viewport Architecture Overrides */
+        @media (max-width: 768px) {
+            #mobile-menu-trigger {
+                display: block;
+            }
+            #sidebar {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 280px;
+                transform: translateX(-100%);
+                box-shadow: none;
+            }
+            #sidebar.open {
+                transform: translateX(0);
+                box-shadow: 15px 0 30px rgba(0,0,0,0.8);
+            }
+            #geo-overlay {
+                font-size: 0.7rem;
+                padding: 6px 10px;
+                bottom: 30px;
+                right: 10px;
+            }
+            /* Reposition native Mapbox layout attributions away from overlay target */
+            .mapboxgl-ctrl-bottom-right {
+                bottom: 0 !important;
+                scale: 0.85;
+                transform-origin: bottom right;
+            }
+            .mapboxgl-ctrl-bottom-left {
+                bottom: 0 !important;
+                scale: 0.85;
+                transform-origin: bottom left;
+            }
+        }
     </style>
 </head>
 <body>
 
     <div id="workspace-container">
+        <!-- Responsive Menu Controller Toggle -->
+        <button id="mobile-menu-trigger" aria-label="Toggle Control Panel">Menu</button>
+
         <!-- Application Control Core -->
         <div id="sidebar">
             <div class="sidebar-header">
@@ -370,6 +437,30 @@
             bearing: -12
         });
 
+        // Mobile Sidebar Transition Interface Handler Logic
+        const menuBtn = document.getElementById('mobile-menu-trigger');
+        const sidebar = document.getElementById('sidebar');
+        
+        menuBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sidebar.classList.toggle('open');
+            menuBtn.innerText = sidebar.classList.contains('open') ? 'Close' : 'Menu';
+            if (sidebar.classList.contains('open')) {
+                menuBtn.classList.add('active-state');
+            } else {
+                menuBtn.classList.remove('active-state');
+            }
+        });
+
+        // Close panel when interacting directly with the canvas viewport map area on mobile devices
+        map.on('click', () => {
+            if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+                menuBtn.innerText = 'Menu';
+                menuBtn.classList.remove('active-state');
+            }
+        });
+
         // 2. Mount Geocoding Address & Business Search directly within Sidebar Node
         const geocoder = new MapboxGeocoder({
             accessToken: mapboxgl.accessToken,
@@ -379,6 +470,15 @@
             collapsed: false
         });
         document.getElementById('search-container').appendChild(geocoder.onAdd(map));
+
+        // Auto-close navigation sidebar on low-resolution devices after a search choice execution occurs
+        geocoder.on('result', () => {
+            if (window.innerWidth <= 768) {
+                sidebar.classList.remove('open');
+                menuBtn.innerText = 'Menu';
+                menuBtn.classList.remove('active-state');
+            }
+        });
 
         // 3. High-Frequency Telemetry Setup (100ms Tracking Matrix Loop)
         let livePosition = null;
@@ -405,14 +505,11 @@
                 if (livePosition) {
                     locationMarker.setLngLat(livePosition);
                     
-                    // Bind element to frame context if not yet active
                     if (!locationMarker.getMap()) {
                         locationMarker.addTo(map);
-                        // Initial snap alignment focus
                         map.flyTo({ center: livePosition, zoom: 16 });
                     }
                     
-                    // Flush immediate data changes straight down to UI Metric boards
                     document.getElementById('telemetry-lat').innerText = livePosition[1].toFixed(5);
                     document.getElementById('telemetry-lng').innerText = livePosition[0].toFixed(5);
                 }
@@ -462,11 +559,14 @@
             });
         });
 
-        // Frame update rendering tick coordinate monitoring loops
-        map.on('mousemove', (e) => {
+        // Frame update rendering tick coordinate monitoring loops (Supports Touch move adjustments)
+        const updateOverlay = (lngLat) => {
             document.getElementById('geo-overlay').innerHTML = 
-                `LNG: ${e.lngLat.lng.toFixed(4)} | LAT: ${e.lngLat.lat.toFixed(4)}`;
-        });
+                `LNG: ${lngLat.lng.toFixed(4)} | LAT: ${lngLat.lat.toFixed(4)}`;
+        };
+
+        map.on('mousemove', (e) => updateOverlay(e.lngLat));
+        map.on('touchmove', (e) => updateOverlay(e.lngLat));
     </script>
 </body>
 </html>
