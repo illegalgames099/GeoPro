@@ -2,397 +2,500 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GeoPro Workspace</title>
-    
-    <!-- MapLibre GL JS -->
-    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GeoPro | Autonomous Spatial Workspace</title>
+
+    <!-- MapLibre GL JS Core -->
+    <script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" rel="stylesheet" />
 
     <style>
         :root {
-            --bg-primary: #0a0a0a;
-            --bg-surface: #141414;
-            --accent-red: #ff2222;
-            --text-main: #f5f5f7;
-            --text-muted: #86868b;
-            --border-color: #2c2c2e;
-            --success-green: #30d158;
+            --bg-base: #020203;
+            --bg-panel: rgba(10, 10, 12, 0.94);
+            --bg-surface: rgba(20, 20, 25, 0.7);
+            --bg-surface-hover: rgba(35, 35, 42, 0.9);
+            --action-red: #ff2222;
+            --action-red-glow: rgba(255, 34, 34, 0.35);
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --text-main: #ffffff;
+            --text-secondary: #a0a0ab;
+            --text-muted: #4b4b54;
+            --accent-green: #ff2222; /* Standardized to brand red */
+            --sidebar-width: 380px;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            -webkit-font-smoothing: antialiased;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, monospace;
+            letter-spacing: -0.2px;
         }
 
-        body {
-            background-color: var(--bg-primary);
-            color: var(--text-main);
+        body, html {
+            width: 100%;
+            height: 100%;
             overflow: hidden;
-            height: 100vh;
-            width: 100vw;
+            background-color: var(--bg-base);
+            color: var(--text-main);
         }
 
-        #app-container {
-            display: flex;
-            height: 100vh;
-            width: 100vw;
+        #app-viewport {
             position: relative;
+            width: 100%;
+            height: 100%;
         }
 
         #map {
             position: absolute;
             top: 0;
             left: 0;
-            right: 0;
-            bottom: 0;
+            width: 100%;
+            height: 100%;
             z-index: 1;
         }
 
-        /* Premium Dark UI Overlay HUD */
-        .hud-panel {
+        button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        input { font: inherit; }
+
+        /* ── FIXED LOWER-LEFT PANEL DECK ── */
+        #control-panel-deck {
             position: absolute;
+            bottom: 25px;
+            left: 25px;
+            width: var(--sidebar-width);
+            max-height: calc(100% - 50px);
             z-index: 10;
-            background: rgba(20, 20, 20, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 16px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-        }
-
-        #controls-panel {
-            top: 20px;
-            left: 20px;
-            width: 340px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(35px) saturate(210%);
+            -webkit-backdrop-filter: blur(35px) saturate(210%);
+            border: 1px solid var(--border-subtle);
+            border-radius: 24px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
             display: flex;
             flex-direction: column;
-            gap: 14px;
+            overflow: hidden;
+            transform: translateY(0);
+            user-select: none;
         }
 
-        #telemetry-panel {
-            bottom: 20px;
-            left: 20px;
-            width: 340px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+        #control-panel-deck.snapping {
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        h2 {
-            font-size: 16px;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-            text-transform: uppercase;
-            color: var(--text-main);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .search-box {
-            position: relative;
+        .drag-handle-bar {
             width: 100%;
-        }
-
-        input[type="text"] {
-            width: 100%;
-            background: #2c2c2e;
-            border: 1px solid transparent;
-            border-radius: 10px;
-            padding: 12px 14px;
-            color: var(--text-main);
-            font-size: 14px;
-            outline: none;
-            transition: all 0.2s ease;
-        }
-
-        input[type="text"]:focus {
-            border-color: var(--accent-red);
-            background: #1c1c1e;
-        }
-
-        .btn {
-            background: var(--accent-red);
-            color: #ffffff;
-            border: none;
-            border-radius: 10px;
-            padding: 12px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.2s ease;
+            padding: 14px 0 8px 0;
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 6px;
+            cursor: grab;
+            background: transparent;
+            z-index: 12;
         }
-
-        .btn:hover {
-            opacity: 0.9;
+        .drag-handle-bar:active { cursor: grabbing; }
+        .drag-handle-pill {
+            width: 40px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
         }
+        .drag-handle-bar:hover .drag-handle-pill { background: rgba(255, 255, 255, 0.3); }
 
-        .btn-secondary {
-            background: #2c2c2e;
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-        }
-
-        .btn-secondary:hover {
-            background: #3a3a3c;
-        }
-
-        .telemetry-row {
+        .panel-scrollable-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 20px 20px 20px;
             display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .panel-branding-header {
+            display: flex;
+            align-items: center;
             justify-content: space-between;
-            font-size: 13px;
-            border-bottom: 1px solid rgba(255,255,255,0.05);
-            padding-bottom: 6px;
         }
+        .brand-logo { font-size: 1.3rem; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #ffffff; }
+        .brand-logo span { color: var(--action-red); text-shadow: 0 0 12px var(--action-red-glow); }
 
-        .telemetry-label {
-            color: var(--text-muted);
+        /* Search Interface */
+        .search-field-container { position: relative; width: 100%; }
+        .search-input-wrapper {
+            display: flex;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 2px;
+            align-items: center;
         }
-
-        .telemetry-value {
-            font-family: monospace;
-            font-weight: 500;
+        .search-input-wrapper:focus-within {
+            border-color: var(--action-red);
+            background: var(--bg-surface-hover);
+            box-shadow: 0 0 10px rgba(255, 34, 34, 0.15);
         }
-
-        #gps-status-label {
-            font-weight: 700;
-            color: var(--accent-red);
+        .search-input-node {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-main);
+            padding: 12px 14px;
+            font-size: 0.9rem;
         }
+        .search-input-node::placeholder { color: var(--text-muted); }
 
-        /* Custom Location Marker Style */
-        .user-position-marker {
-            width: 20px;
-            height: 20px;
-            background: var(--accent-red);
-            border: 3px solid #ffffff;
-            border-radius: 50%;
-            box-shadow: 0 0 10px rgba(255, 34, 34, 0.6);
+        .osm-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background: #09090b;
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            margin-top: 6px;
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 150;
+            display: none;
+        }
+        .osm-suggest-item {
+            padding: 12px 16px;
+            font-size: 0.85rem;
             cursor: pointer;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .osm-suggest-item:hover { background: rgba(255, 34, 34, 0.08); color: var(--action-red); }
+
+        /* Context Workspace Card */
+        #context-destination-panel {
+            background: linear-gradient(135deg, var(--bg-surface), rgba(10,10,14,0.1));
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 16px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .panel-header-title { font-size: 1rem; font-weight: 700; border-left: 2px solid var(--action-red); padding-left: 8px; }
+        .panel-address-sub { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4; }
+        
+        .action-button-matrix { display: flex; gap: 8px; }
+        .primary-action-btn { flex: 1; background: var(--action-red); padding: 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; text-align: center; box-shadow: 0 6px 16px var(--action-red-glow); }
+        .primary-action-btn:hover { opacity: 0.9; }
+        .kill-action-btn { background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); width: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        .kill-action-btn:hover { border-color: var(--action-red); color: var(--action-red); }
+
+        .hardware-diagnostics-deck {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-family: monospace;
+            font-size: 0.7rem;
+        }
+        .diagnostic-row { display: flex; justify-content: space-between; align-items: center; }
+        .diagnostic-row span:first-child { color: var(--text-muted); text-transform: uppercase; }
+        .diagnostic-row span:last-child { color: var(--text-secondary); font-weight: bold; }
+        .diagnostic-row .brand-status { color: var(--action-red); text-shadow: 0 0 8px var(--action-red-glow); }
+
+        /* Toolstack Controls */
+        #right-floating-console-stack {
+            position: absolute; top: 25px; right: 25px; z-index: 100; display: flex; flex-direction: column; gap: 8px;
+        }
+        .console-action-btn-node {
+            background: var(--bg-panel); backdrop-filter: blur(20px); border: 1px solid var(--border-subtle); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.05rem;
+        }
+        .console-action-btn-node:hover { background: var(--bg-surface-hover); border-color: var(--action-red); box-shadow: 0 0 10px rgba(255, 34, 34, 0.2); }
+
+        #coordinate-overlay-tracker { position: absolute; bottom: 25px; right: 25px; background: var(--bg-panel); backdrop-filter: blur(10px); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-subtle); font-family: monospace; font-size: 0.7rem; z-index: 5; color: var(--text-secondary); }
+
+        /* Custom SVG Marker Component styling */
+        .custom-spatial-marker {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+
+        /* Responsive Mobile Handling Layer */
+        @media (max-width: 480px) {
+            #control-panel-deck {
+                width: calc(100% - 32px);
+                left: 16px;
+                bottom: 16px;
+            }
+            --sidebar-width: 100%;
         }
     </style>
 </head>
 <body>
 
-    <div id-="app-container">
-        <!-- Interactive Map Frame -->
+    <div id="app-viewport">
         <div id="map"></div>
 
-        <!-- Upper Control Module -->
-        <div id="controls-panel" class="hud-panel">
-            <h2>Spatial Interface</h2>
-            <div class="search-box">
-                <input type="text" id="search-input" placeholder="Search coordinates or addresses..." />
+        <!-- Draggable UI Deck Panel -->
+        <div id="control-panel-deck">
+            <div class="drag-handle-bar" id="drag-handle">
+                <div class="drag-handle-pill"></div>
             </div>
-            <button class="btn" id="trigger-gps-btn" onclick="attemptNativeWebGPS()">
-                Force GPS Sync Stream
-            </button>
+            
+            <div class="panel-scrollable-body">
+                <div class="panel-branding-header">
+                    <div class="brand-logo">Geo<span>Pro</span></div>
+                    <div style="font-family: monospace; font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">AUTONOMOUS STACK</div>
+                </div>
+
+                <!-- Open Search Entry Vector -->
+                <div class="search-field-container">
+                    <div class="search-input-wrapper">
+                        <input type="text" class="search-input-node" id="osm-engine-input" placeholder="Search physical vectors...">
+                    </div>
+                    <div class="osm-dropdown-menu" id="osm-engine-dropdown"></div>
+                </div>
+
+                <!-- Focus Target Information Workspace -->
+                <div id="context-destination-panel">
+                    <div class="panel-header-title" id="node-panel-title">Target Vector</div>
+                    <div class="panel-address-sub" id="node-panel-address">Analyzing coordinates...</div>
+                    <div class="action-button-matrix">
+                        <button class="primary-action-btn" id="launch-routing-action">Calculate Route</button>
+                        <button class="kill-action-btn" id="flush-workspace-trigger">✖</button>
+                    </div>
+                </div>
+
+                <div class="hardware-diagnostics-deck">
+                    <div class="diagnostic-row"><span>Engine Source</span><span class="brand-status">MAPLIBRE V4</span></div>
+                    <div class="diagnostic-row"><span>Search Registry</span><span>PHOTON INDEX</span></div>
+                    <div class="diagnostic-row"><span>Routing Pipeline</span><span id="routing-engine-status">LOCAL SYSTEM MOCK</span></div>
+                </div>
+            </div>
         </div>
 
-        <!-- Lower Telemetry Matrix -->
-        <div id="telemetry-panel" class="hud-panel">
-            <h2>Live Telemetry Pipeline</h2>
-            <div class="telemetry-row">
-                <span class="telemetry-label">Signal Status</span>
-                <span class="telemetry-value" id="gps-status-label">NOT INITIALIZED</span>
-            </div>
-            <div class="telemetry-row">
-                <span class="telemetry-label">Latitude</span>
-                <span class="telemetry-value" id="telemetry-lat">--.------</span>
-            </div>
-            <div class="telemetry-row">
-                <span class="telemetry-label">Longitude</span>
-                <span class="telemetry-value" id="telemetry-lng">--.------</span>
-            </div>
-            <div class="telemetry-row">
-                <span class="telemetry-label">Tracking Stream</span>
-                <span class="telemetry-value" id="telemetry-type">OFFLINE</span>
-            </div>
-            <button class="btn btn-secondary" style="margin-top: 4px; padding: 8px;" onclick="snapToUserLocation()">
-                Snap Map to Target
-            </button>
+        <!-- System Control Cluster -->
+        <div id="right-floating-console-stack">
+            <button class="console-action-btn-node" id="force-gps-recenter" title="Recenter Engine">🎯</button>
+            <button class="console-action-btn-node" id="compass-orientation-lock" title="True North">Compass</button>
         </div>
+
+        <div id="coordinate-overlay-tracker">X: -- | Y: --</div>
     </div>
 
     <script>
-        // Global State Registry
-        let map;
-        let defaultUserCoordinates = [-123.2078, 39.1502]; // Fallback Default Viewport Anchor
-        let livePositionTelemetryMarkerNode = null;
-        let activeWatchId = null;
-
-        // Initialize Map Instance on DOM Load
-        document.addEventListener("DOMContentLoaded", () => {
-            map = new maplibregl.Map({
-                container: 'map',
-                style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', // Premium Dark Engine
-                center: defaultUserCoordinates,
-                zoom: 12,
-                pitch: 45,
-                bearing: 0,
-                antialias: true
-            });
-
-            map.on('load', () => {
-                console.log("Map engine successfully initialized.");
-                
-                // Add 3D Extrusion Layer for Architectural Geometry
-                const layers = map.getStyle().layers;
-                let labelLayerId;
-                for (let i = 0; i < layers.length; i++) {
-                    if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
-                        labelLayerId = layers[i].id;
-                        break;
-                    }
-                }
-
-                map.addLayer({
-                    'id': '3d-buildings',
-                    'source': 'openmaptiles',
-                    'source-layer': 'building',
-                    'type': 'fill-extrusion',
-                    'minzoom': 13,
-                    'paint': {
-                        'fill-extrusion-color': '#1a1a1c',
-                        'fill-extrusion-height': ['get', 'render_height'],
-                        'fill-extrusion-base': ['get', 'render_min_height'],
-                        'fill-extrusion-opacity': 0.7
-                    }
-                }, labelLayerId);
-
-                // Auto initialize coordinate tracking stream immediately on load
-                attemptNativeWebGPS();
-            });
+        // Initializing MapLibre Engine instance with open dark vector styles
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://tiles.openfreemap.org/styles/dark', 
+            center: [-123.2078, 39.1502], 
+            zoom: 13,
+            pitch: 25,
+            bearing: 0,
+            antialias: true
         });
 
-        /**
-         * Bulletproof Geolocation Stream Script
-         * Resolves permission lockouts, secure context checks, and falls back gracefully to coarse streams
-         */
-        function attemptNativeWebGPS() {
-            const statusLabel = document.getElementById('gps-status-label');
-            const trackingType = document.getElementById('telemetry-type');
+        let defaultUserCoordinates = [-123.2078, 39.1502];
+        let targetSelectedCoordinates = null;
+        let querySearchDebounceTimer = null;
+        let activeMapMarker = null; // Track single marker pin instance
 
-            // Clear any lingering stream watch processes to prevent concurrent thread locking
-            if (activeWatchId !== null) {
-                navigator.geolocation.clearWatch(activeWatchId);
-                activeWatchId = null;
-            }
-
-            // Security context check (Bypass allowed for localhost)
-            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
-                console.error("GPS Error: Geolocation streams require HTTPS secure context environments.");
-                statusLabel.innerText = "REQUIRES HTTPS SSL";
-                statusLabel.style.color = "var(--accent-red)";
-                trackingType.innerText = "BLOCKED";
-                return;
-            }
-
-            if (!("geolocation" in navigator)) {
-                statusLabel.innerText = "UNSUPPORTED HARDWARE";
-                trackingType.innerText = "HARDWARE ABSENT";
-                return;
-            }
-
-            statusLabel.innerText = "REQUESTING ACCESS...";
-            statusLabel.style.color = "#ffcc00";
-
-            // Profiles for tracking execution
-            const preciseOptions = {
-                enableHighAccuracy: true,
-                timeout: 7000,          // Direct fail-fast window to drop down to cell/wifi if hardware GPS fails
-                maximumAge: 0
-            };
-
-            const coarseOptions = {
-                enableHighAccuracy: false,
-                timeout: 10000,
-                maximumAge: 30000
-            };
-
-            function successCallback(position) {
-                const lng = position.coords.longitude;
-                const lat = position.coords.latitude;
-                defaultUserCoordinates = [lng, lat];
-                
-                // Update text strings inside UI
-                document.getElementById('telemetry-lat').innerText = lat.toFixed(6);
-                document.getElementById('telemetry-lng').innerText = lng.toFixed(6);
-                
-                statusLabel.innerText = "LIVE STREAM CONNECTED";
-                statusLabel.style.color = "var(--success-green)";
-                trackingType.innerText = position.coords.accuracy <= 30 ? "HIGH-PRECISION HARDWARE" : "COARSE NETWORK/WIFI";
-
-                // Initialize or move the customized tracking node element
-                if (!livePositionTelemetryMarkerNode) {
-                    const el = document.createElement('div');
-                    el.className = 'user-position-marker';
-                    
-                    livePositionTelemetryMarkerNode = new maplibregl.Marker({
-                        element: el,
-                        anchor: 'center'
-                    })
-                    .setLngLat(defaultUserCoordinates)
-                    .addTo(map);
-                } else {
-                    livePositionTelemetryMarkerNode.setLngLat(defaultUserCoordinates);
-                }
-            }
-
-            function errorCallback(error) {
-                switch(error.code) {
-                    case error.PERMISSION_DENIED:
-                        console.warn("GPS Interface: Permission denied by client browser layout options.");
-                        statusLabel.innerText = "ERROR: ACCESS DENIED";
-                        statusLabel.style.color = "var(--accent-red)";
-                        trackingType.innerText = "RESET PERMISSIONS";
-                        break;
-                    case error.POSITION_UNAVAILABLE:
-                        console.warn("GPS Interface: Precision tracking down. Forking into coarse pipeline...");
-                        statusLabel.innerText = "ROUTING COARSE STREAM...";
-                        statusLabel.style.color = "#ffcc00";
-                        
-                        // Execute single-shot lower accuracy mesh fallback
-                        navigator.geolocation.getCurrentPosition(successCallback, (err) => {
-                            statusLabel.innerText = "HARDWARE UNREACHABLE";
-                            statusLabel.style.color = "var(--accent-red)";
-                            trackingType.innerText = "NO POSITION FOUND";
-                        }, coarseOptions);
-                        break;
-                    case error.TIMEOUT:
-                        console.warn("GPS Interface: Connection timeout waiting for satellite array.");
-                        statusLabel.innerText = "ERROR: STREAM TIMEOUT";
-                        statusLabel.style.color = "var(--accent-red)";
-                        trackingType.innerText = "HARDWARE HUNG";
-                        break;
-                }
-            }
-
-            // Start hardware streaming tracker pipeline
-            activeWatchId = navigator.geolocation.watchPosition(successCallback, errorCallback, preciseOptions);
+        // Custom SVG Red Brand Node Factory
+        function createCustomMarkerElement() {
+            const el = document.createElement('div');
+            el.className = 'custom-spatial-marker';
+            el.innerHTML = `
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="8" fill="#ff2222" fill-opacity="0.25"/>
+                    <circle cx="12" cy="12" r="4" fill="#ff2222"/>
+                    <circle cx="12" cy="12" r="3.5" stroke="#ffffff" stroke-width="1"/>
+                </svg>
+            `;
+            return el;
         }
 
-        /**
-         * Re-centers the view matrix over current location coordinates
-         */
-        function snapToUserLocation() {
-            if (map && defaultUserCoordinates) {
-                map.flyTo({
-                    center: defaultUserCoordinates,
-                    zoom: 15,
-                    essential: true,
-                    pitch: 45,
-                    speed: 1.2
-                });
+        map.on('load', () => {
+            initTacticalPanelDraggingPhysics();
+            initAutonomousSearchMatrix();
+            initDirectMapInputListeners();
+            initHardwareConsoleTriggers();
+
+            map.on('mousemove', (e) => {
+                document.getElementById('coordinate-overlay-tracker').innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
+            });
+            
+            // Set explicit state label
+            document.getElementById('routing-engine-status').innerText = "OSRM ROUTER";
+        });
+
+        /* ── SOLIDIFIED POSITIONING & SLIDEOVER DRAG PHYSICS ── */
+        function initTacticalPanelDraggingPhysics() {
+            const panel = document.getElementById('control-panel-deck');
+            const handle = document.getElementById('drag-handle');
+            
+            let isDragging = false;
+            let startY = 0;
+            let currentTranslateY = 0;
+            let lastTranslateY = 0;
+
+            handle.addEventListener('mousedown', startDrag);
+            window.addEventListener('mousemove', processDrag);
+            window.addEventListener('mouseup', endDrag);
+
+            handle.addEventListener('touchstart', (e) => { startDrag(e.touches[0]); }, { passive: true });
+            window.addEventListener('touchmove', (e) => { processDrag(e.touches[0]); }, { passive: false });
+            window.addEventListener('touchend', endDrag);
+
+            function startDrag(e) {
+                isDragging = true;
+                startY = e.clientY;
+                panel.classList.remove('snapping');
             }
+
+            function processDrag(e) {
+                if (!isDragging) return;
+                let deltaY = e.clientY - startY;
+                let nextY = lastTranslateY + deltaY;
+
+                if (nextY < -150) nextY = -150;
+                if (nextY > 400) nextY = 400;
+
+                currentTranslateY = nextY;
+                panel.style.transform = `translateY(${currentTranslateY}px)`;
+            }
+
+            function endDrag() {
+                if (!isDragging) return;
+                isDragging = false;
+                panel.classList.add('snapping');
+
+                if (currentTranslateY > 150) {
+                    currentTranslateY = 320; 
+                } else if (currentTranslateY < -50) {
+                    currentTranslateY = -80; 
+                } else {
+                    currentTranslateY = 0;   
+                }
+
+                panel.style.transform = `translateY(${currentTranslateY}px)`;
+                lastTranslateY = currentTranslateY;
+            }
+        }
+
+        /* ── COMPREHENSIVE ADDRESS VECTOR RESOLUTION ── */
+        function initAutonomousSearchMatrix() {
+            const input = document.getElementById('osm-engine-input');
+            const dropdown = document.getElementById('osm-engine-dropdown');
+
+            input.addEventListener('input', (e) => {
+                const queryVal = e.target.value.trim();
+                clearTimeout(querySearchDebounceTimer);
+                if (queryVal.length < 3) { dropdown.style.display = 'none'; return; }
+                
+                querySearchDebounceTimer = setTimeout(async () => {
+                    try {
+                        const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`);
+                        const payload = await response.json();
+                        if (!payload.features || payload.features.length === 0) { dropdown.style.display = 'none'; return; }
+                        
+                        dropdown.innerHTML = '';
+                        payload.features.forEach(feature => {
+                            const segmentItem = document.createElement('div');
+                            segmentItem.className = 'osm-suggest-item';
+                            const p = feature.properties;
+                            const labeledLocation = [p.name, p.city, p.state].filter(Boolean).join(', ');
+                            segmentItem.innerText = labeledLocation;
+                            
+                            segmentItem.addEventListener('click', () => {
+                                const targetLoc = feature.geometry.coordinates;
+                                dropdown.style.display = 'none';
+                                input.value = labeledLocation;
+                                map.flyTo({ center: targetLoc, zoom: 15 });
+                                triggerWorkspaceTargetDeck(targetLoc, p.name || "Target Vector", labeledLocation);
+                            });
+                            dropdown.appendChild(segmentItem);
+                        });
+                        dropdown.style.display = 'block';
+                    } catch (err) { console.error("Search pipeline fault:", err); }
+                }, 250);
+            });
+        }
+
+        function initDirectMapInputListeners() {
+            map.on('click', async (e) => {
+                const pinpoint = [e.lngLat.lng, e.lngLat.lat];
+                triggerWorkspaceTargetDeck(pinpoint, "Selected Matrix Node", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
+                
+                try {
+                    const lookup = await fetch(`https://photon.komoot.io/api/?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
+                    const details = await lookup.json();
+                    if (details.features && details.features.length > 0) {
+                        const p = details.features[0].properties;
+                        const addressString = [p.name, p.street, p.postcode].filter(Boolean).join(', ');
+                        triggerWorkspaceTargetDeck(pinpoint, p.name || "Discovered Feature Context", addressString || "Raw Geographic Geometry Data");
+                    }
+                } catch(error){}
+            });
+        }
+
+        function triggerWorkspaceTargetDeck(coords, title, details) {
+            targetSelectedCoordinates = coords;
+            document.getElementById('node-panel-title').innerText = title;
+            document.getElementById('node-panel-address').innerText = details;
+            document.getElementById('context-destination-panel').style.display = 'flex';
+
+            // Clean previous marker pin references
+            if (activeMapMarker) activeMapMarker.remove();
+
+            // Append custom brand marker anchor geometry
+            activeMapMarker = new maplibregl.Marker({ element: createCustomMarkerElement() })
+                .setLngLat(coords)
+                .addTo(map);
+        }
+
+        /* ── SYSTEM NAV ROUTE GENERATOR ── */
+        async function runLocalSpatialRouteCalculation() {
+            if (!targetSelectedCoordinates) return;
+            
+            const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${defaultUserCoordinates.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson`;
+            
+            try {
+                const stream = await fetch(routingQueryUrl);
+                const results = await stream.json();
+                if (results.code !== 'Ok' || !results.routes[0]) return;
+                
+                const pathGeometry = results.routes[0].geometry;
+                
+                if (map.getLayer('active-route-line')) map.removeLayer('active-route-line');
+                if (map.getSource('active-route-source')) map.removeSource('active-route-source');
+                
+                map.addSource('active-route-source', { type: 'geojson', data: { type: 'Feature', geometry: pathGeometry } });
+                map.addLayer({
+                    id: 'active-route-line', type: 'line', source: 'active-route-source',
+                    paint: { 'line-color': '#ff2222', 'line-width': 5, 'line-opacity': 0.9 }
+                });
+            } catch (err) { console.error("Routing resolution pipeline error:", err); }
+        }
+
+        function initHardwareConsoleTriggers() {
+            document.getElementById('compass-orientation-lock').addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 25 }));
+            document.getElementById('force-gps-recenter').addEventListener('click', () => map.flyTo({ center: defaultUserCoordinates, zoom: 14 }));
+            document.getElementById('launch-routing-action').addEventListener('click', runLocalSpatialRouteCalculation);
+            document.getElementById('flush-workspace-trigger').addEventListener('click', () => {
+                if (map.getLayer('active-route-line')) map.removeLayer('active-route-line');
+                if (map.getSource('active-route-source')) map.removeSource('active-route-source');
+                if (activeMapMarker) { activeMapMarker.remove(); activeMapMarker = null; }
+                document.getElementById('context-destination-panel').style.display = 'none';
+                document.getElementById('osm-engine-input').value = '';
+                targetSelectedCoordinates = null;
+            });
         }
     </script>
 </body>
