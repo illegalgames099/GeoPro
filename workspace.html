@@ -77,7 +77,22 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            transform: translateY(0px);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
         }
+
+        .drag-handle-bar {
+            width: 36px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.25);
+            border-radius: 3px;
+            margin: -8px auto 4px;
+            cursor: grab;
+            touch-action: none;
+        }
+        .drag-handle-bar:active { cursor: grabbing; background: rgba(255, 255, 255, 0.45); }
+
+        #command-deck.is-dragging { transition: none !important; }
 
         .deck-header {
             display: flex;
@@ -344,6 +359,7 @@
 
         <!-- Left Command Deck HUD Console -->
         <div id="command-deck">
+            <div class="drag-handle-bar" id="drag-handle"></div>
             <div class="deck-header">
                 <div class="brand-logo">Geo<span>Pro</span></div>
                 <a href="index.html" class="sys-exit-btn">Exit</a>
@@ -593,6 +609,68 @@
         satelliteBtn.addEventListener('click', () => {
             const isSat = satelliteBtn.classList.toggle('active');
             map.setStyle(isSat ? mapStyles.satelliteHybrid : mapStyles.vectorDark);
+        });
+
+        // ── Draggable Command Deck (bottom-sheet style drag handle) ──
+        const commandDeck = document.getElementById('command-deck');
+        const dragHandle = document.getElementById('drag-handle');
+
+        let deckTranslateY = 0;   // current settled offset
+        let dragStartY = 0;       // pointer Y when drag began
+        let dragStartTranslate = 0;
+        let isDraggingDeck = false;
+
+        function clampValue(value, min, max) {
+            return Math.min(Math.max(value, min), max);
+        }
+
+        // How far the deck can be dragged down before only the handle + header peek out
+        function getMaxDragOffset() {
+            const header = commandDeck.querySelector('.deck-header');
+            const peekHeight = (header ? header.offsetHeight : 40) + 28;
+            return Math.max(commandDeck.scrollHeight - peekHeight, 0);
+        }
+
+        function setDeckTranslate(value, animate) {
+            commandDeck.classList.toggle('is-dragging', !animate);
+            commandDeck.style.transform = `translateY(${value}px)`;
+        }
+
+        dragHandle.addEventListener('pointerdown', (e) => {
+            isDraggingDeck = true;
+            dragStartY = e.clientY;
+            dragStartTranslate = deckTranslateY;
+            dragHandle.setPointerCapture(e.pointerId);
+            setDeckTranslate(deckTranslateY, false);
+        });
+
+        dragHandle.addEventListener('pointermove', (e) => {
+            if (!isDraggingDeck) return;
+            const deltaY = e.clientY - dragStartY;
+            const maxOffset = getMaxDragOffset();
+            deckTranslateY = clampValue(dragStartTranslate + deltaY, 0, maxOffset);
+            setDeckTranslate(deckTranslateY, false);
+        });
+
+        function endDeckDrag(e) {
+            if (!isDraggingDeck) return;
+            isDraggingDeck = false;
+            const maxOffset = getMaxDragOffset();
+            // Snap to whichever edge (expanded/collapsed) is closer
+            deckTranslateY = deckTranslateY > maxOffset / 2 ? maxOffset : 0;
+            setDeckTranslate(deckTranslateY, true);
+        }
+
+        dragHandle.addEventListener('pointerup', endDeckDrag);
+        dragHandle.addEventListener('pointercancel', endDeckDrag);
+
+        // Keep the collapsed position sane if the viewport / content height changes
+        window.addEventListener('resize', () => {
+            const maxOffset = getMaxDragOffset();
+            if (deckTranslateY > maxOffset) {
+                deckTranslateY = maxOffset;
+                setDeckTranslate(deckTranslateY, true);
+            }
         });
 
         // Live Spatial Coordinate Hover Metrics Monitoring
