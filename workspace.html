@@ -518,6 +518,17 @@
                 document.getElementById('telemetry-feed').innerText = "GPS NOT SUPPORTED";
                 return;
             }
+
+            // STAGE 1: Ultra-Fast Location Grab
+            // Uses zero-accuracy restrictions and heavily prioritizes cached coordinates to spin the viewport instantly.
+            navigator.geolocation.getCurrentPosition(handleGPSMoveUpdate, null, {
+                enableHighAccuracy: false,
+                maximumAge: 120000, // Accepts locks up to 2 minutes old for absolute speed
+                timeout: 3000
+            });
+
+            // STAGE 2: Precise High-Fidelity Pipeline Streams
+            // Hooks background tracking matrices for fine accuracy updates, speedometers, and arrow tracking vectors.
             navigator.geolocation.getCurrentPosition(handleGPSMoveUpdate, handleGPSTrackingError, { enableHighAccuracy: true });
             navigator.geolocation.watchPosition(handleGPSMoveUpdate, handleGPSTrackingError, { enableHighAccuracy: true });
         }
@@ -537,9 +548,15 @@
             currentOriginCoords = [position.coords.longitude, position.coords.latitude];
             userGpsMarker.setLngLat(currentOriginCoords);
             
-            document.getElementById('telemetry-feed').innerText = "GPS LOCK [3D_FIX]";
+            document.getElementById('telemetry-feed').innerText = "GPS LOCK [ACTIVE]";
             document.getElementById('telemetry-feed').style.color = "var(--traffic-green)";
             
+            // Speed telemetry configuration
+            if (position.coords.speed !== null && position.coords.speed !== undefined && position.coords.speed >= 0) {
+                const mph = Math.round(position.coords.speed * 2.23694);
+                document.getElementById('speed-val').innerText = mph;
+            }
+
             // Core Directional Facing Resolution
             let userHeading = position.coords.heading;
             if ((userHeading === null || userHeading === undefined || isNaN(userHeading)) && lastKnownCoords) {
@@ -588,8 +605,11 @@
 
         function handleGPSTrackingError(err) {
             console.warn(`Hardware telemetry exception: ${err.message}`);
-            document.getElementById('telemetry-feed').innerText = "GPS TIMEOUT / DENIED";
-            document.getElementById('telemetry-feed').style.color = "var(--traffic-red)";
+            // Don't kill telemetry displays for occasional fast timeouts if data fallback stream works
+            if(!mapCenteredOnLiveGPS) {
+                document.getElementById('telemetry-feed').innerText = "GPS TIMEOUT / DENIED";
+                document.getElementById('telemetry-feed').style.color = "var(--traffic-red)";
+            }
         }
 
         function registerGlobal3DTerrainEngine() {
@@ -742,7 +762,6 @@
                 renderVisualRouteLines();
                 populateAlternativeSelectors();
                 
-                // Dynamic instruction update during routing transitions
                 if (isNavigating) {
                     updateActiveHUDLayout(routeAlternatives[selectedRouteIdx]);
                 }
