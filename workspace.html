@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en)
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -9,15 +9,14 @@
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
 
-    <!-- Mapbox Geocoder (Single Input Spatial Engine) -->
-    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
-    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css">
+    <!-- Modern Mapbox Search JS Web Component Engine Bundle -->
+    <script id="search-js" defer src="https://api.mapbox.com/search-js/v1.5.0/web.js"></script>
 
     <style>
         :root {
             --bg-pure: #000000;
-            --hud-bg: rgba(10, 10, 12, 0.85);
-            --card-surface: rgba(22, 22, 26, 0.7);
+            --hud-bg: rgba(10, 10, 12, 0.90);
+            --card-surface: rgba(22, 22, 26, 0.75);
             --neon-red: #ff2222;
             --neon-blue: #0071e3;
             --neon-purple: #b46bff;
@@ -124,8 +123,6 @@
         }
         .brand-logo span { color: var(--neon-red); text-shadow: 0 0 10px rgba(255,34,34,0.4); }
 
-        .header-actions { display: flex; gap: 8px; align-items: center; }
-
         .sys-exit-btn {
             background: var(--card-surface);
             border: 1px solid var(--border-line);
@@ -168,38 +165,37 @@
             font-weight: 600;
             transition: all 0.2s ease;
         }
-        .mode-btn svg { stroke: var(--text-secondary); }
+        .mode-btn svg { stroke: var(--text-secondary); fill: none; }
         .mode-btn.active {
             background: rgba(255, 34, 34, 0.15);
             color: var(--neon-red);
         }
         .mode-btn.active svg { stroke: var(--neon-red); }
 
-        /* Single Input Geocoder Box overrides */
+        /* ── MODERN SHADOW-DOM SEARCH BOX RULES ── */
         .search-container-box {
             width: 100%;
             position: relative;
         }
-        .mapboxgl-ctrl-geocoder {
+        #geocoder-mount {
+            width: 100%;
+        }
+        mapboxsearch-search-box {
             width: 100% !important;
             max-width: 100% !important;
-            background-color: var(--card-surface) !important;
-            border: 1px solid var(--border-line) !important;
-            border-radius: 16px !important;
-            box-shadow: none !important;
-            height: 52px !important;
+            --mapbox-search-box-background: var(--card-surface);
+            --mapbox-search-box-text: var(--text-primary);
+            --mapbox-search-box-placeholder-text: var(--text-secondary);
+            --mapbox-search-box-border: 1px solid var(--border-line);
+            --mapbox-search-box-border-radius: 16px;
+            --mapbox-search-box-results-background: var(--hud-bg);
+            --mapbox-search-box-result-text: var(--text-primary);
+            --mapbox-search-box-result-hover-background: rgba(255, 255, 255, 0.08);
+            --mapbox-search-box-icon-fill: var(--text-secondary);
+            --mapbox-search-box-shadow: none;
         }
-        .mapboxgl-ctrl-geocoder--input {
-            height: 52px !important;
-            color: var(--text-primary) !important;
-            padding: 12px 16px 12px 48px !important;
-            background: transparent !important;
-        }
-        .mapboxgl-ctrl-geocoder--icon-search { top: 16px !important; left: 16px !important; fill: var(--text-secondary) !important; }
-        .mapboxgl-ctrl-geocoder--button { top: 14px !important; background: transparent !important; }
-        .mapboxgl-ctrl-geocoder--icon-close { fill: var(--text-secondary) !important; }
 
-        /* Category Chips Styling modeled after IMG_4603.jpeg */
+        /* Category Chips Styling */
         .category-chips-row {
             display: flex;
             gap: 8px;
@@ -256,10 +252,10 @@
         .biz-row { display: flex; justify-content: space-between; align-items: center; }
         .biz-label { color: var(--text-secondary); }
         .biz-val { font-weight: 600; }
-        .biz-badge { background: rgba(48, 209, 88, 0.15); color: var(--traffic-green); padding: 2px 8px; border-radius: 6px; font-size: 0.7 turnaround; font-weight: 700; }
+        .biz-badge { background: rgba(48, 209, 88, 0.15); color: var(--traffic-green); padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; }
         .biz-rating { color: var(--traffic-yellow); font-weight: 700; }
 
-        .route-alt-row { display: flex; gap: 8px; overflow-x: auto; }
+        .route-alt-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
         .route-alt-pill {
             flex-shrink: 0; background: rgba(255,255,255,0.05); border: 1px solid var(--border-line);
             color: var(--text-secondary); padding: 8px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; cursor: pointer;
@@ -287,7 +283,7 @@
         .matrix-row span:first-child { color: var(--text-secondary); }
         .matrix-row span:last-child { font-family: monospace; font-weight: 600; }
 
-        /* Active Hud Element Styles */
+        /* Active HUD Navigation Elements */
         #active-nav-hud {
             display: none; position: absolute; top: 20px; left: 20px; width: 380px; z-index: 15; flex-direction: column; gap: 10px;
         }
@@ -333,45 +329,45 @@
     <div id="app-viewport">
         <div id="map"></div>
 
-        <!-- Command Deck Interface Base Sheet -->
+        <!-- Command Deck Interface Sheet -->
         <div id="command-deck">
             <div class="drag-handle-zone" id="drag-handle"><div class="drag-handle-bar"></div></div>
             <div class="deck-header">
                 <div class="brand-logo">Geo<span>Pro</span></div>
                 <div class="header-actions">
-                    <a href="#" class="sys-exit-btn">Exit</a>
+                    <button class="sys-exit-btn">Exit</button>
                 </div>
             </div>
 
             <!-- Travel Mode Elements Matrix -->
             <div class="mode-selector-row" id="mode-selector">
                 <button class="mode-btn active" data-mode="driving-traffic">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 17h14M5 17a2 2 0 1 0 4 0M15 17a2 2 0 1 0 4 0M5 17l1-6 2-3h8l2 3 1 6M6 11h12"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 17h14M5 17a2 2 0 1 0 4 0M15 17a2 2 0 1 0 4 0M5 17l1-6 2-3h8l2 3 1 6M6 11h12"/></svg>
                     Drive
                 </button>
                 <button class="mode-btn" data-mode="cycling">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-9h4l4 9"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-9h4l4 9"/></svg>
                     Bike
                 </button>
                 <button class="mode-btn" data-mode="walking">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="13" cy="4" r="1.6"/><path d="M10 22l2-7 2 2 3 5"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="13" cy="4" r="1.6"/><path d="M10 22l2-7 2 2 3 5"/></svg>
                     Walk
                 </button>
             </div>
 
-            <!-- Single Input Workspace Setup -->
+            <!-- Modern Search Mount Workspace -->
             <div class="search-container-box">
                 <div id="geocoder-mount"></div>
             </div>
 
-            <!-- Category Fast Access Deck (Configured from IMG_4603.jpeg) -->
+            <!-- Category Fast Access Chips -->
             <div class="category-chips-row">
                 <button class="category-search-pill" data-query="Fast Food">🍔 Fast Food</button>
                 <button class="category-search-pill" data-query="Dinner">🍴 Dinner</button>
                 <button class="category-search-pill" data-query="Gas Station">⛽ Gas Stations</button>
             </div>
 
-            <!-- Context Dynamic Destination Display Panel -->
+            <!-- Dynamic Context Destination Card -->
             <div id="destination-card">
                 <div class="dest-title" id="card-title">Destination Profile</div>
                 <div class="dest-address" id="card-address">Analyzing route vector traces...</div>
@@ -396,7 +392,7 @@
             </div>
         </div>
 
-        <!-- Active Tracking Engine Mode Displays -->
+        <!-- Active Tracking HUD -->
         <div id="active-nav-hud">
             <div class="nav-instruction-card">
                 <div class="nav-instruction-body">
@@ -438,7 +434,7 @@
             satelliteHybrid: 'mapbox://styles/mapbox/satellite-streets-v12'
         };
 
-        // Standard baseline origin framework fallback coordinates
+        // Standard baseline configuration fallback coordinates
         let currentOriginCoords = [-123.2078, 39.1502]; 
         let selectedDestinationCoords = null;
         let currentTravelMode = 'driving-traffic';
@@ -447,7 +443,7 @@
         let isNavigating = false;
         let layers3DActive = false;
         let geocoderInstance = null;
-        let mapCenteredOnLiveGPS = false; // Camera-lock tracking constraint
+        let mapCenteredOnLiveGPS = false; 
 
         const map = new mapboxgl.Map({
             container: 'map',
@@ -458,7 +454,7 @@
             bearing: 0
         });
 
-        // Initialize Native Live User Tracking Nodes
+        // Initialize User Tracking Node Markers
         const liveUserBeacon = document.createElement('div');
         liveUserBeacon.className = 'custom-tracking-marker';
         const userGpsMarker = new mapboxgl.Marker(liveUserBeacon).setLngLat(currentOriginCoords).addTo(map);
@@ -467,7 +463,6 @@
         destMarkerElement.className = 'custom-dest-marker';
         const globalDestinationMarker = new mapboxgl.Marker(destMarkerElement);
 
-        // Bind architectural building initialization directly to style configurations
         map.on('style.load', () => {
             register3DBuildingsArchitecturalLayer();
             if (selectedDestinationCoords) {
@@ -483,19 +478,17 @@
             initializeLiveGPSHardware();
         });
 
-        // ── LIVE GEOLOCATION HARDWARE INTEGRATION (WITH AUTOMATIC RECENTERING) ──
+        // ── GEOLOCATION INFRASTRUCTURE LOGIC ──
         function initializeLiveGPSHardware() {
             if (!navigator.geolocation) {
                 document.getElementById('telemetry-feed').innerText = "GPS NOT SUPPORTED";
                 return;
             }
 
-            // Fire initial request to anchor precision points immediately
             navigator.geolocation.getCurrentPosition(handleGPSMoveUpdate, handleGPSTrackingError, {
                 enableHighAccuracy: true
             });
 
-            // Keep tracking changes actively across environmental coordinate vectors
             navigator.geolocation.watchPosition(handleGPSMoveUpdate, handleGPSTrackingError, {
                 enableHighAccuracy: true
             });
@@ -507,7 +500,9 @@
             document.getElementById('telemetry-feed').innerText = "GPS LOCK [3D_FIX]";
             document.getElementById('telemetry-feed').style.color = "var(--traffic-green)";
             
-            // CAMERA CORRECTION RULE: Jump camera to real coordinates immediately on the initial lock
+            updateSearchProximityBias();
+
+            // CAMERA CONSTRAINT: If the app hasn't acquired the user yet, jump away from fallback instantly
             if (!mapCenteredOnLiveGPS) {
                 map.flyTo({
                     center: currentOriginCoords,
@@ -517,22 +512,14 @@
                 });
                 mapCenteredOnLiveGPS = true;
             }
-
-            if (geocoderInstance) {
-                geocoderInstance.setProximity({
-                    longitude: currentOriginCoords[0],
-                    latitude: currentOriginCoords[1]
-                });
-            }
         }
 
         function handleGPSTrackingError(err) {
-            console.warn(`System hardware exception tracking positions: ${err.message}`);
-            document.getElementById('telemetry-feed').innerText = "GPS BLOCKED / TIMEOUT";
+            console.warn(`Hardware telemetry exception: ${err.message}`);
+            document.getElementById('telemetry-feed').innerText = "GPS TIMEOUT / DENIED";
             document.getElementById('telemetry-feed').style.color = "var(--traffic-red)";
         }
 
-        // REPERSIST 3D EXTRUSION LAYERS ACROSS MAP LIFECYCLES
         function register3DBuildingsArchitecturalLayer() {
             if (map.getLayer('3d-buildings')) return;
 
@@ -552,49 +539,98 @@
             });
         }
 
-        // Proximity Filter Initialization
+        // ── MODERN MAPBOX SEARCH BOX INTEGRATION (v1.5.0) ──
         function initializeProximitySearchEngine() {
-            geocoderInstance = new MapboxGeocoder({
-                accessToken: mapboxgl.accessToken,
-                mapboxgl: mapboxgl,
-                placeholder: 'Search location or business...',
-                proximity: { longitude: currentOriginCoords[0], latitude: currentOriginCoords[1] },
-                types: 'poi,landmark,address,commercial',
-                trackProximity: true
-            });
-
-            document.getElementById('geocoder-mount').appendChild(geocoderInstance.onAdd(map));
-
-            geocoderInstance.on('result', (e) => {
-                const coords = e.result.geometry.coordinates;
-                const name = e.result.text;
-                const address = e.result.place_name;
-                const category = e.result.properties?.category || 'Commercial Entity';
-                const parsedBiz = generateStructuredBusinessData(name, category, address);
+            const script = document.getElementById('search-js');
+            
+            const initSearchBox = () => {
+                if (typeof mapboxsearch === 'undefined' || !mapboxsearch.MapboxSearchBox) {
+                    setTimeout(initSearchBox, 50);
+                    return;
+                }
                 
-                loadSpatialDestination(coords, name, address, parsedBiz);
-            });
+                const container = document.getElementById('geocoder-mount');
+                if (!container) return;
+                container.innerHTML = ''; 
+                
+                geocoderInstance = new mapboxsearch.MapboxSearchBox();
+                geocoderInstance.accessToken = mapboxgl.accessToken;
+                
+                geocoderInstance.options = {
+                    types: 'address,poi,neighborhood',
+                    proximity: currentOriginCoords
+                };
+                
+                geocoderInstance.mapboxgl = mapboxgl;
+                geocoderInstance.marker = false; 
+                
+                container.appendChild(geocoderInstance);
+                
+                // Track item retrieval events safely
+                geocoderInstance.addEventListener('retrieve', (e) => {
+                    let feature = null;
+                    if (e.detail && e.detail.features && e.detail.features.length > 0) {
+                        feature = e.detail.features[0];
+                    } else if (e.detail && e.detail.geometry) {
+                        feature = e.detail;
+                    }
+                    
+                    if (feature && feature.geometry && feature.geometry.coordinates) {
+                        const coords = feature.geometry.coordinates;
+                        const name = feature.properties?.name || feature.text || "Target Destination";
+                        const address = feature.properties?.full_address || feature.place_name || "";
+                        const category = feature.properties?.poi_category?.[0] || 'Point of Interest';
+                        
+                        const parsedBiz = generateStructuredBusinessData(name, category, address);
+                        loadSpatialDestination(coords, name, address, parsedBiz);
+                        
+                        map.flyTo({
+                            center: coords,
+                            zoom: 15,
+                            essential: true
+                        });
+                    }
+                });
+            };
+            
+            if (script) {
+                if (typeof mapboxsearch !== 'undefined') {
+                    initSearchBox();
+                } else {
+                    script.onload = initSearchBox;
+                }
+            } else {
+                initSearchBox();
+            }
         }
 
-        // PICTURE IMPLEMENTATION (IMG_4603.jpeg Integration Hooks)
+        function updateSearchProximityBias() {
+            if (geocoderInstance && geocoderInstance.options) {
+                geocoderInstance.options = {
+                    ...geocoderInstance.options,
+                    proximity: currentOriginCoords
+                };
+            }
+        }
+
+        // Hook interaction for category pills matching Search Box model
         document.querySelectorAll('.category-search-pill').forEach(pill => {
             pill.addEventListener('click', () => {
                 const queryTarget = pill.getAttribute('data-query');
                 if (geocoderInstance) {
-                    geocoderInstance.setInput(queryTarget);
-                    geocoderInstance.query(queryTarget);
+                    geocoderInstance.value = queryTarget;
+                    geocoderInstance.focus();
                 }
             });
         });
 
-        // Generate Context Business Profile Modals
         function generateStructuredBusinessData(name, category, rawAddress) {
             return {
                 name: name,
                 category: category,
                 rating: ((Math.abs(name.charCodeAt(0) || 5) % 10) / 10 + 4.0).toFixed(1),
                 reviews: Math.floor(Math.random() * 400 + 45),
-                hours: '08:00 AM — 09:00 PM',
+                hours: '08:00 AM — 10:00 PM',
                 status: 'Open Now',
                 address: rawAddress
             };
@@ -660,7 +696,7 @@
                 renderVisualRouteLines();
                 populateAlternativeSelectors();
             } catch (error) {
-                console.error("Critical routing breakdown:", error);
+                console.error("Critical routing calculation exception:", error);
             }
         }
 
@@ -752,7 +788,7 @@
             selectedDestinationCoords = null;
             globalDestinationMarker.remove();
             document.getElementById('destination-card').style.display = 'none';
-            if (geocoderInstance) geocoderInstance.clear();
+            if (geocoderInstance) geocoderInstance.value = '';
         }
 
         function toggleNavigationHUD() {
