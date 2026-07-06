@@ -262,7 +262,6 @@
             font-size: 0.78rem;
         }
 
-        /* Directions List Styles */
         .directions-manifest {
             margin-top: 10px;
             border-top: 1px solid var(--border-color);
@@ -573,6 +572,7 @@
 
             if (!map.getSource(sourceKey)) return;
 
+            // Refactored to generate explicit asphalt foundations and white dashed lane dividers based on IMG_4607.jpg
             if (!map.getLayer('spatial-3d-lanes')) {
                 map.addLayer({
                     'id': 'spatial-3d-lanes',
@@ -582,9 +582,24 @@
                     'filter': ['==', '$geometryType', 'LineString'],
                     'layout': { 'line-join': 'round', 'line-cap': 'round' },
                     'paint': {
-                        'line-color': satelliteModeActive ? '#ff2a2a' : '#ee3333',
-                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 15, 3, 18, 12],
-                        'line-opacity': satelliteModeActive ? 0.65 : 0.15
+                        'line-color': satelliteModeActive ? '#2c2c35' : '#b0b9c6',
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 15, 12, 18, 32],
+                        'line-opacity': 0.85
+                    }
+                });
+
+                map.addLayer({
+                    'id': 'spatial-3d-lanes-dashed-markings',
+                    'source': sourceKey,
+                    'source-layer': 'transportation',
+                    'type': 'line',
+                    'filter': ['==', '$geometryType', 'LineString'],
+                    'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                    'paint': {
+                        'line-color': '#ffffff',
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 18, 1.5],
+                        'line-dasharray': [3, 3],
+                        'line-opacity': 0.6
                     }
                 });
             }
@@ -595,12 +610,12 @@
                     'source': sourceKey,
                     'source-layer': 'building',
                     'type': 'fill-extrusion',
-                    'minzoom': 13,.
+                    'minzoom': 13,
                     'paint': {
-                        'fill-extrusion-color': satelliteModeActive ? '#1a1a1f' : '#cbd2db',
+                        'fill-extrusion-color': satelliteModeActive ? '#1a1a1f' : '#f0f2f5',
                         'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 15],
                         'fill-extrusion-base': ['coalesce', ['get', 'min_height'], ['get', 'render_min_height'], 0],
-                        'fill-extrusion-opacity': satelliteModeActive ? 0.80 : 0.45
+                        'fill-extrusion-opacity': satelliteModeActive ? 0.80 : 0.85
                     }
                 });
             }
@@ -619,7 +634,6 @@
                 originCoords = [mapCenter.lng, mapCenter.lat];
             }
              
-            // Request steps explicitly from OSRM to isolate concrete maneuvers
             const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&steps=true&alternatives=false`;
              
             try {
@@ -637,7 +651,6 @@
                 if (results.code === 'Ok' && results.routes && results.routes.length > 0) {
                     const primaryRoute = results.routes[0];
                     
-                    // Parse text instruction payloads from leg steps
                     let parsedInstructions = [];
                     if (primaryRoute.legs && primaryRoute.legs[0].steps) {
                         parsedInstructions = primaryRoute.legs[0].steps.map(step => {
@@ -645,7 +658,6 @@
                             let type = step.maneuver.type === 'turn' ? 'Turn' : step.maneuver.type;
                             let street = step.name ? ` onto ${step.name}` : '';
                             
-                            // Clean semantic fallback formatting for OSRM descriptions
                             let rawMessage = `${type}${modifier}${street}`;
                             if (step.maneuver.type === 'depart') rawMessage = `Head out towards ${step.name || 'designated road'}`;
                             if (step.maneuver.type === 'arrive') rawMessage = "Arrive at vector destination node";
@@ -675,7 +687,6 @@
             redrawActiveRoutePipelines();
             renderRouteDashboardUI();
             
-            // Adjust viewpoint directly to display the computed path
             if (activeRouteDataStore.length > 0) {
                 const coordinates = activeRouteDataStore[0].geometry.coordinates;
                 const bounds = coordinates.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
@@ -869,7 +880,6 @@
 
                 const trafficLabels = { 1: 'FREE FLOWING', 2: 'MODERATE SLOWDOWNS', 3: 'HEAVY GRIDLOCK' };
                  
-                // Metrics overview box
                 const metricsRow = document.createElement('div');
                 metricsRow.className = 'route-badge-row';
                 metricsRow.innerHTML = `
@@ -885,7 +895,6 @@
                 `;
                 dashboard.appendChild(metricsRow);
 
-                // Build Concrete Structural Turn-by-Turn Directions List Panel
                 if (r.steps && r.steps.length > 0) {
                     const manifestContainer = document.createElement('div');
                     manifestContainer.className = 'directions-manifest';
