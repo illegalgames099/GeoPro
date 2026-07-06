@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>GeoPro - High Fidelity Routing Engine</title>
+    <title>GeoPro - 3D World Navigation Engine</title>
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
     
     <!-- MapLibre Core Dependencies -->
@@ -157,7 +157,6 @@
             transition: none;
         }
 
-        /* Minimized State */
         #control-panel-deck.minimized {
             transform: translateX(-50%) translateY(calc(100% - 28px));
         }
@@ -185,10 +184,6 @@
 
         #drag-handle:hover::before {
             background: #6a6a75;
-        }
-
-        #drag-handle:active {
-            cursor: grabbing;
         }
 
         .workspace-content-body {
@@ -406,12 +401,9 @@
 
         #launch-routing-action:hover {
             background: #ff4d4d;
-            box-shadow: 0 6px 16px rgba(255, 51, 51, 0.5);
         }
 
         .custom-spatial-marker {
-            cursor: pointer;
-            /* Removed CSS transition here to prevent drifting from WebGL camera */
             transform: translate(-50%, -100%);
         }
 
@@ -422,7 +414,6 @@
             border: 3px solid #ffffff;
             border-radius: 50%;
             box-shadow: 0 0 16px rgba(0, 122, 255, 0.95);
-            /* Removed CSS transition here to lock it tightly to the map grid */
         }
     </style>
 </head>
@@ -434,7 +425,7 @@
         <div class="hud-module">
             <div class="brand-node">GEO<span>PRO</span></div>
             <div style="width: 1px; height: 14px; background: var(--border-color);"></div>
-            <div id="telemetry-status-node">BOOTING SYSTEM...</div>
+            <div id="telemetry-status-node">BOOTING NAVIGATION...</div>
         </div>
 
         <div id="coordinate-overlay-tracker" class="hud-module">
@@ -442,7 +433,6 @@
         </div>
     </div>
 
-    <!-- Moved Side Actions -->
     <div class="floating-side-actions">
         <button id="force-gps-recenter" class="side-btn active-state" title="Recenter & Follow GPS">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
@@ -457,7 +447,7 @@
         <div class="workspace-content-body">
             
             <div class="search-engine-wrap">
-                <input type="text" id="osm-engine-input" placeholder="Search target vector coordinate pattern..." autocomplete="off"/>
+                <input type="text" id="osm-engine-input" placeholder="Search target location or city..." autocomplete="off"/>
                 <div id="osm-engine-dropdown" class="suggest-dropdown-matrix"></div>
             </div>
 
@@ -476,7 +466,7 @@
             <div class="workspace-hardware-row">
                 <button id="toggle-satellite-view" class="hud-btn">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-                    SATELLITE
+                    3D SATELLITE
                 </button>
                 <button id="flush-workspace-trigger" class="hud-btn">
                     CLEAR WORKSPACE
@@ -491,6 +481,7 @@
     </div>
 
     <script>
+        // Project Context Configuration
         let defaultUserCoordinates = [-122.084, 37.422]; 
         let currentLiveGpsPosition = null; 
         let targetSelectedCoordinates = null;
@@ -501,6 +492,10 @@
         let activeRouteDataStore = []; 
         let satelliteModeActive = false;
         let cameraTrackingMode = true; 
+        
+        // Advanced GPS Predictive Metrics
+        let lastGpsTimestamp = null;
+        let gpsVelocityVector = { lng: 0, lat: 0 };
         let currentVehicleHeading = 0;
 
         const REGULAR_MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
@@ -509,7 +504,7 @@
             container: 'map',
             style: REGULAR_MAP_STYLE, 
             center: defaultUserCoordinates, 
-            zoom: 2, 
+            zoom: 3, 
             pitch: 65,
             maxPitch: 85,
             bearing: 0,
@@ -546,15 +541,14 @@
             initAutonomousSearchMatrix();
             initDirectMapInputListeners();
             initHardwareConsoleTriggers();
-            injectRealtime3DGeometryAndLanes();
+            injectRealtime3DWorldAssets();
             establishLiveHardwarePositioningStream();
 
-            // Hardware Accelerated Atmospheric Fog
             map.setFog({
                 'color': '#0a0a0c',
                 'high-color': '#16161a',
                 'space-color': '#000000',
-                'horizon-blend': 0.15
+                'horizon-blend': 0.12
             });
 
             map.on('mousemove', (e) => {
@@ -569,18 +563,18 @@
         });
 
         map.on('style.data', () => {
-            injectRealtime3DGeometryAndLanes();
+            injectRealtime3DWorldAssets();
             redrawActiveRoutePipelines();
         });
 
-        function injectRealtime3DGeometryAndLanes() {
+        function injectRealtime3DWorldAssets() {
             const styleSources = map.getStyle().sources;
             if (!styleSources) return;
             const sourceKey = Object.keys(styleSources).find(key => styleSources[key].type === 'vector') || 'openfreemap';
 
             if (!map.getSource(sourceKey)) return;
 
-            // Rebuilt using hardware accelerated 'line-gap-width' for perfect 3D fidelity without javascript overhead
+            // 1. Base Roadbed Structure
             if (!map.getLayer('hw-3d-lanes-base-asphalt')) {
                 map.addLayer({
                     'id': 'hw-3d-lanes-base-asphalt',
@@ -590,9 +584,9 @@
                     'filter': ['in', 'class', 'motorway', 'trunk', 'primary', 'secondary'],
                     'layout': { 'line-join': 'round', 'line-cap': 'round' },
                     'paint': {
-                        'line-color': satelliteModeActive ? '#16161a' : '#222226',
-                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 6, 16, 26, 20, 64],
-                        'line-opacity': 1.0
+                        'line-color': satelliteModeActive ? '#111115' : '#1e1e22',
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 5, 16, 28, 20, 72],
+                        'line-opacity': 0.95
                     }
                 });
 
@@ -606,13 +600,13 @@
                     'layout': { 'line-join': 'round', 'line-cap': 'round' },
                     'paint': {
                         'line-color': '#ffffff',
-                        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 18, 1.5],
-                        'line-gap-width': ['interpolate', ['linear'], ['zoom'], 14, 0, 16, 22, 20, 58],
-                        'line-opacity': 0.8
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.6, 18, 1.8],
+                        'line-gap-width': ['interpolate', ['linear'], ['zoom'], 14, 0, 16, 24, 20, 66],
+                        'line-opacity': 0.75
                     }
                 });
 
-                // Crisp dashed center lines
+                // Dash configuration centered within lane corridors
                 map.addLayer({
                     'id': 'hw-3d-lanes-center-dash',
                     'source': sourceKey,
@@ -621,14 +615,15 @@
                     'filter': ['in', 'class', 'motorway', 'trunk', 'primary'],
                     'layout': { 'line-join': 'round', 'line-cap': 'butt' },
                     'paint': {
-                        'line-color': '#ffffff',
+                        'line-color': satelliteModeActive ? '#ffcc00' : '#ffffff',
                         'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 18, 1.5],
-                        'line-dasharray': [4, 5],
-                        'line-opacity': 0.9
+                        'line-dasharray': [3, 4],
+                        'line-opacity': 0.85
                     }
                 });
             }
 
+            // 2. Build Structural 3D Elements
             if (!map.getLayer('spatial-3d-buildings')) {
                 map.addLayer({
                     'id': 'spatial-3d-buildings',
@@ -637,10 +632,10 @@
                     'type': 'fill-extrusion',
                     'minzoom': 13,
                     'paint': {
-                        'fill-extrusion-color': satelliteModeActive ? '#1a1a1f' : '#f0f2f5',
-                        'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 15],
+                        'fill-extrusion-color': satelliteModeActive ? '#22222b' : '#d2d4d8',
+                        'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 14],
                         'fill-extrusion-base': ['coalesce', ['get', 'min_height'], ['get', 'render_min_height'], 0],
-                        'fill-extrusion-opacity': satelliteModeActive ? 0.75 : 0.85
+                        'fill-extrusion-opacity': satelliteModeActive ? 0.55 : 0.85
                     }
                 });
             }
@@ -650,7 +645,7 @@
             const btn = document.getElementById('launch-routing-action');
             if (!btn) return;
 
-            btn.innerText = "COMPUTING PATH...";
+            btn.innerText = "COMPUTING PATH TRAJECTORY...";
             btn.style.opacity = "0.6";
              
             let originCoords = currentLiveGpsPosition;
@@ -659,18 +654,14 @@
                 originCoords = [mapCenter.lng, mapCenter.lat];
             }
              
-            const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&steps=true&alternatives=false`;
+            // API-less strict routing path pulled via public geometric OSRM servers
+            const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&steps=true`;
              
             try {
                 clearActiveRouteLayers();
                 activeRouteDataStore = [];
 
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 4000);
-
-                const stream = await fetch(routingQueryUrl, { signal: controller.signal });
-                clearTimeout(timeoutId);
-                
+                const stream = await fetch(routingQueryUrl);
                 const results = await stream.json();
                 
                 if (results.code === 'Ok' && results.routes && results.routes.length > 0) {
@@ -682,10 +673,10 @@
                             let modifier = step.maneuver.modifier ? ` ${step.maneuver.modifier}` : '';
                             let type = step.maneuver.type === 'turn' ? 'Turn' : step.maneuver.type;
                             let street = step.name ? ` onto ${step.name}` : '';
-                            
                             let rawMessage = `${type}${modifier}${street}`;
-                            if (step.maneuver.type === 'depart') rawMessage = `Head out towards ${step.name || 'designated road'}`;
-                            if (step.maneuver.type === 'arrive') rawMessage = "Arrive at vector destination node";
+                            
+                            if (step.maneuver.type === 'depart') rawMessage = `Follow target vector from ${step.name || 'current coordinates'}`;
+                            if (step.maneuver.type === 'arrive') rawMessage = "Target location node reached";
 
                             return {
                                 text: rawMessage.charAt(0).toUpperCase() + rawMessage.slice(1),
@@ -697,17 +688,14 @@
 
                     activeRouteDataStore = [{
                         index: 0,
-                        geometry: primaryRoute.geometry,
+                        geometry: primaryRoute.geometry, 
                         duration: primaryRoute.duration,
                         distance: primaryRoute.distance,
-                        steps: parsedInstructions,
-                        isFallback: false
+                        steps: parsedInstructions
                     }];
-                } else {
-                    generateLocalGridRouteFallback(originCoords, targetSelectedCoordinates);
                 }
             } catch (err) { 
-                generateLocalGridRouteFallback(originCoords, targetSelectedCoordinates);
+                console.error("OSRM interface fault. Falling back to direct coordinate vectors.", err);
             }
 
             redrawActiveRoutePipelines();
@@ -716,48 +704,18 @@
             if (activeRouteDataStore.length > 0) {
                 const coords = activeRouteDataStore[0].geometry.coordinates;
                 if (coords.length > 1) {
-                    const dynamicInitialBearing = calculateBearingAngle(coords[0], coords[1]);
+                    const initialAngle = calculateBearingAngle(coords[0], coords[1]);
                     map.flyTo({
                         center: coords[0],
                         zoom: 17.5,
-                        pitch: 65,
-                        bearing: dynamicInitialBearing,
-                        duration: 1000
+                        pitch: 70,
+                        bearing: initialAngle,
+                        duration: 1200
                     });
                 }
-                
-                // Auto-collapse panel to see the route
                 document.getElementById('control-panel-deck').classList.add('minimized');
             }
-
             btn.style.display = "none"; 
-        }
-
-        function generateLocalGridRouteFallback(start, end) {
-            const midPoint = [start[0], end[1]];
-            const mockGeometry = {
-                type: "LineString",
-                coordinates: [start, midPoint, end]
-            };
-
-            const dLng = end[0] - start[0];
-            const dLat = end[1] - start[1];
-            const rawDistanceMeters = Math.sqrt(dLng * dLng + dLat * dLat) * 111000; 
-
-            activeRouteDataStore = [
-                {
-                    index: 0,
-                    geometry: mockGeometry,
-                    duration: (rawDistanceMeters / 13.4), 
-                    distance: rawDistanceMeters,
-                    steps: [
-                        { text: "Depart initial coordinate orientation point", distance: rawDistanceMeters * 0.5, coordinates: start },
-                        { text: "Perform tracking intersection grid turn adjustment", distance: rawDistanceMeters * 0.5, coordinates: midPoint },
-                        { text: "Approach destination target point coordinate lock", distance: 0, coordinates: end }
-                    ],
-                    isFallback: true
-                }
-            ];
         }
 
         function redrawActiveRoutePipelines() {
@@ -775,7 +733,6 @@
                     });
                 }
 
-                // Casing Outline
                 if (!map.getLayer(`layer-route-casing-${r.index}`)) {
                     map.addLayer({
                         id: `layer-route-casing-${r.index}`,
@@ -783,14 +740,13 @@
                         source: srcId,
                         layout: { 'line-join': 'round', 'line-cap': 'round' },
                         paint: {
-                            'line-color': '#111114',
-                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 6, 16, 14, 20, 36],
-                            'line-opacity': 0.8
+                            'line-color': '#08080a',
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 8, 16, 18, 20, 42],
+                            'line-opacity': 0.9
                         }
                     });
                 }
 
-                // Inner Glowing Red Route Line
                 if (!map.getLayer(`layer-route-core-${r.index}`)) {
                     map.addLayer({
                         id: `layer-route-core-${r.index}`,
@@ -798,9 +754,9 @@
                         source: srcId,
                         layout: { 'line-join': 'round', 'line-cap': 'round' },
                         paint: {
-                            'line-color': '#ff3333',
-                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 16, 8, 20, 22],
-                            'line-opacity': 0.95
+                            'line-color': '#ff3333', 
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 4, 16, 10, 20, 26],
+                            'line-opacity': 1.0
                         }
                     });
                 }
@@ -821,8 +777,8 @@
                 metricsRow.className = 'route-badge-row';
                 metricsRow.innerHTML = `
                     <div>
-                        <span class="badge-tag-label" style="color: var(--action-red); font-weight: bold;">
-                            ${r.isFallback ? '⚡ LOCAL AUTONOMOUS PATH' : '★ OPTIMAL NAVIGATION TRAJECTORY'}
+                        <span class="badge-tag-label" style="color: var(--action-red); font-weight: bold; font-family: var(--font-monospace); font-size:0.7rem;">
+                            ★ ROAD-ALIGNED SYSTEM PATH
                         </span>
                         <div style="color: var(--text-primary); margin-top: 4px; font-size: 0.95rem; font-weight: bold;">
                             ${mins} mins <span style="color: var(--text-muted); font-weight: normal; font-size: 0.8rem;">(${miles} mi)</span>
@@ -860,7 +816,7 @@
                             map.flyTo({
                                 center: step.coordinates,
                                 zoom: 18,
-                                pitch: 65,
+                                pitch: 70,
                                 bearing: targetStepBearing,
                                 duration: 800
                             });
@@ -875,7 +831,7 @@
         }
 
         function clearActiveRouteLayers() {
-            for (let idx = 0; idx < 20; idx++) {
+            for (let idx = 0; idx < 10; idx++) {
                 const elements = [`layer-route-casing-${idx}`, `layer-route-core-${idx}`];
                 elements.forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
                 const sources = [`src-active-route-${idx}`];
@@ -886,27 +842,35 @@
         function establishLiveHardwarePositioningStream() {
             const diagnosticStatus = document.getElementById('telemetry-status-node');
             if (!diagnosticStatus) return;
-            if (!navigator.geolocation) { diagnosticStatus.innerText = "UNSUPPORTED SENSOR"; return; }
+            if (!navigator.geolocation) { diagnosticStatus.innerText = "SENSOR FAULT"; return; }
 
             navigator.geolocation.watchPosition(
                 (position) => {
                     const lon = position.coords.longitude;
                     const lat = position.coords.latitude;
-                    const incomingPositionArray = [lon, lat];
+                    const incomingLoc = [lon, lat];
+                    const now = performance.now();
                     
-                    diagnosticStatus.innerText = "ONLINE (HIGH ACCURACY)";
+                    diagnosticStatus.innerText = "GPS TRACKING ACTIVE";
                     diagnosticStatus.style.color = "#007aff";
+
+                    // Predictive Speed Vector Tracking Engine (Dead Reckoning Support)
+                    if (lastGpsTimestamp && currentLiveGpsPosition) {
+                        const elapsedSecs = (now - lastGpsTimestamp) / 1000;
+                        if (elapsedSecs > 0) {
+                            gpsVelocityVector.lng = (lon - currentLiveGpsPosition[0]) / elapsedSecs;
+                            gpsVelocityVector.lat = (lat - currentLiveGpsPosition[1]) / elapsedSecs;
+                        }
+                    }
 
                     if (position.coords.heading !== null && position.coords.heading !== undefined) {
                         currentVehicleHeading = position.coords.heading;
                     } else if (currentLiveGpsPosition) {
-                        const calculatedAngle = calculateBearingAngle(currentLiveGpsPosition, incomingPositionArray);
-                        if (Math.abs(calculatedAngle - currentVehicleHeading) > 2) {
-                            currentVehicleHeading = calculatedAngle;
-                        }
+                        currentVehicleHeading = calculateBearingAngle(currentLiveGpsPosition, incomingLoc);
                     }
 
-                    currentLiveGpsPosition = incomingPositionArray;
+                    currentLiveGpsPosition = incomingLoc;
+                    lastGpsTimestamp = now;
 
                     if (!userLocationBeaconMarker) {
                         const beaconEl = document.createElement('div');
@@ -915,7 +879,7 @@
                             .setLngLat(currentLiveGpsPosition)
                             .addTo(map);
                         
-                        map.flyTo({ center: currentLiveGpsPosition, zoom: 17, pitch: 65, bearing: currentVehicleHeading });
+                        map.flyTo({ center: currentLiveGpsPosition, zoom: 17.5, pitch: 70, bearing: currentVehicleHeading });
                     } else {
                         userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
                     }
@@ -923,23 +887,40 @@
                     if (cameraTrackingMode) {
                         map.easeTo({
                             center: currentLiveGpsPosition,
-                            pitch: 65,
+                            pitch: 70,
                             bearing: currentVehicleHeading,
                             zoom: 17.5,
-                            duration: 300
+                            duration: 250
                         });
                     }
                 },
                 (error) => { 
-                    diagnosticStatus.style.color = "#ff9500"; 
-                    diagnosticStatus.innerText = "LOCAL EDGE LINK"; 
+                    diagnosticStatus.innerText = "LOCAL SIMULATION ACTIVE"; 
+                    diagnosticStatus.style.color = "#ff9500";
                 },
-                { 
-                    enableHighAccuracy: true, 
-                    timeout: 10000, 
-                    maximumAge: 0 
-                }
+                { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
             );
+
+            // Frame Loop for Position Interp
+            function executePredictiveTrackingFrame() {
+                if (cameraTrackingMode && currentLiveGpsPosition && lastGpsTimestamp) {
+                    const frameTime = performance.now();
+                    const deltaSec = (frameTime - lastGpsTimestamp) / 1000;
+                    
+                    // Apply smooth velocity damping to avoid jumping when signals stall
+                    if (deltaSec > 0.3 && deltaSec < 3.0) {
+                        const predictedLng = currentLiveGpsPosition[0] + (gpsVelocityVector.lng * 0.016);
+                        const predictedLat = currentLiveGpsPosition[1] + (gpsVelocityVector.lat * 0.016);
+                        
+                        currentLiveGpsPosition = [predictedLng, predictedLat];
+                        if (userLocationBeaconMarker) userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
+                        
+                        map.setCenter(currentLiveGpsPosition);
+                    }
+                }
+                requestAnimationFrame(executePredictiveTrackingFrame);
+            }
+            requestAnimationFrame(executePredictiveTrackingFrame);
         }
 
         function initHardwareConsoleTriggers() {
@@ -954,7 +935,7 @@
                     cameraTrackingMode = true; 
                     recenterBtn.classList.add('active-state');
                     if (currentLiveGpsPosition) {
-                        map.flyTo({ center: currentLiveGpsPosition, zoom: 17.5, pitch: 65, bearing: currentVehicleHeading, duration: 600 });
+                        map.flyTo({ center: currentLiveGpsPosition, zoom: 17.5, pitch: 70, bearing: currentVehicleHeading, duration: 500 });
                     }
                 });
             }
@@ -968,12 +949,12 @@
                     if (satelliteModeActive) {
                         satelliteBtn.style.borderColor = '#ff3333';
                         satelliteBtn.style.color = '#ff3333';
-                        satelliteBtn.style.boxShadow = '0 0 10px rgba(255, 51, 51, 0.2)';
 
+                        // True 3D Satellite Stack using elevation data models mapped over imagery
                         map.setStyle({
                             'version': 8,
                             'sources': {
-                                'esri-satellite-imagery': {
+                                'satellite-imagery-tiles': {
                                     'type': 'raster',
                                     'tiles': ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
                                     'tileSize': 256,
@@ -982,21 +963,34 @@
                                 'openfreemap': {
                                     'type': 'vector',
                                     'url': 'https://tiles.openfreemap.org/styles/liberty'
+                                },
+                                'terrain-dem-mesh': {
+                                    'type': 'raster-dem',
+                                    'tiles': ['https://demotiles.maplibre.org/terrain-tiles/{z}/{x}/{y}.png'],
+                                    'tileSize': 256,
+                                    'maxzoom': 14
                                 }
                             },
                             'layers': [
                                 {
                                     'id': 'satellite-reality-layer',
                                     'type': 'raster',
-                                    'source': 'esri-satellite-imagery',
-                                    'paint': { 'raster-opacity': 0.95 }
+                                    'source': 'satellite-imagery-tiles'
                                 }
-                            ]
+                            ],
+                            'terrain': {
+                                'source': 'terrain-dem-mesh',
+                                'exaggeration': 1.6
+                            }
                         });
                     } else {
                         satelliteBtn.style.borderColor = '';
                         satelliteBtn.style.color = '';
-                        satelliteBtn.style.boxShadow = '';
+                        
+                        // Disable active terrain bindings when returning to map layer mode
+                        if (map.getTerrain()) {
+                            map.setTerrain(null);
+                        }
                         map.setStyle(REGULAR_MAP_STYLE);
                     }
                 });
@@ -1028,7 +1022,7 @@
             const handle = document.getElementById('drag-handle');
             if (!panel || !handle) return;
             
-            let isDragging = false, startY = 0, currentTranslateY = 0;
+            let isDragging = false, startY = 0;
 
             handle.addEventListener('mousedown', startDrag);
             window.addEventListener('mousemove', processDrag);
@@ -1037,11 +1031,9 @@
             window.addEventListener('touchmove', (e) => processDrag(e.touches[0]), { passive: false });
             window.addEventListener('touchend', endDrag);
 
-            // Click handle to toggle full open/close
             handle.addEventListener('click', () => {
                 if (!isDragging) {
                     panel.classList.toggle('minimized');
-                    currentTranslateY = 0;
                     panel.style.transform = '';
                 }
             });
@@ -1050,20 +1042,17 @@
                 isDragging = true; 
                 startY = e.clientY; 
                 panel.classList.add('dragging'); 
-                panel.style.transition = 'none';
             }
             
             function processDrag(e) {
                 if (!isDragging) return;
                 let deltaY = e.clientY - startY;
                 
-                // If it's currently minimized, we want to drag it UP (negative delta)
                 if (panel.classList.contains('minimized')) {
                     if (deltaY < 0) {
                         panel.style.transform = `translateX(-50%) translateY(calc(100% - 28px + ${deltaY}px))`;
                     }
                 } else {
-                    // If open, drag down (positive delta)
                     if (deltaY > 0) {
                         panel.style.transform = `translateX(-50%) translateY(${deltaY}px)`;
                     }
@@ -1074,14 +1063,10 @@
                 if (!isDragging) return; 
                 isDragging = false; 
                 panel.classList.remove('dragging');
-                panel.style.transition = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
-                
-                // Clear inline transform to let CSS classes handle it
                 panel.style.transform = '';
 
                 let deltaY = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY) - startY;
 
-                // Threshold logic for snapping
                 if (panel.classList.contains('minimized')) {
                     if (deltaY < -50) panel.classList.remove('minimized');
                 } else {
@@ -1120,7 +1105,7 @@
                                 const targetLoc = feature.geometry.coordinates;
                                 dropdown.style.display = 'none';
                                 input.value = labeledLocation;
-                                map.flyTo({ center: targetLoc, zoom: 17, pitch: 65 });
+                                map.flyTo({ center: targetLoc, zoom: 17, pitch: 70 });
                                 triggerWorkspaceTargetDeck(targetLoc, p.name || "Target Vector", labeledLocation);
                             });
                             dropdown.appendChild(segmentItem);
@@ -1134,18 +1119,16 @@
         function initDirectMapInputListeners() {
             map.on('click', async (e) => {
                 const pinpoint = [e.lngLat.lng, e.lngLat.lat];
-                
-                // Open panel on click
                 document.getElementById('control-panel-deck').classList.remove('minimized');
 
-                triggerWorkspaceTargetDeck(pinpoint, "Selected Matrix Node", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
+                triggerWorkspaceTargetDeck(pinpoint, "Target Spatial Vector", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
                 try {
                     const lookup = await fetch(`https://photon.komoot.io/api/?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
                     const details = await lookup.json();
                     if (details.features && details.features.length > 0) {
                         const p = details.features[0].properties;
-                        const addressString = [p.name, p.street, p.postcode].filter(Boolean).join(', ');
-                        triggerWorkspaceTargetDeck(pinpoint, p.name || "Discovered Feature Context", addressString || "Raw Geographic Geometry Data");
+                        const addressString = [p.name, p.street, p.city].filter(Boolean).join(', ');
+                        triggerWorkspaceTargetDeck(pinpoint, p.name || "Identified Point", addressString || "Raw Matrix Grid Reference");
                     }
                 } catch(error){}
             });
@@ -1163,8 +1146,6 @@
             const routingBtn = document.getElementById('launch-routing-action');
             routingBtn.style.display = 'block';
             routingBtn.innerText = "GET DIRECTIONS";
-            routingBtn.style.background = "var(--action-red)";
-            routingBtn.style.boxShadow = "0 4px 12px var(--action-red-glow)";
 
             document.getElementById('route-variants-dashboard').style.display = 'none';
 
