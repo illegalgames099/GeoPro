@@ -147,6 +147,8 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
+            max-height: 75vh;
+            overflow-y: auto;
         }
 
         .search-engine-wrap {
@@ -252,15 +254,67 @@
 
         .route-badge-row {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 4px;
             padding: 8px;
             background: rgba(255,255,255,0.02);
             border-radius: 6px;
             font-size: 0.78rem;
         }
 
-        /* Traffic Matrix Dashboard Controls */
+        /* Directions List Styles */
+        .directions-manifest {
+            margin-top: 10px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .direction-step {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 6px 4px;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+
+        .direction-step:last-child {
+            border-bottom: none;
+        }
+
+        .step-index {
+            background: var(--border-color);
+            color: var(--text-muted);
+            font-family: var(--font-monospace);
+            font-size: 0.7rem;
+            min-width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            flex-grow: 1;
+            line-height: 1.3;
+        }
+
+        .step-distance {
+            color: var(--text-muted);
+            font-family: var(--font-monospace);
+            font-size: 0.72rem;
+            flex-shrink: 0;
+        }
+
         .traffic-matrix-control {
             display: flex;
             justify-content: space-between;
@@ -336,7 +390,6 @@
             border: 3px solid #ffffff;
             border-radius: 50%;
             box-shadow: 0 0 14px rgba(0, 122, 255, 0.8);
-            transition: transform 0.1s linear;
         }
     </style>
 </head>
@@ -346,61 +399,60 @@
 
     <div class="hud-system-header">
         <div class="hud-module">
-            <div class="brand-node">GEO<span>PRO</span></div>[cite: 1]
-            <div style="width: 1px; height: 14px; background: var(--border-color);"></div>[cite: 1]
-            <div id="telemetry-status-node">BOOTING SYSTEM...</div>[cite: 1]
+            <div class="brand-node">GEO<span>PRO</span></div>
+            <div style="width: 1px; height: 14px; background: var(--border-color);"></div>
+            <div id="telemetry-status-node">BOOTING SYSTEM...</div>
         </div>
 
-        <div id="coordinate-overlay-tracker" class="hud-module">[cite: 1]
+        <div id="coordinate-overlay-tracker" class="hud-module">
             X: --.----- | Y: --.-----
         </div>
     </div>
 
-    <div id="control-panel-deck">[cite: 1]
-        <div id="drag-handle"></div>[cite: 1]
-        <div class="workspace-content-body">[cite: 1]
+    <div id="control-panel-deck">
+        <div id="drag-handle"></div>
+        <div class="workspace-content-body">
             
-            <div class="search-engine-wrap">[cite: 1]
-                <input type="text" id="osm-engine-input" placeholder="Search target vector coordinate pattern..." autocomplete="off"/>[cite: 1]
-                <div id="osm-engine-dropdown" class="suggest-dropdown-matrix"></div>[cite: 1]
+            <div class="search-engine-wrap">
+                <input type="text" id="osm-engine-input" placeholder="Search target vector coordinate pattern..." autocomplete="off"/>
+                <div id="osm-engine-dropdown" class="suggest-dropdown-matrix"></div>
             </div>
 
-            <div id="context-destination-panel">[cite: 1]
-                <svg class="meta-vector-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">[cite: 1]
-                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ff3333"/>[cite: 1]
+            <div id="context-destination-panel">
+                <svg class="meta-vector-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ff3333"/>
                 </svg>
-                <div class="meta-vector-info-stack">[cite: 1]
-                    <div id="node-panel-title">Selected Matrix Node</div>[cite: 1]
-                    <div id="node-panel-address">Tracking calculations offline...</div>[cite: 1]
+                <div class="meta-vector-info-stack">
+                    <div id="node-panel-title">Selected Matrix Node</div>
+                    <div id="node-panel-address">Tracking calculations offline...</div>
                 </div>
             </div>
 
-            <!-- Dynamic Traffic Modifier Matrix Input -->
             <div class="traffic-matrix-control">
                 <label>3D Traffic Congestion</label>
                 <input type="range" id="traffic-matrix-density" min="1" max="3" value="2" step="1">
             </div>
 
-            <div id="route-variants-dashboard"></div>[cite: 1]
+            <div id="route-variants-dashboard"></div>
 
-            <div class="workspace-hardware-row">[cite: 1]
-                <button id="toggle-satellite-view" class="hud-btn">[cite: 1]
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>[cite: 1]
+            <div class="workspace-hardware-row">
+                <button id="toggle-satellite-view" class="hud-btn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
                     SATELLITE
                 </button>
-                <button id="compass-orientation-lock" class="hud-btn">[cite: 1]
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>[cite: 1]
+                <button id="compass-orientation-lock" class="hud-btn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
                     NORTH
                 </button>
-                <button id="force-gps-recenter" class="hud-btn">[cite: 1]
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>[cite: 1]
+                <button id="force-gps-recenter" class="hud-btn">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
                     RECENTER
                 </button>
 
-                <button id="launch-routing-action" class="hud-btn" style="display:none;">[cite: 1]
-                    CALCULATE VECTOR ROUTE
+                <button id="launch-routing-action" class="hud-btn" style="display:none;">
+                    GET DIRECTIONS
                 </button>
-                <button id="flush-workspace-trigger" class="hud-btn" style="grid-column: span 3; background: transparent; border-color: rgba(255,255,255,0.05); color: var(--text-muted);">[cite: 1]
+                <button id="flush-workspace-trigger" class="hud-btn" style="grid-column: span 3; background: transparent; border-color: rgba(255,255,255,0.05); color: var(--text-muted);">
                     CLEAR ACTIVE WORKSPACE
                 </button>
             </div>
@@ -409,28 +461,23 @@
     </div>
 
     <script>
-        let defaultUserCoordinates = [-122.084, 37.422]; [cite: 1]
-        let currentLiveGpsPosition = null; [cite: 1]
-        let targetSelectedCoordinates = null;[cite: 1]
-        let querySearchDebounceTimer = null;[cite: 1]
+        let defaultUserCoordinates = [-122.084, 37.422]; 
+        let currentLiveGpsPosition = null; 
+        let targetSelectedCoordinates = null;
+        let querySearchDebounceTimer = null;
          
-        let activeMapMarker = null; [cite: 1]
-        let userLocationBeaconMarker = null;[cite: 1]
-        let activeRouteDataStore = []; [cite: 1]
-        let satelliteModeActive = false;[cite: 1]
+        let activeMapMarker = null; 
+        let userLocationBeaconMarker = null;
+        let activeRouteDataStore = []; 
+        let satelliteModeActive = false;
+        let cameraTrackingMode = true; 
 
-        let isNavigating = false;[cite: 1]
-        let navigationAnimationId = null;[cite: 1]
-        let currentRouteStepIndex = 0;[cite: 1]
-        let cameraTrackingMode = true; [cite: 1]
-
-        // 3D Lane & Traffic Animation Engine State Variables
-        let trafficFlowDensity = 2; // 1 = Low, 2 = Moderate, 3 = Heavy Gridlock
+        let trafficFlowDensity = 2; 
         let laneAnimationTicker = 0;
         let trafficEngineLoopId = null;
         let activeTrafficPointsGeoJSON = { type: 'FeatureCollection', features: [] };
 
-        const REGULAR_MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';[cite: 1]
+        const REGULAR_MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
         const map = new maplibregl.Map({
             container: 'map',
@@ -440,37 +487,21 @@
             pitch: 50, 
             bearing: 0,
             antialias: true
-        });[cite: 1]
+        });
 
         function createCustomMarkerElement() {
-            const el = document.createElement('div');[cite: 1]
-            el.className = 'custom-spatial-marker';[cite: 1]
+            const el = document.createElement('div');
+            el.className = 'custom-spatial-marker';
             el.innerHTML = `
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="12" cy="12" r="8" fill="#ff3333" fill-opacity="0.3"/>
                     <circle cx="12" cy="12" r="4" fill="#ff3333"/>
                     <circle cx="12" cy="12" r="3.5" stroke="#ffffff" stroke-width="1"/>
                 </svg>
-            `;[cite: 1]
-            return el;[cite: 1]
+            `;
+            return el;
         }
 
-        function computeBearingAngle(start, end) {
-            const radiansToDegrees = 180 / Math.PI;[cite: 1]
-            const lat1 = start[1] * Math.PI / 180;[cite: 1]
-            const lat2 = end[1] * Math.PI / 180;[cite: 1]
-            const dLon = (end[0] - start[0]) * Math.PI / 180;[cite: 1]
-            
-            const y = Math.sin(dLon) * Math.cos(lat2);[cite: 1]
-            const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);[cite: 1]
-            
-            return (Math.atan2(y, x) * radiansToDegrees + 360) % 360;[cite: 1]
-        }
-
-        /**
-         * Mathematical Coordinate Offset Engine
-         * Creates explicit secondary tracking coordinate pairs running parallel to basic lines
-         */
         function calculateParallelOffsetLane(coordinates, offsetMeters) {
             const offsetDegreeFactor = offsetMeters / 111320; 
             const resultantPoints = [];
@@ -492,7 +523,6 @@
                     continue;
                 }
 
-                // Compute normal perpendicular line vectors
                 const nx = -dy / segmentLength;
                 const ny = dx / segmentLength;
 
@@ -505,14 +535,13 @@
         }
 
         map.on('load', () => {
-            initTacticalPanelDraggingPhysics();[cite: 1]
-            initAutonomousSearchMatrix();[cite: 1]
-            initDirectMapInputListeners();[cite: 1]
-            initHardwareConsoleTriggers();[cite: 1]
-            injectRealtime3DGeometryAndLanes();[cite: 1]
-            establishLiveHardwarePositioningStream();[cite: 1]
+            initTacticalPanelDraggingPhysics();
+            initAutonomousSearchMatrix();
+            initDirectMapInputListeners();
+            initHardwareConsoleTriggers();
+            injectRealtime3DGeometryAndLanes();
+            establishLiveHardwarePositioningStream();
 
-            // Monitor Density Matrix Inputs
             document.getElementById('traffic-matrix-density').addEventListener('input', (e) => {
                 trafficFlowDensity = parseInt(e.target.value);
                 if (activeRouteDataStore.length > 0) {
@@ -521,240 +550,175 @@
             });
 
             map.on('mousemove', (e) => {
-                const overlay = document.getElementById('coordinate-overlay-tracker');[cite: 1]
-                if (overlay) {[cite: 1]
-                    overlay.innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;[cite: 1]
+                const overlay = document.getElementById('coordinate-overlay-tracker');
+                if (overlay) {
+                    overlay.innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
                 }
-            });[cite: 1]
+            });
 
             map.on('dragstart', () => {
-                if (!isNavigating) cameraTrackingMode = false;[cite: 1]
-            });[cite: 1]
+                cameraTrackingMode = false;
+            });
         });
 
         map.on('style.data', () => {
-            injectRealtime3DGeometryAndLanes();[cite: 1]
-            redrawActiveRoutePipelines();[cite: 1]
+            injectRealtime3DGeometryAndLanes();
+            redrawActiveRoutePipelines();
         });
 
         function injectRealtime3DGeometryAndLanes() {
-            const styleSources = map.getStyle().sources;[cite: 1]
-            if (!styleSources) return;[cite: 1]
-            const sourceKey = Object.keys(styleSources).find(key => styleSources[key].type === 'vector') || 'openfreemap';[cite: 1]
+            const styleSources = map.getStyle().sources;
+            if (!styleSources) return;
+            const sourceKey = Object.keys(styleSources).find(key => styleSources[key].type === 'vector') || 'openfreemap';
 
-            if (!map.getSource(sourceKey)) return;[cite: 1]
+            if (!map.getSource(sourceKey)) return;
 
-            if (!map.getLayer('spatial-3d-lanes')) {[cite: 1]
-                map.addLayer({[cite: 1]
-                    'id': 'spatial-3d-lanes',[cite: 1]
-                    'source': sourceKey,[cite: 1]
-                    'source-layer': 'transportation',[cite: 1]
-                    'type': 'line',[cite: 1]
-                    'filter': ['==', '$geometryType', 'LineString'],[cite: 1]
-                    'layout': {[cite: 1]
-                        'line-join': 'round',[cite: 1]
-                        'line-cap': 'round'[cite: 1]
-                    },[cite: 1]
-                    'paint': {[cite: 1]
-                        'line-color': satelliteModeActive ? '#ff2a2a' : '#ee3333',[cite: 1]
-                        'line-width': [[cite: 1]
-                            'interpolate', ['linear'], ['zoom'],[cite: 1]
-                            12, 1,[cite: 1]
-                            15, 3,[cite: 1]
-                            18, 12[cite: 1]
-                        ],[cite: 1]
-                        'line-opacity': satelliteModeActive ? 0.65 : 0.15[cite: 1]
-                    }[cite: 1]
-                });[cite: 1]
-            }[cite: 1]
+            if (!map.getLayer('spatial-3d-lanes')) {
+                map.addLayer({
+                    'id': 'spatial-3d-lanes',
+                    'source': sourceKey,
+                    'source-layer': 'transportation',
+                    'type': 'line',
+                    'filter': ['==', '$geometryType', 'LineString'],
+                    'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                    'paint': {
+                        'line-color': satelliteModeActive ? '#ff2a2a' : '#ee3333',
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 1, 15, 3, 18, 12],
+                        'line-opacity': satelliteModeActive ? 0.65 : 0.15
+                    }
+                });
+            }
 
-            if (!map.getLayer('spatial-3d-buildings')) {[cite: 1]
-                map.addLayer({[cite: 1]
-                    'id': 'spatial-3d-buildings',[cite: 1]
-                    'source': sourceKey,[cite: 1]
-                    'source-layer': 'building',[cite: 1]
-                    'type': 'fill-extrusion',[cite: 1]
-                    'minzoom': 13,[cite: 1]
-                    'paint': {[cite: 1]
-                        'fill-extrusion-color': satelliteModeActive ? '#1a1a1f' : '#cbd2db',[cite: 1]
-                        'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 15],[cite: 1]
-                        'fill-extrusion-base': ['coalesce', ['get', 'min_height'], ['get', 'render_min_height'], 0],[cite: 1]
-                        'fill-extrusion-opacity': satelliteModeActive ? 0.80 : 0.45[cite: 1]
-                    }[cite: 1]
-                });[cite: 1]
-            }[cite: 1]
+            if (!map.getLayer('spatial-3d-buildings')) {
+                map.addLayer({
+                    'id': 'spatial-3d-buildings',
+                    'source': sourceKey,
+                    'source-layer': 'building',
+                    'type': 'fill-extrusion',
+                    'minzoom': 13,.
+                    'paint': {
+                        'fill-extrusion-color': satelliteModeActive ? '#1a1a1f' : '#cbd2db',
+                        'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 15],
+                        'fill-extrusion-base': ['coalesce', ['get', 'min_height'], ['get', 'render_min_height'], 0],
+                        'fill-extrusion-opacity': satelliteModeActive ? 0.80 : 0.45
+                    }
+                });
+            }
         }
 
         async function handleRoutingButtonClick() {
-            const btn = document.getElementById('launch-routing-action');[cite: 1]
-            if (!btn) return;[cite: 1]
+            const btn = document.getElementById('launch-routing-action');
+            if (!btn) return;
 
-            if (activeRouteDataStore.length > 0 && !isNavigating) {[cite: 1]
-                startRouteSimulation();[cite: 1]
-                return;[cite: 1]
-            }[cite: 1]
-
-            if (isNavigating) {[cite: 1]
-                stopRouteSimulation();[cite: 1]
-                return;[cite: 1]
-            }[cite: 1]
-
-            btn.innerText = "COMPUTING...";[cite: 1]
-            btn.style.opacity = "0.6";[cite: 1]
+            btn.innerText = "COMPUTING PATH...";
+            btn.style.opacity = "0.6";
              
-            let originCoords = currentLiveGpsPosition;[cite: 1]
-            if (!originCoords) {[cite: 1]
-                const mapCenter = map.getCenter();[cite: 1]
-                originCoords = [mapCenter.lng, mapCenter.lat];[cite: 1]
-            }[cite: 1]
+            let originCoords = currentLiveGpsPosition;
+            if (!originCoords) {
+                const mapCenter = map.getCenter();
+                originCoords = [mapCenter.lng, mapCenter.lat];
+            }
              
-            const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&alternatives=true`;[cite: 1]
+            // Request steps explicitly from OSRM to isolate concrete maneuvers
+            const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&steps=true&alternatives=false`;
              
             try {
-                clearActiveRouteLayers();[cite: 1]
-                activeRouteDataStore = [];[cite: 1]
+                clearActiveRouteLayers();
+                activeRouteDataStore = [];
 
-                const controller = new AbortController();[cite: 1]
-                const timeoutId = setTimeout(() => controller.abort(), 3500);[cite: 1]
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-                const stream = await fetch(routingQueryUrl, { signal: controller.signal });[cite: 1]
-                clearTimeout(timeoutId);[cite: 1]
+                const stream = await fetch(routingQueryUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
                 
-                const results = await stream.json();[cite: 1]
+                const results = await stream.json();
                 
-                if (results.code === 'Ok' && results.routes && results.routes.length > 0) {[cite: 1]
-                    activeRouteDataStore = results.routes.map((route, idx) => ({
-                        index: idx,[cite: 1]
-                        geometry: route.geometry,[cite: 1]
-                        duration: route.duration,[cite: 1]
-                        distance: route.distance,[cite: 1]
-                        isFallback: false[cite: 1]
-                    }));[cite: 1]
+                if (results.code === 'Ok' && results.routes && results.routes.length > 0) {
+                    const primaryRoute = results.routes[0];
+                    
+                    // Parse text instruction payloads from leg steps
+                    let parsedInstructions = [];
+                    if (primaryRoute.legs && primaryRoute.legs[0].steps) {
+                        parsedInstructions = primaryRoute.legs[0].steps.map(step => {
+                            let modifier = step.maneuver.modifier ? ` ${step.maneuver.modifier}` : '';
+                            let type = step.maneuver.type === 'turn' ? 'Turn' : step.maneuver.type;
+                            let street = step.name ? ` onto ${step.name}` : '';
+                            
+                            // Clean semantic fallback formatting for OSRM descriptions
+                            let rawMessage = `${type}${modifier}${street}`;
+                            if (step.maneuver.type === 'depart') rawMessage = `Head out towards ${step.name || 'designated road'}`;
+                            if (step.maneuver.type === 'arrive') rawMessage = "Arrive at vector destination node";
+
+                            return {
+                                text: rawMessage.charAt(0).toUpperCase() + rawMessage.slice(1),
+                                distance: step.distance
+                            };
+                        }).filter(item => item.text);
+                    }
+
+                    activeRouteDataStore = [{
+                        index: 0,
+                        geometry: primaryRoute.geometry,
+                        duration: primaryRoute.duration,
+                        distance: primaryRoute.distance,
+                        steps: parsedInstructions,
+                        isFallback: false
+                    }];
                 } else {
-                    generateLocalGridRouteFallback(originCoords, targetSelectedCoordinates);[cite: 1]
+                    generateLocalGridRouteFallback(originCoords, targetSelectedCoordinates);
                 }
             } catch (err) { 
-                generateLocalGridRouteFallback(originCoords, targetSelectedCoordinates);[cite: 1]
+                generateLocalGridRouteFallback(originCoords, targetSelectedCoordinates);
             }
 
-            redrawActiveRoutePipelines();[cite: 1]
-            renderRouteDashboardUI();[cite: 1]
+            redrawActiveRoutePipelines();
+            renderRouteDashboardUI();
             
-            btn.innerText = "START SIMULATION";[cite: 1]
-            btn.style.background = "#28a745"; [cite: 1]
-            btn.style.boxShadow = "0 6px 16px rgba(40, 167, 69, 0.4)";[cite: 1]
-            btn.style.opacity = "1.0";[cite: 1]
-        }
-
-        function startRouteSimulation() {
-            if (activeRouteDataStore.length === 0) return;[cite: 1]
-            
-            const routeCoordinates = activeRouteDataStore[0].geometry.coordinates;[cite: 1]
-            if (!routeCoordinates || routeCoordinates.length === 0) return;[cite: 1]
-
-            isNavigating = true;[cite: 1]
-            cameraTrackingMode = true;[cite: 1]
-            currentRouteStepIndex = 0;[cite: 1]
-            
-            const btn = document.getElementById('launch-routing-action');[cite: 1]
-            if (btn) {[cite: 1]
-                btn.innerText = "HALT SIMULATION";[cite: 1]
-                btn.style.background = "#dc3545"; [cite: 1]
-                btn.style.boxShadow = "0 6px 16px rgba(220, 53, 69, 0.4)";[cite: 1]
-            }[cite: 1]
-
-            const statusNode = document.getElementById('telemetry-status-node');[cite: 1]
-            if (statusNode) {[cite: 1]
-                statusNode.innerText = "NAVIGATING (SIM)";[cite: 1]
-                statusNode.style.color = "#28a745";[cite: 1]
-            }[cite: 1]
-
-            function frame() {
-                if (!isNavigating) return;[cite: 1]
-
-                if (currentRouteStepIndex < routeCoordinates.length) {[cite: 1]
-                    const currentPos = routeCoordinates[currentRouteStepIndex];[cite: 1]
-                    
-                    if (userLocationBeaconMarker) {[cite: 1]
-                        userLocationBeaconMarker.setLngLat(currentPos);[cite: 1]
-                    }[cite: 1]
-
-                    let targetBearing = map.getBearing();[cite: 1]
-                    if (currentRouteStepIndex < routeCoordinates.length - 1) {[cite: 1]
-                        targetBearing = computeBearingAngle(currentPos, routeCoordinates[currentRouteStepIndex + 1]);[cite: 1]
-                    }[cite: 1]
-                    
-                    map.easeTo({
-                        center: currentPos,
-                        zoom: 17.5, // Tighter lock for 3D Lane vision
-                        pitch: 60,
-                        bearing: targetBearing,
-                        duration: 80,
-                        easing: (t) => t
-                    });
-
-                    currentRouteStepIndex++;[cite: 1]
-                    navigationAnimationId = setTimeout(frame, 90);[cite: 1]
-                } else {
-                    stopRouteSimulation();[cite: 1]
-                    const finalStatus = document.getElementById('telemetry-status-node');[cite: 1]
-                    if (finalStatus) finalStatus.innerText = "ARRIVED";[cite: 1]
-                }
+            // Adjust viewpoint directly to display the computed path
+            if (activeRouteDataStore.length > 0) {
+                const coordinates = activeRouteDataStore[0].geometry.coordinates;
+                const bounds = coordinates.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+                map.fitBounds(bounds, { padding: 40, duration: 800 });
             }
 
-            frame();[cite: 1]
-        }
-
-        function stopRouteSimulation() {
-            isNavigating = false;[cite: 1]
-            if (navigationAnimationId) clearTimeout(navigationAnimationId);[cite: 1]
-            
-            const btn = document.getElementById('launch-routing-action');[cite: 1]
-            if (btn) {[cite: 1]
-                btn.innerText = "START SIMULATION";[cite: 1]
-                btn.style.background = "#28a745";[cite: 1]
-                btn.style.boxShadow = "0 6px 16px rgba(40, 167, 69, 0.4)";[cite: 1]
-            }[cite: 1]
-
-            const diagnosticStatus = document.getElementById('telemetry-status-node');[cite: 1]
-            if (diagnosticStatus) {[cite: 1]
-                diagnosticStatus.innerText = "ONLINE (LIVE)";[cite: 1]
-                diagnosticStatus.style.color = "#007aff";[cite: 1]
-            }[cite: 1]
+            btn.style.display = "none"; 
         }
 
         function generateLocalGridRouteFallback(start, end) {
-            const midPoint1 = [end[0], start[1]]; [cite: 1]
-            const midPoint2 = [start[0] + (end[0] - start[0]) * 0.5, start[1] + (end[1] - start[1]) * 0.5];[cite: 1]
-
+            const midPoint = [start[0], end[1]];
             const mockGeometry = {
-                type: "LineString",[cite: 1]
-                coordinates: [start, midPoint2, midPoint1, end][cite: 1]
+                type: "LineString",
+                coordinates: [start, midPoint, end]
             };
 
-            const dLng = end[0] - start[0];[cite: 1]
-            const dLat = end[1] - start[1];[cite: 1]
-            const rawDistanceMeters = Math.sqrt(dLng * dLng + dLat * dLat) * 111000; [cite: 1]
+            const dLng = end[0] - start[0];
+            const dLat = end[1] - start[1];
+            const rawDistanceMeters = Math.sqrt(dLng * dLng + dLat * dLat) * 111000; 
 
-            activeRouteDataStore = [[cite: 1]
+            activeRouteDataStore = [
                 {
-                    index: 0,[cite: 1]
-                    geometry: mockGeometry,[cite: 1]
-                    duration: (rawDistanceMeters / 13.4), [cite: 1]
-                    distance: rawDistanceMeters,[cite: 1]
-                    isFallback: true[cite: 1]
+                    index: 0,
+                    geometry: mockGeometry,
+                    duration: (rawDistanceMeters / 13.4), 
+                    distance: rawDistanceMeters,
+                    steps: [
+                        { text: "Depart initial coordinate orientation point", distance: rawDistanceMeters * 0.5 },
+                        { text: "Perform tracking intersection grid turn adjustment", distance: rawDistanceMeters * 0.5 },
+                        { text: "Approach destination target point coordinate lock", distance: 0 }
+                    ],
+                    isFallback: true
                 }
             ];
         }
 
         function redrawActiveRoutePipelines() {
-            if (!activeRouteDataStore || activeRouteDataStore.length === 0) return;[cite: 1]
-            if (!map.isStyleLoaded()) return;[cite: 1]
+            if (!activeRouteDataStore || activeRouteDataStore.length === 0) return;
+            if (!map.isStyleLoaded()) return;
 
             activeRouteDataStore.forEach((r) => {
                 const baseCoords = r.geometry.coordinates;
 
-                // Calculate Parallel 3D Lane Variants mathematically locally
                 const centerLaneLeft = calculateParallelOffsetLane(baseCoords, -3.5);
                 const centerLaneRight = calculateParallelOffsetLane(baseCoords, 3.5);
 
@@ -788,7 +752,6 @@
                             }
                         });
 
-                        // Structural internal custom neon guidance dividing dashes
                         map.addLayer({
                             id: `${lyrId}-dash`,
                             type: 'line',
@@ -803,7 +766,6 @@
                     }
                 });
 
-                // Initialize Autonomous Client Traffic Rendering Source
                 const trafficSrcId = `traffic-dots-src-${r.index}`;
                 if (!map.getSource(trafficSrcId)) {
                     map.addSource(trafficSrcId, { type: 'geojson', data: activeTrafficPointsGeoJSON });
@@ -822,17 +784,12 @@
                     });
                 }
 
-                // Fire animation clock execution thread
                 if (trafficEngineLoopId === null) {
                     animateClientTrafficFlow(baseCoords, centerLaneLeft, centerLaneRight);
                 }
             });
         }
 
-        /**
-         * Autonomous Procedural Traffic Simulator Loop
-         * Generates and updates real-time moving traffic entities natively
-         */
         function animateClientTrafficFlow(center, left, right) {
             if (activeRouteDataStore.length === 0) {
                 trafficEngineLoopId = null;
@@ -842,16 +799,15 @@
             laneAnimationTicker += 0.0018; 
             const features = [];
             
-            // Adjust loop metrics based on control configurations
             let vehicleSpeedModifier = 1.0;
-            let stressColor = '#22c55e'; // Green
+            let stressColor = '#22c55e'; 
 
             if (trafficFlowDensity === 2) {
                 vehicleSpeedModifier = 0.6;
-                stressColor = '#eab308'; // Yellow
+                stressColor = '#eab308'; 
             } else if (trafficFlowDensity === 3) {
                 vehicleSpeedModifier = 0.15;
-                stressColor = '#ff3333'; // Heavy Red
+                stressColor = '#ff3333'; 
             }
 
             const activeLanes = [left, center, right];
@@ -862,10 +818,7 @@
                 const targetedLaneCoords = activeLanes[laneIdx];
                 if (!targetedLaneCoords || targetedLaneCoords.length < 2) continue;
 
-                // Stagger progress along coordinates via linear progression metrics
                 const rawProgressFactor = (laneAnimationTicker * (1 + (i * 0.04) * vehicleSpeedModifier)) % 1.0;
-                
-                // Map fractional value cleanly directly to geographic geometry indexes
                 const exactFloatingIdx = rawProgressFactor * (targetedLaneCoords.length - 1);
                 const baseIdx = Math.floor(exactFloatingIdx);
                 const nextIdx = Math.min(baseIdx + 1, targetedLaneCoords.length - 1);
@@ -878,7 +831,6 @@
                     const interpolatedLng = p1[0] + (p2[0] - p1[0]) * interpolationWeight;
                     const interpolatedLat = p1[1] + (p2[1] - p1[1]) * interpolationWeight;
 
-                    // Mixed color arrays to make matrix rendering dynamic
                     let actualColor = stressColor;
                     if (trafficFlowDensity === 2) {
                         actualColor = i % 2 === 0 ? '#22c55e' : '#eab308';
@@ -905,31 +857,56 @@
         }
 
         function renderRouteDashboardUI() {
-            const dashboard = document.getElementById('route-variants-dashboard');[cite: 1]
-            if (!dashboard) return;[cite: 1]
-            dashboard.innerHTML = '';[cite: 1]
-            dashboard.style.display = 'flex';[cite: 1]
+            const dashboard = document.getElementById('route-variants-dashboard');
+            if (!dashboard) return;
+            dashboard.innerHTML = '';
+            dashboard.style.display = 'flex';
 
             activeRouteDataStore.forEach((r) => {
-                // Incorporate simulated delay logic based on chosen traffic layout
                 const multiFactor = trafficFlowDensity === 3 ? 2.4 : (trafficFlowDensity === 2 ? 1.3 : 1.0);
                 const mins = Math.max(1, Math.round((r.duration * multiFactor) / 60));
-                const miles = (r.distance / 1609.34).toFixed(1);[cite: 1]
+                const miles = (r.distance / 1609.34).toFixed(1);
 
                 const trafficLabels = { 1: 'FREE FLOWING', 2: 'MODERATE SLOWDOWNS', 3: 'HEAVY GRIDLOCK' };
                  
-                const row = document.createElement('div');[cite: 1]
-                row.className = 'route-badge-row active-variant';[cite: 1]
-                row.innerHTML = `
+                // Metrics overview box
+                const metricsRow = document.createElement('div');
+                metricsRow.className = 'route-badge-row';
+                metricsRow.innerHTML = `
                     <div>
                         <span class="badge-tag-label" style="color: var(--action-red); font-weight: bold;">
-                            ${r.isFallback ? '⚡ LOCAL AUTONOMOUS PATH' : '★ OPTIMAL 3D LANE STREET ROUTE'}
+                            ${r.isFallback ? '⚡ LOCAL AUTONOMOUS PATH' : '★ OPTIMAL STREET ROUTE'}
                         </span>
-                        <div style="color: var(--text-secondary); margin-top: 2px;">${mins} mins | ${miles} mi</div>
-                        <div style="color: var(--text-muted); font-size: 0.7rem; margin-top: 3px; font-family: var(--font-monospace);">Status: ${trafficLabels[trafficFlowDensity]}</div>
+                        <div style="color: var(--text-primary); margin-top: 4px; font-size: 0.95rem; font-weight: bold;">
+                            ${mins} mins <span style="color: var(--text-muted); font-weight: normal; font-size: 0.8rem;">(${miles} mi)</span>
+                        </div>
+                        <div style="color: var(--text-muted); font-size: 0.7rem; margin-top: 2px; font-family: var(--font-monospace);">Traffic Matrix: ${trafficLabels[trafficFlowDensity]}</div>
                     </div>
-                `;[cite: 1]
-                dashboard.appendChild(row);[cite: 1]
+                `;
+                dashboard.appendChild(metricsRow);
+
+                // Build Concrete Structural Turn-by-Turn Directions List Panel
+                if (r.steps && r.steps.length > 0) {
+                    const manifestContainer = document.createElement('div');
+                    manifestContainer.className = 'directions-manifest';
+                    
+                    r.steps.forEach((step, stepIndex) => {
+                        const stepEl = document.createElement('div');
+                        stepEl.className = 'direction-step';
+                        
+                        const stepMiles = (step.distance / 1609.34).toFixed(2);
+                        const distanceDisplay = step.distance > 0 ? `${stepMiles} mi` : '';
+
+                        stepEl.innerHTML = `
+                            <div class="step-index">${stepIndex + 1}</div>
+                            <div class="step-text">${step.text}</div>
+                            <div class="step-distance">${distanceDisplay}</div>
+                        `;
+                        manifestContainer.appendChild(stepEl);
+                    });
+                    
+                    dashboard.appendChild(manifestContainer);
+                }
             });
         }
 
@@ -954,83 +931,74 @@
         }
 
         function establishLiveHardwarePositioningStream() {
-            const diagnosticStatus = document.getElementById('telemetry-status-node');[cite: 1]
-            if (!diagnosticStatus) return;[cite: 1]
-            if (!navigator.geolocation) { diagnosticStatus.innerText = "UNSUPPORTED SENSOR"; return; }[cite: 1]
+            const diagnosticStatus = document.getElementById('telemetry-status-node');
+            if (!diagnosticStatus) return;
+            if (!navigator.geolocation) { diagnosticStatus.innerText = "UNSUPPORTED SENSOR"; return; }
 
             navigator.geolocation.watchPosition(
                 (position) => {
-                    const lon = position.coords.longitude;[cite: 1]
-                    const lat = position.coords.latitude;[cite: 1]
-                    const oldGps = currentLiveGpsPosition;[cite: 1]
-                    currentLiveGpsPosition = [lon, lat];[cite: 1]
+                    const lon = position.coords.longitude;
+                    const lat = position.coords.latitude;
+                    currentLiveGpsPosition = [lon, lat];
                     
-                    diagnosticStatus.innerText = "ONLINE (LIVE)";[cite: 1]
-                    diagnosticStatus.style.color = "#007aff";[cite: 1]
+                    diagnosticStatus.innerText = "ONLINE (LIVE)";
+                    diagnosticStatus.style.color = "#007aff";
 
-                    if (!userLocationBeaconMarker) {[cite: 1]
-                        const beaconEl = document.createElement('div');[cite: 1]
-                        beaconEl.className = 'live-gps-beacon-node';[cite: 1]
-                        userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })[cite: 1]
-                            .setLngLat(currentLiveGpsPosition)[cite: 1]
-                            .addTo(map);[cite: 1]
+                    if (!userLocationBeaconMarker) {
+                        const beaconEl = document.createElement('div');
+                        beaconEl.className = 'live-gps-beacon-node';
+                        userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })
+                            .setLngLat(currentLiveGpsPosition)
+                            .addTo(map);
                         
-                        map.flyTo({ center: currentLiveGpsPosition, zoom: 16, pitch: 50 });[cite: 1]
+                        map.flyTo({ center: currentLiveGpsPosition, zoom: 16, pitch: 50 });
                     } else {
-                        userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);[cite: 1]
+                        userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
                     }
 
-                    if (cameraTrackingMode && !isNavigating) {[cite: 1]
-                        let dynamicBearing = map.getBearing();[cite: 1]
-                        if (oldGps) {[cite: 1]
-                            dynamicBearing = computeBearingAngle(oldGps, currentLiveGpsPosition);[cite: 1]
-                        }
+                    if (cameraTrackingMode) {
                         map.easeTo({
-                            center: currentLiveGpsPosition,[cite: 1]
-                            bearing: dynamicBearing,[cite: 1]
-                            pitch: 50,[cite: 1]
-                            zoom: 16.5,[cite: 1]
-                            duration: 400[cite: 1]
+                            center: currentLiveGpsPosition,
+                            pitch: 50,
+                            zoom: 16.5,
+                            duration: 400
                         });
                     }
                 },
                 (error) => { 
-                    if (!isNavigating) {[cite: 1]
-                        diagnosticStatus.style.color = "#ff9500"; [cite: 1]
-                        diagnosticStatus.innerText = "LOCAL EDGE LINK"; [cite: 1]
-                    }
+                    diagnosticStatus.style.color = "#ff9500"; 
+                    diagnosticStatus.innerText = "LOCAL EDGE LINK"; 
                 },
-                { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }[cite: 1]
+                { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
             );
         }
 
         function initHardwareConsoleTriggers() {
-            const compassBtn = document.getElementById('compass-orientation-lock');[cite: 1]
-            if (compassBtn) {[cite: 1]
-                compassBtn.addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 50 }));[cite: 1]
+            const compassBtn = document.getElementById('compass-orientation-lock');
+            if (compassBtn) {
+                compassBtn.addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 50 }));
             }
              
-            const recenterBtn = document.getElementById('force-gps-recenter');[cite: 1]
-            if (recenterBtn) {[cite: 1]
+            const recenterBtn = document.getElementById('force-gps-recenter');
+            if (recenterBtn) {
                 recenterBtn.addEventListener('click', () => {
-                    cameraTrackingMode = true; [cite: 1]
-                    if (currentLiveGpsPosition) {[cite: 1]
-                        map.flyTo({ center: currentLiveGpsPosition, zoom: 16.5, pitch: 50 });[cite: 1]
+                    cameraTrackingMode = true; 
+                    if (currentLiveGpsPosition) {
+                        map.flyTo({ center: currentLiveGpsPosition, zoom: 16.5, pitch: 50 });
                     }
                 });
             }
 
-            const satelliteBtn = document.getElementById('toggle-satellite-view');[cite: 1]
-            if (satelliteBtn) {[cite: 1]
+            const satelliteBtn = document.getElementById('toggle-satellite-view');
+            if (satelliteBtn) {
                 satelliteBtn.addEventListener('click', () => {
-                    satelliteModeActive = !satelliteModeActive;[cite: 1]
-                    clearActiveRouteLayers(); [cite: 1]
-                    stopRouteSimulation();[cite: 1]
+                    satelliteModeActive = !satelliteModeActive;
+                    clearActiveRouteLayers(); 
 
-                    if (satelliteModeActive) {[cite: 1]
-                        satelliteBtn.style.borderColor = '#ff3333';[cite: 1]
-                        satelliteBtn.style.color = '#ff3333';[cite: 1]
-                        satelliteBtn.style.boxShadow = '0 0 10px rgba(255, 51, 51, 0.2)';[cite: 1]
+                    if (satelliteModeActive) {
+                        satelliteBtn.style.borderColor = '#ff3333';
+                        satelliteBtn.style.color = '#ff3333';
+                        satelliteBtn.style.boxShadow = '0 0 10px rgba(255, 51, 51, 0.2)';
 
                         map.setStyle({
                             'version': 8,
@@ -1056,144 +1024,144 @@
                             ]
                         });
                     } else {
-                        satelliteBtn.style.borderColor = '';[cite: 1]
-                        satelliteBtn.style.color = '';[cite: 1]
-                        satelliteBtn.style.boxShadow = '';[cite: 1]
-                        map.setStyle(REGULAR_MAP_STYLE);[cite: 1]
+                        satelliteBtn.style.borderColor = '';
+                        satelliteBtn.style.color = '';
+                        satelliteBtn.style.boxShadow = '';
+                        map.setStyle(REGULAR_MAP_STYLE);
                     }
                 });
             }
 
-            const routingBtn = document.getElementById('launch-routing-action');[cite: 1]
-            if (routingBtn) {[cite: 1]
-                routingBtn.addEventListener('click', handleRoutingButtonClick);[cite: 1]
+            const routingBtn = document.getElementById('launch-routing-action');
+            if (routingBtn) {
+                routingBtn.addEventListener('click', handleRoutingButtonClick);
             }
             
-            const flushBtn = document.getElementById('flush-workspace-trigger');[cite: 1]
-            if (flushBtn) {[cite: 1]
+            const flushBtn = document.getElementById('flush-workspace-trigger');
+            if (flushBtn) {
                 flushBtn.addEventListener('click', () => {
-                    stopRouteSimulation();[cite: 1]
-                    clearActiveRouteLayers();[cite: 1]
-                    activeRouteDataStore = [];[cite: 1]
-                    if (activeMapMarker) { activeMapMarker.remove(); activeMapMarker = null; }[cite: 1]
-                    document.getElementById('context-destination-panel').style.display = 'none';[cite: 1]
-                    document.getElementById('osm-engine-input').value = '';[cite: 1]
-                    document.getElementById('launch-routing-action').style.display = 'none';[cite: 1]
-                    document.getElementById('route-variants-dashboard').style.display = 'none';[cite: 1]
-                    targetSelectedCoordinates = null;[cite: 1]
+                    clearActiveRouteLayers();
+                    activeRouteDataStore = [];
+                    if (activeMapMarker) { activeMapMarker.remove(); activeMapMarker = null; }
+                    document.getElementById('context-destination-panel').style.display = 'none';
+                    document.getElementById('osm-engine-input').value = '';
+                    document.getElementById('launch-routing-action').style.display = 'none';
+                    document.getElementById('route-variants-dashboard').style.display = 'none';
+                    targetSelectedCoordinates = null;
                 });
             }
         }
 
         function initTacticalPanelDraggingPhysics() {
-            const panel = document.getElementById('control-panel-deck');[cite: 1]
-            const handle = document.getElementById('drag-handle');[cite: 1]
-            if (!panel || !handle) return;[cite: 1]
+            const panel = document.getElementById('control-panel-deck');
+            const handle = document.getElementById('drag-handle');
+            if (!panel || !handle) return;
             
-            let isDragging = false, startY = 0, currentTranslateY = 0, lastTranslateY = 0;[cite: 1]
+            let isDragging = false, startY = 0, currentTranslateY = 0, lastTranslateY = 0;
 
-            handle.addEventListener('mousedown', startDrag);[cite: 1]
-            window.addEventListener('mousemove', processDrag);[cite: 1]
-            window.addEventListener('mouseup', endDrag);[cite: 1]
-            handle.addEventListener('touchstart', (e) => startDrag(e.touches[0]), { passive: true });[cite: 1]
-            window.addEventListener('touchmove', (e) => processDrag(e.touches[0]), { passive: false });[cite: 1]
-            window.addEventListener('touchend', endDrag);[cite: 1]
+            handle.addEventListener('mousedown', startDrag);
+            window.addEventListener('mousemove', processDrag);
+            window.addEventListener('mouseup', endDrag);
+            handle.addEventListener('touchstart', (e) => startDrag(e.touches[0]), { passive: true });
+            window.addEventListener('touchmove', (e) => processDrag(e.touches[0]), { passive: false });
+            window.addEventListener('touchend', endDrag);
 
-            function startDrag(e) { isDragging = true; startY = e.clientY; panel.classList.remove('snapping'); }[cite: 1]
+            function startDrag(e) { isDragging = true; startY = e.clientY; panel.classList.remove('snapping'); }
             function processDrag(e) {
-                if (!isDragging) return;[cite: 1]
-                let nextY = lastTranslateY + (e.clientY - startY);[cite: 1]
-                if (nextY < -150) nextY = -150; if (nextY > 400) nextY = 400;[cite: 1]
-                currentTranslateY = nextY;[cite: 1]
-                panel.style.transform = `translateX(-50%) translateY(${currentTranslateY}px)`;[cite: 1]
+                if (!isDragging) return;
+                let nextY = lastTranslateY + (e.clientY - startY);
+                if (nextY < -250) nextY = -250; if (nextY > 400) nextY = 400;
+                currentTranslateY = nextY;
+                panel.style.transform = `translateX(-50%) translateY(${currentTranslateY}px)`;
             }
             function endDrag() {
-                if (!isDragging) return; isDragging = false; panel.classList.add('snapping');[cite: 1]
-                if (currentTranslateY > 150) currentTranslateY = 320;[cite: 1]
-                else if (currentTranslateY < -50) currentTranslateY = -80;[cite: 1]
-                else currentTranslateY = 0;[cite: 1]
-                panel.style.transform = `translateX(-50%) translateY(${currentTranslateY}px)`;[cite: 1]
-                lastTranslateY = currentTranslateY;[cite: 1]
+                if (!isDragging) return; isDragging = false; panel.classList.add('snapping');
+                if (currentTranslateY > 150) currentTranslateY = 320;
+                else if (currentTranslateY < -50) currentTranslateY = -180;
+                else currentTranslateY = 0;
+                panel.style.transform = `translateX(-50%) translateY(${currentTranslateY}px)`;
+                lastTranslateY = currentTranslateY;
             }
         }
 
         function initAutonomousSearchMatrix() {
-            const input = document.getElementById('osm-engine-input');[cite: 1]
-            const dropdown = document.getElementById('osm-engine-dropdown');[cite: 1]
-            if (!input || !dropdown) return;[cite: 1]
+            const input = document.getElementById('osm-engine-input');
+            const dropdown = document.getElementById('osm-engine-dropdown');
+            if (!input || !dropdown) return;
 
             input.addEventListener('input', (e) => {
-                const queryVal = e.target.value.trim();[cite: 1]
-                clearTimeout(querySearchDebounceTimer);[cite: 1]
-                if (queryVal.length < 3) { dropdown.style.display = 'none'; return; }[cite: 1]
+                const queryVal = e.target.value.trim();
+                clearTimeout(querySearchDebounceTimer);
+                if (queryVal.length < 3) { dropdown.style.display = 'none'; return; }
                  
                 querySearchDebounceTimer = setTimeout(async () => {
                     try {
-                        let searchApiUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`;[cite: 1]
-                        if (currentLiveGpsPosition) searchApiUrl += `&lon=${currentLiveGpsPosition[0]}&lat=${currentLiveGpsPosition[1]}`;[cite: 1]
-                        const response = await fetch(searchApiUrl);[cite: 1]
-                        const payload = await response.json();[cite: 1]
-                        if (!payload.features || payload.features.length === 0) { dropdown.style.display = 'none'; return; }[cite: 1]
+                        let searchApiUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`;
+                        if (currentLiveGpsPosition) searchApiUrl += `&lon=${currentLiveGpsPosition[0]}&lat=${currentLiveGpsPosition[1]}`;
+                        const response = await fetch(searchApiUrl);
+                        const payload = await response.json();
+                        if (!payload.features || payload.features.length === 0) { dropdown.style.display = 'none'; return; }
                          
-                        dropdown.innerHTML = '';[cite: 1]
+                        dropdown.innerHTML = '';
                         payload.features.forEach(feature => {
-                            const segmentItem = document.createElement('div');[cite: 1]
-                            segmentItem.className = 'osm-suggest-item';[cite: 1]
-                            const p = feature.properties;[cite: 1]
-                            const labeledLocation = [p.name, p.city, p.state].filter(Boolean).join(', ');[cite: 1]
-                            segmentItem.innerText = labeledLocation;[cite: 1]
+                            const segmentItem = document.createElement('div');
+                            segmentItem.className = 'osm-suggest-item';
+                            const p = feature.properties;
+                            const labeledLocation = [p.name, p.city, p.state].filter(Boolean).join(', ');
+                            segmentItem.innerText = labeledLocation;
                              
                             segmentItem.addEventListener('click', () => {
-                                const targetLoc = feature.geometry.coordinates;[cite: 1]
-                                dropdown.style.display = 'none';[cite: 1]
-                                input.value = labeledLocation;[cite: 1]
-                                map.flyTo({ center: targetLoc, zoom: 16, pitch: 50 });[cite: 1]
-                                triggerWorkspaceTargetDeck(targetLoc, p.name || "Target Vector", labeledLocation);[cite: 1]
+                                const targetLoc = feature.geometry.coordinates;
+                                dropdown.style.display = 'none';
+                                input.value = labeledLocation;
+                                map.flyTo({ center: targetLoc, zoom: 16, pitch: 50 });
+                                triggerWorkspaceTargetDeck(targetLoc, p.name || "Target Vector", labeledLocation);
                             });
-                            dropdown.appendChild(segmentItem);[cite: 1]
+                            dropdown.appendChild(segmentItem);
                         });
-                        dropdown.style.display = 'block';[cite: 1]
+                        dropdown.style.display = 'block';
                     } catch (err) {}
-                }, 250);[cite: 1]
+                }, 250);
             });
         }
 
         function initDirectMapInputListeners() {
             map.on('click', async (e) => {
-                const pinpoint = [e.lngLat.lng, e.lngLat.lat];[cite: 1]
-                triggerWorkspaceTargetDeck(pinpoint, "Selected Matrix Node", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);[cite: 1]
+                const pinpoint = [e.lngLat.lng, e.lngLat.lat];
+                triggerWorkspaceTargetDeck(pinpoint, "Selected Matrix Node", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
                 try {
-                    const lookup = await fetch(`https://photon.komoot.io/api/?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);[cite: 1]
-                    const details = await lookup.json();[cite: 1]
-                    if (details.features && details.features.length > 0) {[cite: 1]
-                        const p = details.features[0].properties;[cite: 1]
-                        const addressString = [p.name, p.street, p.postcode].filter(Boolean).join(', ');[cite: 1]
-                        triggerWorkspaceTargetDeck(pinpoint, p.name || "Discovered Feature Context", addressString || "Raw Geographic Geometry Data");[cite: 1]
+                    const lookup = await fetch(`https://photon.komoot.io/api/?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
+                    const details = await lookup.json();
+                    if (details.features && details.features.length > 0) {
+                        const p = details.features[0].properties;
+                        const addressString = [p.name, p.street, p.postcode].filter(Boolean).join(', ');
+                        triggerWorkspaceTargetDeck(pinpoint, p.name || "Discovered Feature Context", addressString || "Raw Geographic Geometry Data");
                     }
                 } catch(error){}
             });
         }
 
         function triggerWorkspaceTargetDeck(coords, title, details) {
-            stopRouteSimulation();[cite: 1]
-            clearActiveRouteLayers();[cite: 1]
-            activeRouteDataStore = [];[cite: 1]
-            targetSelectedCoordinates = coords;[cite: 1]
+            clearActiveRouteLayers();
+            activeRouteDataStore = [];
+            targetSelectedCoordinates = coords;
             
-            document.getElementById('node-panel-title').innerText = title;[cite: 1]
-            document.getElementById('node-panel-address').innerText = details;[cite: 1]
-            document.getElementById('context-destination-panel').style.display = 'flex';[cite: 1]
+            document.getElementById('node-panel-title').innerText = title;
+            document.getElementById('node-panel-address').innerText = details;
+            document.getElementById('context-destination-panel').style.display = 'flex';
             
-            const routingBtn = document.getElementById('launch-routing-action');[cite: 1]
-            routingBtn.style.display = 'block';[cite: 1]
-            routingBtn.innerText = "CALCULATE VECTOR ROUTE";[cite: 1]
-            routingBtn.style.background = "var(--action-red)";[cite: 1]
-            routingBtn.style.boxShadow = "0 4px 12px var(--action-red-glow)";[cite: 1]
+            const routingBtn = document.getElementById('launch-routing-action');
+            routingBtn.style.display = 'block';
+            routingBtn.innerText = "GET DIRECTIONS";
+            routingBtn.style.background = "var(--action-red)";
+            routingBtn.style.boxShadow = "0 4px 12px var(--action-red-glow)";
 
-            if (activeMapMarker) activeMapMarker.remove();[cite: 1]
-            activeMapMarker = new maplibregl.Marker({ element: createCustomMarkerElement() })[cite: 1]
-                .setLngLat(coords)[cite: 1]
-                .addTo(map);[cite: 1]
+            document.getElementById('route-variants-dashboard').style.display = 'none';
+
+            if (activeMapMarker) activeMapMarker.remove();
+            activeMapMarker = new maplibregl.Marker({ element: createCustomMarkerElement() })
+                .setLngLat(coords)
+                .addTo(map);
         }
     </script>
 </body>
