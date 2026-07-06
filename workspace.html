@@ -11,15 +11,15 @@
 
     <style>
         :root {
-            --bg-primary: #0a0a0c;
-            --bg-panel: #16161a;
-            --bg-panel-solid: #1c1c22;
-            --border-color: #2a2a32;
+            --bg-primary: #050505;
+            --bg-panel: rgba(10, 10, 12, 0.75);
+            --bg-panel-solid: #0f0f13;
+            --border-color: rgba(255, 51, 51, 0.25);
             --action-red: #ff3333;
             --action-red-glow: rgba(255, 51, 51, 0.4);
             --text-primary: #f5f5f7;
             --text-secondary: #c5c5ca;
-            --text-muted: #72727e;
+            --text-muted: #62626e;
             --font-monospace: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
         }
 
@@ -56,13 +56,14 @@
         }
 
         .hud-module {
-            background: rgba(22, 22, 26, 0.85);
-            backdrop-filter: blur(12px);
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 10px 16px;
             pointer-events: auto;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
             display: flex;
             align-items: center;
             gap: 12px;
@@ -84,15 +85,13 @@
             font-family: var(--font-monospace);
             font-size: 0.75rem;
             color: var(--text-secondary);
-            background: rgba(12, 12, 14, 0.9);
-            border: 1px solid var(--border-color);
         }
 
         #telemetry-status-node {
             font-family: var(--font-monospace);
             font-size: 0.7rem;
             font-weight: bold;
-            color: #007aff;
+            color: var(--action-red);
             text-transform: uppercase;
         }
 
@@ -108,8 +107,9 @@
         }
 
         .side-btn {
-            background: rgba(22, 22, 26, 0.9);
-            backdrop-filter: blur(12px);
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border-color);
             border-radius: 12px;
             width: 48px;
@@ -119,19 +119,19 @@
             justify-content: center;
             color: var(--text-primary);
             cursor: pointer;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
             transition: all 0.2s ease;
         }
 
         .side-btn:hover {
-            background: #24242c;
-            border-color: #3e3e4a;
+            background: #1a1a22;
+            border-color: var(--action-red);
         }
 
         .side-btn.active-state {
-            color: #007aff;
-            border-color: rgba(0, 122, 255, 0.5);
-            box-shadow: 0 0 12px rgba(0, 122, 255, 0.3);
+            color: var(--action-red);
+            border-color: rgba(255, 51, 51, 0.6);
+            box-shadow: 0 0 16px rgba(255, 51, 51, 0.25);
         }
 
         #control-panel-deck {
@@ -141,11 +141,12 @@
             transform: translateX(-50%) translateY(0px);
             width: 440px;
             max-width: calc(100vw - 32px);
-            background: rgba(22, 22, 26, 0.92);
-            backdrop-filter: blur(16px);
+            background: var(--bg-panel);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             border: 1px solid var(--border-color);
             border-radius: 16px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
             z-index: 10;
             display: flex;
             flex-direction: column;
@@ -169,7 +170,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            border-bottom: 1px solid rgba(255,255,255,0.03);
+            border-bottom: 1px solid rgba(255, 51, 51, 0.1);
             touch-action: none; 
         }
 
@@ -177,13 +178,13 @@
             content: '';
             width: 42px;
             height: 5px;
-            background: #4a4a55;
+            background: #3a3a45;
             border-radius: 3px;
             transition: background 0.2s;
         }
 
         #drag-handle:hover::before {
-            background: #6a6a75;
+            background: var(--action-red);
         }
 
         .workspace-content-body {
@@ -210,7 +211,7 @@
 
         .search-engine-wrap input {
             width: 100%;
-            background: #0e0e11;
+            background: var(--bg-panel-solid);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 12px 14px;
@@ -222,6 +223,7 @@
 
         .search-engine-wrap input:focus {
             border-color: var(--action-red);
+            box-shadow: 0 0 8px rgba(255, 51, 51, 0.2);
         }
 
         .suggest-dropdown-matrix {
@@ -236,7 +238,7 @@
             overflow-y: auto;
             display: none;
             z-index: 100;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
         }
 
         .osm-suggest-item {
@@ -251,12 +253,12 @@
         }
 
         .osm-suggest-item:hover {
-            background: rgba(255, 51, 51, 0.08);
+            background: rgba(255, 51, 51, 0.1);
             color: var(--text-primary);
         }
 
         #context-destination-panel {
-            background: #0e0e11;
+            background: var(--bg-panel-solid);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 12px;
@@ -297,7 +299,7 @@
             display: none;
             flex-direction: column;
             gap: 6px;
-            background: #0e0e11;
+            background: var(--bg-panel-solid);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 10px;
@@ -308,7 +310,7 @@
             flex-direction: column;
             gap: 4px;
             padding: 8px;
-            background: rgba(255,255,255,0.02);
+            background: rgba(255, 51, 51, 0.05);
             border-radius: 6px;
             font-size: 0.78rem;
         }
@@ -336,12 +338,13 @@
         }
 
         .direction-step:hover {
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(255, 51, 51, 0.08);
+            color: var(--text-primary);
         }
 
         .step-index {
-            background: var(--border-color);
-            color: var(--text-muted);
+            background: var(--action-red);
+            color: #ffffff;
             font-family: var(--font-monospace);
             font-size: 0.7rem;
             min-width: 18px;
@@ -382,9 +385,9 @@
         }
 
         .hud-btn:hover {
-            background: #24242c;
+            background: #1a1a22;
             color: var(--text-primary);
-            border-color: #3e3e4a;
+            border-color: var(--action-red);
         }
 
         #launch-routing-action {
@@ -410,10 +413,10 @@
         .live-gps-beacon-node {
             width: 18px;
             height: 18px;
-            background: #007aff;
-            border: 3px solid #ffffff;
+            background: var(--action-red);
+            border: 3px solid #050505;
             border-radius: 50%;
-            box-shadow: 0 0 16px rgba(0, 122, 255, 0.95);
+            box-shadow: 0 0 16px var(--action-red-glow);
         }
     </style>
 </head>
@@ -496,17 +499,20 @@
         let gpsVelocityVector = { lng: 0, lat: 0 };
         let currentVehicleHeading = 0;
 
-        const REGULAR_MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
+        // Switched to a lightweight, highly optimized Carto Dark Matter style for massive performance boost
+        const HIGH_PERFORMANCE_DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
         const map = new maplibregl.Map({
             container: 'map',
-            style: REGULAR_MAP_STYLE, 
+            style: HIGH_PERFORMANCE_DARK_STYLE, 
             center: defaultUserCoordinates, 
             zoom: 3, 
             pitch: 65,
             maxPitch: 85,
             bearing: 0,
-            antialias: true
+            antialias: true,
+            fadeDuration: 50, // Instantly snaps tiles in instead of slowly fading
+            crossSourceCollisions: false
         });
 
         function createCustomMarkerElement() {
@@ -516,7 +522,7 @@
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <circle cx="12" cy="12" r="8" fill="#ff3333" fill-opacity="0.3"/>
                     <circle cx="12" cy="12" r="4" fill="#ff3333"/>
-                    <circle cx="12" cy="12" r="3.5" stroke="#ffffff" stroke-width="1"/>
+                    <circle cx="12" cy="12" r="3.5" stroke="#050505" stroke-width="1"/>
                 </svg>
             `;
             return el;
@@ -543,10 +549,10 @@
             establishLiveHardwarePositioningStream();
 
             map.setFog({
-                'color': '#0a0a0c',
-                'high-color': '#16161a',
+                'color': '#050505',
+                'high-color': '#0f0f13',
                 'space-color': '#000000',
-                'horizon-blend': 0.12
+                'horizon-blend': 0.05 // Crisper horizon for the dark theme
             });
 
             map.on('mousemove', (e) => {
@@ -554,7 +560,6 @@
                 if (overlay) overlay.innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
             });
 
-            // FIXED: Explicit hooks on all forms of user manual map movement to sever tracking mode cleanly
             const cancelTracking = () => {
                 if (cameraTrackingMode) {
                     cameraTrackingMode = false;
@@ -577,54 +582,18 @@
         function injectRealtime3DWorldAssets() {
             const styleSources = map.getStyle().sources;
             if (!styleSources) return;
-            const sourceKey = Object.keys(styleSources).find(key => styleSources[key].type === 'vector') || 'openfreemap';
+            
+            const sourceKey = Object.keys(styleSources).find(key => styleSources[key].type === 'vector');
+            if (!sourceKey || !map.getSource(sourceKey)) return;
 
-            if (!map.getSource(sourceKey)) return;
-
-            if (!map.getLayer('hw-3d-lanes-base-asphalt')) {
-                map.addLayer({
-                    'id': 'hw-3d-lanes-base-asphalt',
-                    'source': sourceKey,
-                    'source-layer': 'transportation',
-                    'type': 'line',
-                    'filter': ['in', 'class', 'motorway', 'trunk', 'primary', 'secondary'],
-                    'layout': { 'line-join': 'round', 'line-cap': 'round' },
-                    'paint': {
-                        'line-color': satelliteModeActive ? '#111115' : '#1e1e22',
-                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 5, 16, 28, 20, 72],
-                        'line-opacity': 0.95
-                    }
-                });
-
-                map.addLayer({
-                    'id': 'hw-3d-lanes-solid-edges',
-                    'source': sourceKey,
-                    'source-layer': 'transportation',
-                    'type': 'line',
-                    'filter': ['in', 'class', 'motorway', 'trunk', 'primary'],
-                    'layout': { 'line-join': 'round', 'line-cap': 'round' },
-                    'paint': {
-                        'line-color': '#ffffff',
-                        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.6, 18, 1.8],
-                        'line-gap-width': ['interpolate', ['linear'], ['zoom'], 14, 0, 16, 24, 20, 66],
-                        'line-opacity': 0.75
-                    }
-                });
-
-                map.addLayer({
-                    'id': 'hw-3d-lanes-center-dash',
-                    'source': sourceKey,
-                    'source-layer': 'transportation',
-                    'type': 'line',
-                    'filter': ['in', 'class', 'motorway', 'trunk', 'primary'],
-                    'layout': { 'line-join': 'round', 'line-cap': 'butt' },
-                    'paint': {
-                        'line-color': satelliteModeActive ? '#ffcc00' : '#ffffff',
-                        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 18, 1.5],
-                        'line-dasharray': [3, 4],
-                        'line-opacity': 0.85
-                    }
-                });
+            // Render buildings beneath text labels so the map remains usable
+            const layers = map.getStyle().layers;
+            let labelLayerId;
+            for (let i = 0; i < layers.length; i++) {
+                if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
+                    labelLayerId = layers[i].id;
+                    break;
+                }
             }
 
             if (!map.getLayer('spatial-3d-buildings')) {
@@ -633,14 +602,15 @@
                     'source': sourceKey,
                     'source-layer': 'building',
                     'type': 'fill-extrusion',
-                    'minzoom': 13,
+                    'minzoom': 15, // MASSIVE PERFORMANCE UPGRADE: Delays rendering 3D polys until zoomed in
                     'paint': {
-                        'fill-extrusion-color': satelliteModeActive ? '#22222b' : '#d2d4d8',
+                        'fill-extrusion-color': satelliteModeActive ? '#1a1a20' : '#111115',
                         'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 14],
                         'fill-extrusion-base': ['coalesce', ['get', 'min_height'], ['get', 'render_min_height'], 0],
-                        'fill-extrusion-opacity': satelliteModeActive ? 0.55 : 0.85
+                        'fill-extrusion-opacity': 0.85,
+                        'fill-extrusion-vertical-gradient': true
                     }
-                });
+                }, labelLayerId);
             }
         }
 
@@ -742,9 +712,10 @@
                         source: srcId,
                         layout: { 'line-join': 'round', 'line-cap': 'round' },
                         paint: {
-                            'line-color': '#08080a',
-                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 8, 16, 18, 20, 42],
-                            'line-opacity': 0.9
+                            'line-color': '#ff3333',
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 8, 16, 16, 20, 36],
+                            'line-opacity': 0.25,
+                            'line-blur': 12
                         }
                     });
                 }
@@ -757,7 +728,7 @@
                         layout: { 'line-join': 'round', 'line-cap': 'round' },
                         paint: {
                             'line-color': '#ff3333', 
-                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 4, 16, 10, 20, 26],
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 16, 6, 20, 12],
                             'line-opacity': 1.0
                         }
                     });
@@ -854,7 +825,7 @@
                     const now = performance.now();
                     
                     diagnosticStatus.innerText = "GPS TRACKING ACTIVE";
-                    diagnosticStatus.style.color = "#007aff";
+                    diagnosticStatus.style.color = "var(--action-red)";
 
                     if (lastGpsTimestamp && currentLiveGpsPosition) {
                         const elapsedSecs = (now - lastGpsTimestamp) / 1000;
@@ -873,7 +844,6 @@
                     currentLiveGpsPosition = incomingLoc;
                     lastGpsTimestamp = now;
 
-                    // Locate or update position node asset strictly matching geometry
                     if (!userLocationBeaconMarker) {
                         const beaconEl = document.createElement('div');
                         beaconEl.className = 'live-gps-beacon-node';
@@ -884,7 +854,6 @@
                         userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
                     }
 
-                    // FIXED: Only process active camera positioning events if tracking mode state remains true
                     if (cameraTrackingMode) {
                         map.easeTo({
                             center: currentLiveGpsPosition,
@@ -903,7 +872,6 @@
             );
 
             function executePredictiveTrackingFrame() {
-                // FIXED: Tracking loops are fully blockaded if cameraTrackingMode has been broken by interaction
                 if (cameraTrackingMode && currentLiveGpsPosition && lastGpsTimestamp) {
                     const frameTime = performance.now();
                     const deltaSec = (frameTime - lastGpsTimestamp) / 1000;
@@ -927,7 +895,6 @@
             const compassBtn = document.getElementById('compass-orientation-lock');
             if (compassBtn) {
                 compassBtn.addEventListener('click', () => {
-                    // Reset to north safely without snapping active state
                     map.easeTo({ bearing: 0 });
                 });
             }
@@ -935,7 +902,6 @@
             const recenterBtn = document.getElementById('force-gps-recenter');
             if (recenterBtn) {
                 recenterBtn.addEventListener('click', () => {
-                    // FIXED: Explicit manual snap command toggles control back to core telemetry values instantly
                     cameraTrackingMode = true; 
                     recenterBtn.classList.add('active-state');
                     if (currentLiveGpsPosition) {
@@ -957,8 +923,8 @@
                     clearActiveRouteLayers(); 
 
                     if (satelliteModeActive) {
-                        satelliteBtn.style.borderColor = '#ff3333';
-                        satelliteBtn.style.color = '#ff3333';
+                        satelliteBtn.style.borderColor = 'var(--action-red)';
+                        satelliteBtn.style.color = 'var(--action-red)';
 
                         map.setStyle({
                             'version': 8,
@@ -969,15 +935,15 @@
                                     'tileSize': 256,
                                     'attribution': 'Esri'
                                 },
-                                'openfreemap': {
-                                    'type': 'vector',
-                                    'url': 'https://tiles.openfreemap.org/styles/liberty'
-                                },
                                 'terrain-dem-mesh': {
                                     'type': 'raster-dem',
                                     'tiles': ['https://demotiles.maplibre.org/terrain-tiles/{z}/{x}/{y}.png'],
                                     'tileSize': 256,
                                     'maxzoom': 14
+                                },
+                                'openfreemap': {
+                                    'type': 'vector',
+                                    'url': 'https://tiles.openfreemap.org/styles/liberty'
                                 }
                             },
                             'layers': [
@@ -996,7 +962,7 @@
                         satelliteBtn.style.borderColor = '';
                         satelliteBtn.style.color = '';
                         if (map.getTerrain()) map.setTerrain(null);
-                        map.setStyle(REGULAR_MAP_STYLE);
+                        map.setStyle(HIGH_PERFORMANCE_DARK_STYLE);
                     }
                 });
             }
@@ -1111,7 +1077,6 @@
                                 dropdown.style.display = 'none';
                                 input.value = labeledLocation;
                                 
-                                // Disable tracking mode since user is exploring a search location
                                 cameraTrackingMode = false;
                                 document.getElementById('force-gps-recenter').classList.remove('active-state');
 
