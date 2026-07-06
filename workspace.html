@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>GeoPro - Mapping Engine Workspace</title>
+    <title>GeoPro - High Fidelity Routing Engine</title>
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
     
     <!-- MapLibre Core Dependencies -->
@@ -11,12 +11,12 @@
 
     <style>
         :root {
-            --bg-primary: #111114;
+            --bg-primary: #0a0a0c;
             --bg-panel: #16161a;
             --bg-panel-solid: #1c1c22;
             --border-color: #2a2a32;
             --action-red: #ff3333;
-            --action-red-glow: rgba(255, 51, 51, 0.35);
+            --action-red-glow: rgba(255, 51, 51, 0.4);
             --text-primary: #f5f5f7;
             --text-secondary: #c5c5ca;
             --text-muted: #72727e;
@@ -96,6 +96,44 @@
             text-transform: uppercase;
         }
 
+        .floating-side-actions {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 10;
+        }
+
+        .side-btn {
+            background: rgba(22, 22, 26, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+            transition: all 0.2s ease;
+        }
+
+        .side-btn:hover {
+            background: #24242c;
+            border-color: #3e3e4a;
+        }
+
+        .side-btn.active-state {
+            color: #007aff;
+            border-color: rgba(0, 122, 255, 0.5);
+            box-shadow: 0 0 12px rgba(0, 122, 255, 0.3);
+        }
+
         #control-panel-deck {
             position: absolute;
             bottom: 24px;
@@ -112,30 +150,41 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            transition: transform 0.2s cubic-bezier(0.1, 0.8, 0.25, 1);
+            transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
         }
 
-        #control-panel-deck.snapping {
-            transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+        #control-panel-deck.dragging {
+            transition: none;
+        }
+
+        /* Minimized State */
+        #control-panel-deck.minimized {
+            transform: translateX(-50%) translateY(calc(100% - 28px));
         }
 
         #drag-handle {
             width: 100%;
-            height: 24px;
-            background: var(--bg-panel);
+            height: 28px;
+            background: transparent;
             cursor: grab;
             display: flex;
             align-items: center;
             justify-content: center;
             border-bottom: 1px solid rgba(255,255,255,0.03);
+            touch-action: none; 
         }
 
         #drag-handle::before {
             content: '';
-            width: 36px;
-            height: 4px;
-            background: #3a3a44;
-            border-radius: 2px;
+            width: 42px;
+            height: 5px;
+            background: #4a4a55;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+
+        #drag-handle:hover::before {
+            background: #6a6a75;
         }
 
         #drag-handle:active {
@@ -149,6 +198,13 @@
             gap: 12px;
             max-height: 75vh;
             overflow-y: auto;
+            opacity: 1;
+            transition: opacity 0.2s ease;
+        }
+
+        #control-panel-deck.minimized .workspace-content-body {
+            opacity: 0;
+            pointer-events: none;
         }
 
         .search-engine-wrap {
@@ -308,16 +364,9 @@
             line-height: 1.3;
         }
 
-        .step-distance {
-            color: var(--text-muted);
-            font-family: var(--font-monospace);
-            font-size: 0.72rem;
-            flex-shrink: 0;
-        }
-
         .workspace-hardware-row {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: 1fr 1fr;
             gap: 8px;
         }
 
@@ -344,7 +393,7 @@
         }
 
         #launch-routing-action {
-            grid-column: span 3;
+            grid-column: span 2;
             background: var(--action-red);
             color: #ffffff;
             border: none;
@@ -362,6 +411,7 @@
 
         .custom-spatial-marker {
             cursor: pointer;
+            /* Removed CSS transition here to prevent drifting from WebGL camera */
             transform: translate(-50%, -100%);
         }
 
@@ -372,7 +422,7 @@
             border: 3px solid #ffffff;
             border-radius: 50%;
             box-shadow: 0 0 16px rgba(0, 122, 255, 0.95);
-            transition: transform 0.1s linear;
+            /* Removed CSS transition here to lock it tightly to the map grid */
         }
     </style>
 </head>
@@ -390,6 +440,16 @@
         <div id="coordinate-overlay-tracker" class="hud-module">
             X: --.----- | Y: --.-----
         </div>
+    </div>
+
+    <!-- Moved Side Actions -->
+    <div class="floating-side-actions">
+        <button id="force-gps-recenter" class="side-btn active-state" title="Recenter & Follow GPS">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+        </button>
+        <button id="compass-orientation-lock" class="side-btn" title="Reset North">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+        </button>
     </div>
 
     <div id="control-panel-deck">
@@ -418,20 +478,12 @@
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
                     SATELLITE
                 </button>
-                <button id="compass-orientation-lock" class="hud-btn">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
-                    NORTH
-                </button>
-                <button id="force-gps-recenter" class="hud-btn">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
-                    RECENTER
+                <button id="flush-workspace-trigger" class="hud-btn">
+                    CLEAR WORKSPACE
                 </button>
 
                 <button id="launch-routing-action" class="hud-btn" style="display:none;">
                     GET DIRECTIONS
-                </button>
-                <button id="flush-workspace-trigger" class="hud-btn" style="grid-column: span 3; background: transparent; border-color: rgba(255,255,255,0.05); color: var(--text-muted);">
-                    CLEAR ACTIVE WORKSPACE
                 </button>
             </div>
 
@@ -458,7 +510,8 @@
             style: REGULAR_MAP_STYLE, 
             center: defaultUserCoordinates, 
             zoom: 2, 
-            pitch: 65, 
+            pitch: 65,
+            maxPitch: 85,
             bearing: 0,
             antialias: true
         });
@@ -474,38 +527,6 @@
                 </svg>
             `;
             return el;
-        }
-
-        function calculateParallelOffsetLane(coordinates, offsetMeters) {
-            const offsetDegreeFactor = offsetMeters / 111320; 
-            const resultantPoints = [];
-
-            for (let i = 0; i < coordinates.length; i++) {
-                let dx = 0, dy = 0;
-                
-                if (i < coordinates.length - 1) {
-                    dx = coordinates[i+1][0] - coordinates[i][0];
-                    dy = coordinates[i+1][1] - coordinates[i][1];
-                } else if (i > 0) {
-                    dx = coordinates[i][0] - coordinates[i-1][0];
-                    dy = coordinates[i][1] - coordinates[i-1][1];
-                }
-
-                const segmentLength = Math.sqrt(dx * dx + dy * dy);
-                if (segmentLength === 0) {
-                    resultantPoints.push([...coordinates[i]]);
-                    continue;
-                }
-
-                const nx = -dy / segmentLength;
-                const ny = dx / segmentLength;
-
-                resultantPoints.push([
-                    coordinates[i][0] + nx * offsetDegreeFactor,
-                    coordinates[i][1] + ny * offsetDegreeFactor
-                ]);
-            }
-            return resultantPoints;
         }
 
         function calculateBearingAngle(p1, p2) {
@@ -528,15 +549,22 @@
             injectRealtime3DGeometryAndLanes();
             establishLiveHardwarePositioningStream();
 
+            // Hardware Accelerated Atmospheric Fog
+            map.setFog({
+                'color': '#0a0a0c',
+                'high-color': '#16161a',
+                'space-color': '#000000',
+                'horizon-blend': 0.15
+            });
+
             map.on('mousemove', (e) => {
                 const overlay = document.getElementById('coordinate-overlay-tracker');
-                if (overlay) {
-                    overlay.innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
-                }
+                if (overlay) overlay.innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
             });
 
             map.on('dragstart', () => {
                 cameraTrackingMode = false;
+                document.getElementById('force-gps-recenter').classList.remove('active-state');
             });
         });
 
@@ -552,48 +580,51 @@
 
             if (!map.getSource(sourceKey)) return;
 
-            // Highly Improved Realtime Multi-Lane Architecture
-            if (!map.getLayer('spatial-3d-lanes-asphalt-base')) {
+            // Rebuilt using hardware accelerated 'line-gap-width' for perfect 3D fidelity without javascript overhead
+            if (!map.getLayer('hw-3d-lanes-base-asphalt')) {
                 map.addLayer({
-                    'id': 'spatial-3d-lanes-asphalt-base',
+                    'id': 'hw-3d-lanes-base-asphalt',
                     'source': sourceKey,
                     'source-layer': 'transportation',
                     'type': 'line',
-                    'filter': ['==', '$geometryType', 'LineString'],
+                    'filter': ['in', 'class', 'motorway', 'trunk', 'primary', 'secondary'],
                     'layout': { 'line-join': 'round', 'line-cap': 'round' },
                     'paint': {
-                        'line-color': satelliteModeActive ? '#222226' : '#a2adb9',
-                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 6, 15, 24, 18, 64],
-                        'line-opacity': 0.95
-                    }
-                });
-
-                map.addLayer({
-                    'id': 'spatial-3d-lanes-inner-bed',
-                    'source': sourceKey,
-                    'source-layer': 'transportation',
-                    'type': 'line',
-                    'filter': ['==', '$geometryType', 'LineString'],
-                    'layout': { 'line-join': 'round', 'line-cap': 'round' },
-                    'paint': {
-                        'line-color': satelliteModeActive ? '#18181c' : '#4a535d',
-                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 4, 15, 20, 18, 56],
+                        'line-color': satelliteModeActive ? '#16161a' : '#222226',
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 6, 16, 26, 20, 64],
                         'line-opacity': 1.0
                     }
                 });
 
+                // Solid white edge lines generated natively using line-gap-width offset spacing
                 map.addLayer({
-                    'id': 'spatial-3d-lanes-dashed-markings',
+                    'id': 'hw-3d-lanes-solid-edges',
                     'source': sourceKey,
                     'source-layer': 'transportation',
                     'type': 'line',
-                    'filter': ['==', '$geometryType', 'LineString'],
+                    'filter': ['in', 'class', 'motorway', 'trunk', 'primary'],
                     'layout': { 'line-join': 'round', 'line-cap': 'round' },
                     'paint': {
                         'line-color': '#ffffff',
-                        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 1, 18, 2.5],
-                        'line-dasharray': [4, 6],
-                        'line-opacity': 0.85
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 18, 1.5],
+                        'line-gap-width': ['interpolate', ['linear'], ['zoom'], 14, 0, 16, 22, 20, 58],
+                        'line-opacity': 0.8
+                    }
+                });
+
+                // Crisp dashed center lines
+                map.addLayer({
+                    'id': 'hw-3d-lanes-center-dash',
+                    'source': sourceKey,
+                    'source-layer': 'transportation',
+                    'type': 'line',
+                    'filter': ['in', 'class', 'motorway', 'trunk', 'primary'],
+                    'layout': { 'line-join': 'round', 'line-cap': 'butt' },
+                    'paint': {
+                        'line-color': '#ffffff',
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 18, 1.5],
+                        'line-dasharray': [4, 5],
+                        'line-opacity': 0.9
                     }
                 });
             }
@@ -688,12 +719,15 @@
                     const dynamicInitialBearing = calculateBearingAngle(coords[0], coords[1]);
                     map.flyTo({
                         center: coords[0],
-                        zoom: 17,
+                        zoom: 17.5,
                         pitch: 65,
                         bearing: dynamicInitialBearing,
                         duration: 1000
                     });
                 }
+                
+                // Auto-collapse panel to see the route
+                document.getElementById('control-panel-deck').classList.add('minimized');
             }
 
             btn.style.display = "none"; 
@@ -732,54 +766,44 @@
 
             activeRouteDataStore.forEach((r) => {
                 const baseCoords = r.geometry.coordinates;
+                const srcId = `src-active-route-${r.index}`;
 
-                const centerLaneLeft = calculateParallelOffsetLane(baseCoords, -4.5);
-                const centerLaneRight = calculateParallelOffsetLane(baseCoords, 4.5);
+                if (!map.getSource(srcId)) {
+                    map.addSource(srcId, { 
+                        type: 'geojson', 
+                        data: { type: 'Feature', geometry: { type: 'LineString', coordinates: baseCoords } } 
+                    });
+                }
 
-                const lanesData = [
-                    { id: `lane-L-${r.index}`, coords: centerLaneLeft },
-                    { id: `lane-C-${r.index}`, coords: baseCoords },
-                    { id: `lane-R-${r.index}`, coords: centerLaneRight }
-                ];
+                // Casing Outline
+                if (!map.getLayer(`layer-route-casing-${r.index}`)) {
+                    map.addLayer({
+                        id: `layer-route-casing-${r.index}`,
+                        type: 'line',
+                        source: srcId,
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: {
+                            'line-color': '#111114',
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 6, 16, 14, 20, 36],
+                            'line-opacity': 0.8
+                        }
+                    });
+                }
 
-                lanesData.forEach(lane => {
-                    const srcId = `src-${lane.id}`;
-                    const lyrId = `layer-${lane.id}`;
-
-                    if (!map.getSource(srcId)) {
-                        map.addSource(srcId, { 
-                            type: 'geojson', 
-                            data: { type: 'Feature', geometry: { type: 'LineString', coordinates: lane.coords } } 
-                        });
-                    }
-
-                    if (!map.getLayer(lyrId)) {
-                        map.addLayer({
-                            id: lyrId,
-                            type: 'line',
-                            source: srcId,
-                            layout: { 'line-join': 'round', 'line-cap': 'round' },
-                            paint: {
-                                'line-color': '#ff3333',
-                                'line-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 16, 8, 20, 26],
-                                'line-opacity': lane.id.includes('-C-') ? 0.95 : 0.4
-                            }
-                        });
-
-                        map.addLayer({
-                            id: `${lyrId}-dash`,
-                            type: 'line',
-                            source: srcId,
-                            layout: { 'line-join': 'round', 'line-cap': 'round' },
-                            paint: {
-                                'line-color': '#ffffff',
-                                'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.8, 16, 2],
-                                'line-dasharray': [4, 4],
-                                'line-opacity': 0.9
-                            }
-                        });
-                    }
-                });
+                // Inner Glowing Red Route Line
+                if (!map.getLayer(`layer-route-core-${r.index}`)) {
+                    map.addLayer({
+                        id: `layer-route-core-${r.index}`,
+                        type: 'line',
+                        source: srcId,
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: {
+                            'line-color': '#ff3333',
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 16, 8, 20, 22],
+                            'line-opacity': 0.95
+                        }
+                    });
+                }
             });
         }
 
@@ -826,6 +850,7 @@
 
                         stepEl.addEventListener('click', () => {
                             cameraTrackingMode = false;
+                            document.getElementById('force-gps-recenter').classList.remove('active-state');
                             let targetStepBearing = currentVehicleHeading;
                             
                             if (stepIndex < r.steps.length - 1) {
@@ -834,7 +859,7 @@
 
                             map.flyTo({
                                 center: step.coordinates,
-                                zoom: 17.5,
+                                zoom: 18,
                                 pitch: 65,
                                 bearing: targetStepBearing,
                                 duration: 800
@@ -851,14 +876,9 @@
 
         function clearActiveRouteLayers() {
             for (let idx = 0; idx < 20; idx++) {
-                const elements = [
-                    `layer-lane-L-${idx}`, `layer-lane-L-${idx}-dash`,
-                    `layer-lane-C-${idx}`, `layer-lane-C-${idx}-dash`,
-                    `layer-lane-R-${idx}`, `layer-lane-R-${idx}-dash`
-                ];
+                const elements = [`layer-route-casing-${idx}`, `layer-route-core-${idx}`];
                 elements.forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
-
-                const sources = [`src-lane-L-${idx}`, `src-lane-C-${idx}`, `src-lane-R-${idx}`];
+                const sources = [`src-active-route-${idx}`];
                 sources.forEach(id => { if (map.getSource(id)) map.removeSource(id); });
             }
         }
@@ -868,7 +888,6 @@
             if (!diagnosticStatus) return;
             if (!navigator.geolocation) { diagnosticStatus.innerText = "UNSUPPORTED SENSOR"; return; }
 
-            // High-Precision Location Processing Engine
             navigator.geolocation.watchPosition(
                 (position) => {
                     const lon = position.coords.longitude;
@@ -933,6 +952,7 @@
             if (recenterBtn) {
                 recenterBtn.addEventListener('click', () => {
                     cameraTrackingMode = true; 
+                    recenterBtn.classList.add('active-state');
                     if (currentLiveGpsPosition) {
                         map.flyTo({ center: currentLiveGpsPosition, zoom: 17.5, pitch: 65, bearing: currentVehicleHeading, duration: 600 });
                     }
@@ -997,6 +1017,7 @@
                     document.getElementById('osm-engine-input').value = '';
                     document.getElementById('launch-routing-action').style.display = 'none';
                     document.getElementById('route-variants-dashboard').style.display = 'none';
+                    document.getElementById('control-panel-deck').classList.remove('minimized');
                     targetSelectedCoordinates = null;
                 });
             }
@@ -1007,7 +1028,7 @@
             const handle = document.getElementById('drag-handle');
             if (!panel || !handle) return;
             
-            let isDragging = false, startY = 0, currentTranslateY = 0, lastTranslateY = 0;
+            let isDragging = false, startY = 0, currentTranslateY = 0;
 
             handle.addEventListener('mousedown', startDrag);
             window.addEventListener('mousemove', processDrag);
@@ -1016,21 +1037,56 @@
             window.addEventListener('touchmove', (e) => processDrag(e.touches[0]), { passive: false });
             window.addEventListener('touchend', endDrag);
 
-            function startDrag(e) { isDragging = true; startY = e.clientY; panel.classList.remove('snapping'); }
+            // Click handle to toggle full open/close
+            handle.addEventListener('click', () => {
+                if (!isDragging) {
+                    panel.classList.toggle('minimized');
+                    currentTranslateY = 0;
+                    panel.style.transform = '';
+                }
+            });
+
+            function startDrag(e) { 
+                isDragging = true; 
+                startY = e.clientY; 
+                panel.classList.add('dragging'); 
+                panel.style.transition = 'none';
+            }
+            
             function processDrag(e) {
                 if (!isDragging) return;
-                let nextY = lastTranslateY + (e.clientY - startY);
-                if (nextY < -250) nextY = -250; if (nextY > 400) nextY = 400;
-                currentTranslateY = nextY;
-                panel.style.transform = `translateX(-50%) translateY(${currentTranslateY}px)`;
+                let deltaY = e.clientY - startY;
+                
+                // If it's currently minimized, we want to drag it UP (negative delta)
+                if (panel.classList.contains('minimized')) {
+                    if (deltaY < 0) {
+                        panel.style.transform = `translateX(-50%) translateY(calc(100% - 28px + ${deltaY}px))`;
+                    }
+                } else {
+                    // If open, drag down (positive delta)
+                    if (deltaY > 0) {
+                        panel.style.transform = `translateX(-50%) translateY(${deltaY}px)`;
+                    }
+                }
             }
-            function endDrag() {
-                if (!isDragging) return; isDragging = false; panel.classList.add('snapping');
-                if (currentTranslateY > 150) currentTranslateY = 320;
-                else if (currentTranslateY < -50) currentTranslateY = -180;
-                else currentTranslateY = 0;
-                panel.style.transform = `translateX(-50%) translateY(${currentTranslateY}px)`;
-                lastTranslateY = currentTranslateY;
+            
+            function endDrag(e) {
+                if (!isDragging) return; 
+                isDragging = false; 
+                panel.classList.remove('dragging');
+                panel.style.transition = 'transform 0.35s cubic-bezier(0.25, 1, 0.5, 1)';
+                
+                // Clear inline transform to let CSS classes handle it
+                panel.style.transform = '';
+
+                let deltaY = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY) - startY;
+
+                // Threshold logic for snapping
+                if (panel.classList.contains('minimized')) {
+                    if (deltaY < -50) panel.classList.remove('minimized');
+                } else {
+                    if (deltaY > 50) panel.classList.add('minimized');
+                }
             }
         }
 
@@ -1078,6 +1134,10 @@
         function initDirectMapInputListeners() {
             map.on('click', async (e) => {
                 const pinpoint = [e.lngLat.lng, e.lngLat.lat];
+                
+                // Open panel on click
+                document.getElementById('control-panel-deck').classList.remove('minimized');
+
                 triggerWorkspaceTargetDeck(pinpoint, "Selected Matrix Node", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
                 try {
                     const lookup = await fetch(`https://photon.komoot.io/api/?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
