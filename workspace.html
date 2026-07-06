@@ -2,346 +2,282 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StudioOS - 3D Lane Guidance Engine</title>
-    <!-- MapLibre GL Architecture Core JS & CSS -->
+    <title>StudioOS Map Engine - 3D Lane Guidance</title>
+    <!-- MapLibre GL CSS and JS -->
     <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet" />
     <style>
-        :root {
-            --bg-dark: #0c0c0e;
-            --panel-bg: rgba(20, 20, 25, 0.85);
-            --accent-red: #ff2a2a;
-            --accent-red-hover: #cc1b1b;
-            --text-main: #f5f5f7;
-            --text-dim: #9e9ea7;
-            --border-color: rgba(255, 42, 42, 0.2);
-        }
-
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-dark);
-            overflow: hidden;
-            color: var(--text-main);
-        }
-
-        #map {
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            width: 100%;
-            height: 100%;
-        }
-
-        /* Pro Floating UI Overlay Control Panel */
-        #control-panel {
+        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0a0a0a; color: #fff; overflow: hidden; }
+        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        
+        /* High-fidelity Red/Black UI Panel overlay */
+        #nav-panel {
             position: absolute;
             top: 20px;
             left: 20px;
-            width: 340px;
-            background: var(--panel-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
             z-index: 10;
-            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            width: 320px;
+            background: rgba(15, 15, 15, 0.9);
+            border: 1px solid #2a0808;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            backdrop-filter: blur(8px);
         }
-
-        h3 {
-            margin: 0 0 6px 0;
-            font-size: 18px;
-            font-weight: 600;
-            letter-spacing: -0.02em;
-        }
-
-        .route-meta {
-            font-size: 13px;
-            color: var(--text-dim);
-            margin-bottom: 20px;
-        }
-
-        .btn-action {
+        h3 { margin: 0 0 10px 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; color: #ff3b30; }
+        p { font-size: 13px; color: #aaa; margin: 0 0 20px 0; line-height: 1.4; }
+        
+        .btn {
             display: block;
             width: 100%;
-            background: var(--accent-red);
-            color: #ffffff;
+            background: #ff3b30;
+            color: #fff;
             border: none;
-            border-radius: 8px;
-            padding: 12px 16px;
-            font-size: 14px;
+            padding: 12px;
+            border-radius: 6px;
             font-weight: 600;
+            font-size: 14px;
             cursor: pointer;
-            transition: background 0.2s ease, transform 0.1s ease;
-            box-shadow: 0 4px 12px rgba(255, 42, 42, 0.3);
-        }
-
-        .btn-action:hover {
-            background: var(--accent-red-hover);
-        }
-
-        .btn-action:active {
-            transform: scale(0.98);
-        }
-
-        /* Minimal clean turn-by-turn panel state */
-        #navigation-overlay {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%) translateY(-100px);
-            background: var(--panel-bg);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid var(--border-color);
-            padding: 16px 32px;
-            border-radius: 40px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
-            z-index: 10;
-            pointer-events: none;
-            opacity: 0;
-            transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease;
+            transition: background 0.2s, transform 0.1s;
             text-align: center;
         }
-
-        #navigation-overlay.active {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
-        }
-
-        .nav-instruction {
-            font-size: 16px;
-            font-weight: 600;
-            letter-spacing: -0.01em;
-        }
+        .btn:hover { background: #e03228; }
+        .btn:active { transform: scale(0.98); }
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div id="map"></div>
+<div id="map"></div>
 
-    <!-- Active Navigation Prompt Interface Component -->
-    <div id="control-panel">
+<!-- Route & Control Interface Panel -->
+<div id="nav-panel">
+    <div id="route-summary">
         <h3>Route Calculated</h3>
-        <div class="route-meta">Distance: 4.2 mi &bull; Est. Time: 9 mins</div>
-        <button class="btn-action" id="start-route-btn" onclick="trigger3DNavigationLifecycle()">
-            Start Route Guidance
-        </button>
+        <p>Localized trajectory ready. Optimized lane configurations loaded client-side.</p>
+        <button class="btn" id="start-route-btn">Start Route</button>
     </div>
-
-    <!-- Live HUD Instruction Display -->
-    <div id="navigation-overlay">
-        <div class="nav-instruction">Follow <span style="color:var(--accent-red);">3D Lane Guidance Path</span> for 500 feet</div>
+    <div id="navigation-active" class="hidden">
+        <h3>3D Guidance Active</h3>
+        <p style="color: #fff; font-weight: 500;">Follow the highlighted red lane track ahead.</p>
+        <button class="btn" id="stop-route-btn" style="background: #222; border: 1px solid #444;">Exit Route</button>
     </div>
+</div>
 
-    <script>
-        // --- 1. SAMPLE COORDINATE TRACK SELECTION ---
-        // Pre-compiled polyline geometry segment for instant local mesh calculation
-        const sampleRouteCoordinates = [
-            [-123.2078, 39.1501],
-            [-123.2065, 39.1502],
-            [-123.2051, 39.1503],
-            [-123.2052, 39.1485],
-            [-123.2053, 39.1460],
-            [-123.2020, 39.1459],
-            [-123.1995, 39.1458]
-        ];
+<script>
+// --- SAMPLE GEOMETRY DATA ---
+// Mock coordinates to simulate a computed route path
+const SAMPLE_ROUTE = [
+    [-123.2078, 39.1502],
+    [-123.2065, 39.1501],
+    [-123.2050, 39.1500],
+    [-123.2048, 39.1525],
+    [-123.2045, 39.1550],
+    [-123.2020, 39.1552]
+];
 
-        // --- 2. INITIALIZE BASE MAP ENVIRONMENT ---
-        const map = new maplibregl.Map({
-            container: 'map',
-            style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', // Dark canvas to highlight crimson lanes
-            center: [-123.2051, 39.1495],
-            zoom: 14.5,
-            pitch: 30,
-            bearing: 0
-        });
+// --- INITIALIZE MAP CONTAINER ---
+const map = new maplibregl.Map({
+    container: 'map',
+    style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', // Sleek dark baseline canvas
+    center: [-123.2055, 39.1520],
+    zoom: 14.5,
+    pitch: 0,
+    bearing: 0
+});
 
-        map.on('load', () => {
-            // Add a basic 2D route fallback display line below the 3D custom structures
-            map.addSource('route-fallback', {
-                'type': 'geojson',
-                'data': {
-                    'type': 'Feature',
-                    'geometry': { 'type': 'LineString', 'coordinates': sampleRouteCoordinates }
+// Add 3D building profiles when map baseline finishes loading
+map.on('load', () => {
+    // Add atmospheric mist/fog handling for smooth low-horizon perspective transitions
+    map.setFog({
+        'range': [1, 8],
+        'color': '#0a0a0a',
+        'horizon-blend': 0.3
+    });
+
+    // Fit view frame slightly around the route overview track initially
+    const bounds = SAMPLE_ROUTE.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(SAMPLE_ROUTE[0], SAMPLE_ROUTE[0]));
+    map.fitBounds(bounds, { padding: 60 });
+});
+
+
+// --- WEBGL CUSTOM 3D LANE LAYER CLASS ---
+class Custom3DLaneLayer {
+    constructor(id, coordinates, laneWidthMeters = 7.5) {
+        this.id = id;
+        this.type = 'custom';
+        this.renderingMode = '3d';
+        this.coordinates = coordinates;
+        this.width = laneWidthMeters;
+        this.program = null;
+        this.vertexBuffer = null;
+        this.vertexCount = 0;
+    }
+
+    onAdd(map, gl) {
+        const vertexShaderSource = `
+            uniform mat4 u_matrix;
+            attribute vec3 a_position;
+            attribute vec2 a_texcoord;
+            varying vec2 v_texcoord;
+            void main() {
+                v_texcoord = a_texcoord;
+                gl_Position = u_matrix * vec4(a_position, 1.0);
+            }
+        `;
+
+        const fragmentShaderSource = `
+            precision mediump float;
+            varying vec2 v_texcoord;
+            void main() {
+                vec4 baseColor = vec4(0.5, 0.02, 0.02, 0.85); // Dark deep red track base
+                float centerDist = abs(v_texcoord.x - 0.5);
+                
+                // Procedural neon center navigation lane track
+                if (centerDist < 0.04) {
+                    float dashPattern = step(0.4, fract(v_texcoord.y * 14.0));
+                    baseColor = mix(baseColor, vec4(1.0, 0.15, 0.15, 1.0), dashPattern);
                 }
-            });
-
-            map.addLayer({
-                'id': 'route-line-underlay',
-                'type': 'line',
-                'source': 'route-fallback',
-                'paint': {
-                    'line-color': '#ff2a2a',
-                    'line-width': 4,
-                    'line-opacity': 0.35
+                // Glowing side boundaries
+                if (centerDist > 0.46) {
+                    baseColor = vec4(1.0, 0.1, 0.1, 0.95);
                 }
-            });
-        });
-
-        // --- 3. STANDALONE WEBGL CUSTOM 3D LANE LAYER ENGINE ---
-        class Custom3DLaneLayer {
-            constructor(id, coordinates, laneWidthMeters = 8.5) {
-                this.id = id;
-                this.type = 'custom';
-                this.renderingMode = '3d';
-                this.coordinates = coordinates;
-                this.width = laneWidthMeters;
-                this.program = null;
-                this.vertexBuffer = null;
-                this.vertexCount = 0;
+                gl_FragColor = baseColor;
             }
+        `;
 
-            onAdd(map, gl) {
-                const vertexShaderSource = `
-                    uniform mat4 u_matrix;
-                    attribute vec3 a_position;
-                    attribute vec2 a_texcoord;
-                    varying vec2 v_texcoord;
-                    void main() {
-                        v_texcoord = a_texcoord;
-                        gl_Position = u_matrix * vec4(a_position, 1.0);
-                    }
-                `;
+        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
+        gl.shaderSource(vertexShader, vertexShaderSource);
+        gl.compileShader(vertexShader);
 
-                const fragmentShaderSource = `
-                    precision mediump float;
-                    varying vec2 v_texcoord;
-                    void main() {
-                        // High-contrast, dark crimson alpha base field
-                        vec4 baseColor = vec4(0.65, 0.04, 0.04, 0.85);
-                        float centerDist = abs(v_texcoord.x - 0.5);
-                        
-                        // Procedural neon tracking directional arrows traveling up the center
-                        if (centerDist < 0.04) {
-                            float dashPattern = step(0.4, fract(v_texcoord.y * 14.0));
-                            baseColor = mix(baseColor, vec4(1.0, 0.3, 0.3, 1.0), dashPattern);
-                        }
-                        
-                        // Crisp solid containment edge borders
-                        if (centerDist > 0.47) {
-                            baseColor = vec4(1.0, 0.15, 0.15, 0.95);
-                        }
-                        gl_FragColor = baseColor;
-                    }
-                `;
+        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
+        gl.shaderSource(fragmentShader, fragmentShaderSource);
+        gl.compileShader(fragmentShader);
 
-                const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-                gl.shaderSource(vertexShader, vertexShaderSource);
-                gl.compileShader(vertexShader);
+        this.program = gl.createProgram();
+        gl.attachShader(this.program, vertexShader);
+        gl.attachShader(this.program, fragmentShader);
+        gl.linkProgram(this.program);
 
-                const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-                gl.shaderSource(fragmentShader, fragmentShaderSource);
-                gl.compileShader(fragmentShader);
+        this.generateRibbonMesh(map, gl);
+    }
 
-                this.program = gl.createProgram();
-                gl.attachShader(this.program, vertexShader);
-                gl.attachShader(this.program, fragmentShader);
-                gl.linkProgram(this.program);
+    generateRibbonMesh(map, gl) {
+        const vertices = [];
+        const totalPoints = this.coordinates.length;
+        if (totalPoints < 2) return;
 
-                this.generateRibbonMesh(gl);
-            }
+        const meterScale = 1.0 / (40075016.686 / 360.0) / 111320.0;
+        const offsetDist = this.width * meterScale;
 
-            generateRibbonMesh(gl) {
-                const vertices = [];
-                const totalPoints = this.coordinates.length;
-                if (totalPoints < 2) return;
+        for (let i = 0; i < totalPoints; i++) {
+            const curr = maplibregl.MercatorCoordinate.fromLngLat(this.coordinates[i]);
+            let next = (i < totalPoints - 1) ? maplibregl.MercatorCoordinate.fromLngLat(this.coordinates[i + 1]) : curr;
+            let prev = (i > 0) ? maplibregl.MercatorCoordinate.fromLngLat(this.coordinates[i - 1]) : curr;
 
-                // Mercator-coordinate conversion multiplier ratio
-                const meterScale = 1.0 / (40075016.686 / 360.0) / 111320.0; 
-                const offsetDist = this.width * meterScale;
+            let dx = next.x - prev.x;
+            let dy = next.y - prev.y;
+            let len = Math.sqrt(dx * dx + dy * dy);
+            if (len === 0) len = 1;
+            
+            let nx = -dy / len;
+            let ny = dx / len;
 
-                for (let i = 0; i < totalPoints; i++) {
-                    const curr = maplibregl.MercatorCoordinate.fromLngLat(this.coordinates[i]);
-                    let next = (i < totalPoints - 1) ? maplibregl.MercatorCoordinate.fromLngLat(this.coordinates[i + 1]) : curr;
-                    let prev = (i > 0) ? maplibregl.MercatorCoordinate.fromLngLat(this.coordinates[i - 1]) : curr;
+            const leftX = curr.x + nx * offsetDist;
+            const leftY = curr.y + ny * offsetDist;
+            const rightX = curr.x - nx * offsetDist;
+            const rightY = curr.y - ny * offsetDist;
 
-                    let dx = next.x - prev.x;
-                    let dy = next.y - prev.y;
-                    let len = Math.sqrt(dx * dx + dy * dy);
-                    if (len === 0) len = 1;
-                    
-                    let nx = -dy / len;
-                    let ny = dx / len;
+            const progress = i / (totalPoints - 1);
 
-                    // Vertices calculated with a minor Z elevation offset (0.000004) to hover cleanly over standard geometry lines
-                    const leftX = curr.x + nx * offsetDist;
-                    const leftY = curr.y + ny * offsetDist;
-                    const rightX = curr.x - nx * offsetDist;
-                    const rightY = curr.y - ny * offsetDist;
-
-                    const progress = i / (totalPoints - 1);
-
-                    vertices.push(leftX, leftY, 0.000004, 0.0, progress);
-                    vertices.push(rightX, rightY, 0.000004, 1.0, progress);
-                }
-
-                this.vertexCount = vertices.length / 5;
-                this.vertexBuffer = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-            }
-
-            render(gl, matrix) {
-                gl.useProgram(this.program);
-                gl.uniformMatrix4fv(gl.getUniformLocation(this.program, 'u_matrix'), false, matrix);
-                gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-
-                const positionLocation = gl.getAttribLocation(this.program, 'a_position');
-                gl.enableVertexAttribArray(positionLocation);
-                gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 20, 0);
-
-                const texcoordLocation = gl.getAttribLocation(this.program, 'a_texcoord');
-                gl.enableVertexAttribArray(texcoordLocation);
-                gl.vertexAttribPointer(texcoordLocation, 2, gl.FLOAT, false, 20, 12);
-
-                gl.enable(gl.BLEND);
-                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-                gl.drawArrays(gl.TRIANGLE_STRIP, 0, this.vertexCount);
-            }
+            // Left Vertex Node (Elevated 0.000005 to float seamlessly above road surfaces)
+            vertices.push(leftX, leftY, 0.000005, 0.0, progress);
+            // Right Vertex Node
+            vertices.push(rightX, rightY, 0.000005, 1.0, progress);
         }
 
-        // --- 4. NAVIGATION LIFECYCLE MANAGMENT CONTROLLER ---
-        function trigger3DNavigationLifecycle() {
-            // Hide selection entry sidebar out of view frame
-            const panel = document.getElementById('control-panel');
-            panel.style.transform = 'translateX(-400px)';
-            panel.style.opacity = '0';
+        this.vertexCount = vertices.length / 5;
+        this.vertexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+    }
 
-            // Instance the procedural 3D custom GL Lane layer
-            const local3DHighwayRibbon = new Custom3DLaneLayer('custom-3d-lanes', sampleRouteCoordinates, 8.0);
-            map.addLayer(local3DHighwayRibbon);
+    render(gl, matrix) {
+        gl.useProgram(this.program);
+        gl.uniformMatrix4fv(gl.getUniformLocation(this.program, 'u_matrix'), false, matrix);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
 
-            // Extract heading calculations to align track camera view smoothly forward
-            const bearingHeading = determineTrackHeading(sampleRouteCoordinates[0], sampleRouteCoordinates[1]);
+        const positionLocation = gl.getAttribLocation(this.program, 'a_position');
+        gl.enableVertexAttribArray(positionLocation);
+        gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 20, 0);
 
-            // Execute low-altitude driver perspective flyTo transition sequence
-            map.flyTo({
-                center: sampleRouteCoordinates[0],
-                zoom: 18.8,
-                pitch: 68,
-                bearing: bearingHeading,
-                duration: 2400,
-                essential: true
-            });
+        const texcoordLocation = gl.getAttribLocation(this.program, 'a_texcoord');
+        gl.enableVertexAttribArray(texcoordLocation);
+        gl.vertexAttribPointer(texcoordLocation, 2, gl.FLOAT, false, 20, 12);
 
-            // Slide in the top turn-by-turn navigation HUD overlay
-            setTimeout(() => {
-                document.getElementById('navigation-overlay').classList.add('active');
-            }, 1200);
-        }
+        gl.enable(gl.BLEND);
+        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, this.vertexCount);
+    }
+}
 
-        function determineTrackHeading(p1, p2) {
-            const dLng = p2[0] - p1[0];
-            const dLat = p2[1] - p1[1];
-            return (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
-        }
-    </script>
+
+// --- INTERACTION LIFE-CYCLE MANAGEMENT ---
+
+const startBtn = document.getElementById('start-route-btn');
+const stopBtn = document.getElementById('stop-route-btn');
+const routeSummary = document.getElementById('route-summary');
+const navActivePanel = document.getElementById('navigation-active');
+
+// Function: Compute target angle to face forward down the line segments
+function getBearing(p1, p2) {
+    const dLng = p2[0] - p1[0];
+    const dLat = p2[1] - p1[1];
+    return (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
+}
+
+// Trigger: Action button clicked -> Plunge into 3D Guidance Mode
+startBtn.addEventListener('click', () => {
+    routeSummary.classList.add('hidden');
+    navActivePanel.classList.remove('hidden');
+
+    // 1. Inject custom 3D WebGL meshes directly into map registry layers
+    if (!map.getLayer('custom-3d-lanes')) {
+        const laneEngineInstance = new Custom3DLaneLayer('custom-3d-lanes', SAMPLE_ROUTE, 8.0);
+        map.addLayer(laneEngineInstance);
+    }
+
+    // 2. Animate camera to high-immersion driver perspective
+    const initialBearing = getBearing(SAMPLE_ROUTE[0], SAMPLE_ROUTE[1]);
+    map.flyTo({
+        center: SAMPLE_ROUTE[0],
+        zoom: 18.8,
+        pitch: 68,
+        bearing: initialBearing,
+        duration: 2500,
+        essential: true
+    });
+});
+
+// Trigger: Terminate navigation view state
+stopBtn.addEventListener('click', () => {
+    navActivePanel.classList.add('hidden');
+    routeSummary.classList.remove('hidden');
+
+    // Clean out custom WebGL lane asset layers safely
+    if (map.getLayer('custom-3d-lanes')) {
+        map.removeLayer('custom-3d-lanes');
+    }
+
+    // Return to default birds-eye map view geometry bounds
+    const bounds = SAMPLE_ROUTE.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(SAMPLE_ROUTE[0], SAMPLE_ROUTE[0]));
+    map.flyTo({
+        pitch: 0,
+        bearing: 0,
+        duration: 1500
+    });
+    setTimeout(() => { map.fitBounds(bounds, { padding: 60 }); }, 200);
+});
+</script>
 </body>
 </html>
