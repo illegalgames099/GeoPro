@@ -21,7 +21,6 @@
             --text-main: #ffffff;
             --text-secondary: #a0a0ab;
             --text-muted: #4b4b54;
-            --accent-green: #ff2222; 
             --sidebar-width: 380px;
         }
 
@@ -59,14 +58,14 @@
         button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
         input { font: inherit; }
 
-        /* ── FIXED LOWER-LEFT PANEL DECK ── */
+        /* ── CONTROL PANEL DECK ── */
         #control-panel-deck {
             position: absolute;
             bottom: 25px;
             left: 25px;
             width: var(--sidebar-width);
             max-height: calc(100% - 50px);
-            z-index: 10;
+            z-index: 2000; /* Elevated past MapLibre internal interaction structures */
             background: var(--bg-panel);
             backdrop-filter: blur(35px) saturate(210%);
             -webkit-backdrop-filter: blur(35px) saturate(210%);
@@ -92,7 +91,7 @@
             align-items: center;
             cursor: grab;
             background: transparent;
-            z-index: 12;
+            z-index: 2010;
         }
         .drag-handle-bar:active { cursor: grabbing; }
         .drag-handle-pill {
@@ -157,7 +156,7 @@
             margin-top: 6px;
             max-height: 220px;
             overflow-y: auto;
-            z-index: 150;
+            z-index: 2500;
             display: none;
         }
         .osm-suggest-item {
@@ -206,19 +205,52 @@
         .diagnostic-row span:last-child { color: var(--text-secondary); font-weight: bold; }
         .diagnostic-row .brand-status { color: var(--action-red); text-shadow: 0 0 8px var(--action-red-glow); }
 
-        /* Toolstack Controls */
+        /* Floating Console Toolstack Controls */
         #right-floating-console-stack {
-            position: absolute; top: 25px; right: 25px; z-index: 100; display: flex; flex-direction: column; gap: 8px;
+            position: absolute; 
+            top: 25px; 
+            right: 25px; 
+            z-index: 2000; /* Fixed layer depth override */
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px;
         }
         .console-action-btn-node {
-            background: var(--bg-panel); backdrop-filter: blur(20px); border: 1px solid var(--border-subtle); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
+            background: var(--bg-panel); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid var(--border-subtle); 
+            width: 44px; 
+            height: 44px; 
+            border-radius: 12px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 1.1rem;
+            color: var(--text-main);
         }
-        .console-action-btn-node:hover { background: var(--bg-surface-hover); border-color: var(--action-red); box-shadow: 0 0 10px rgba(255, 34, 34, 0.2); }
+        .console-action-btn-node:hover { 
+            background: var(--bg-surface-hover); 
+            border-color: var(--action-red); 
+            box-shadow: 0 0 10px rgba(255, 34, 34, 0.2); 
+            color: var(--action-red);
+        }
         .console-action-btn-node svg { width: 18px; height: 18px; fill: currentColor; }
 
-        #coordinate-overlay-tracker { position: absolute; bottom: 25px; right: 25px; background: var(--bg-panel); backdrop-filter: blur(10px); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-subtle); font-family: monospace; font-size: 0.7rem; z-index: 5; color: var(--text-secondary); }
+        #coordinate-overlay-tracker { 
+            position: absolute; 
+            bottom: 25px; 
+            right: 25px; 
+            background: var(--bg-panel); 
+            backdrop-filter: blur(10px); 
+            padding: 8px 12px; 
+            border-radius: 10px; 
+            border: 1px solid var(--border-subtle); 
+            font-family: monospace; 
+            font-size: 0.7rem; 
+            z-index: 2000; 
+            color: var(--text-secondary); 
+        }
 
-        /* Custom SVG Marker Component styling */
         .custom-spatial-marker {
             display: flex;
             justify-content: center;
@@ -228,7 +260,6 @@
             cursor: pointer;
         }
 
-        /* Responsive Mobile Handling Layer */
         @media (max-width: 480px) {
             #control-panel-deck {
                 width: calc(100% - 32px);
@@ -277,7 +308,7 @@
                 <div class="hardware-diagnostics-deck">
                     <div class="diagnostic-row"><span>Engine Source</span><span class="brand-status">MAPLIBRE V4</span></div>
                     <div class="diagnostic-row"><span>Search Registry</span><span>PHOTON INDEX</span></div>
-                    <div class="diagnostic-row"><span>Routing Pipeline</span><span id="routing-engine-status">LOCAL SYSTEM MOCK</span></div>
+                    <div class="diagnostic-row"><span>Routing Pipeline</span><span id="routing-engine-status">OSRM ROUTER</span></div>
                 </div>
             </div>
         </div>
@@ -286,7 +317,6 @@
         <div id="right-floating-console-stack">
             <button class="console-action-btn-node" id="force-gps-recenter" title="Recenter Engine">🎯</button>
             <button class="console-action-btn-node" id="compass-orientation-lock" title="True North">
-                <!-- High-vis Vector SVG Compass Replacement to bypass text clipping rules -->
                 <svg viewBox="0 0 24 24">
                     <path d="M7 11h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
                 </svg>
@@ -297,13 +327,11 @@
     </div>
 
     <script>
-        // Set coordinates configuration baseline 
         const defaultUserCoordinates = [-123.2078, 39.1502];
         let targetSelectedCoordinates = null;
         let querySearchDebounceTimer = null;
         let activeMapMarker = null; 
 
-        // Initializing MapLibre Engine instance with open dark vector styles
         const map = new maplibregl.Map({
             container: 'map',
             style: 'https://tiles.openfreemap.org/styles/dark', 
@@ -328,15 +356,17 @@
             return el;
         }
 
-        map.on('load', () => {
-            // Force hardware layout viewport to instantly jump focus on the active GPS tracking point
+        // Fired as soon as stylesheet data compiles entirely 
+        map.on('style.load', () => {
             map.jumpTo({
                 center: defaultUserCoordinates,
                 zoom: 13,
                 pitch: 25,
                 bearing: 0
             });
+        });
 
+        map.on('load', () => {
             initTacticalPanelDraggingPhysics();
             initAutonomousSearchMatrix();
             initDirectMapInputListeners();
@@ -345,11 +375,9 @@
             map.on('mousemove', (e) => {
                 document.getElementById('coordinate-overlay-tracker').innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
             });
-            
-            document.getElementById('routing-engine-status').innerText = "OSRM ROUTER";
         });
 
-        /* ── SOLIDIFIED POSITIONING & SLIDEOVER DRAG PHYSICS ── */
+        /* ── POSITIONING & DRAG PHYSICS ── */
         function initTacticalPanelDraggingPhysics() {
             const panel = document.getElementById('control-panel-deck');
             const handle = document.getElementById('drag-handle');
@@ -403,7 +431,7 @@
             }
         }
 
-        /* ── COMPREHENSIVE ADDRESS VECTOR RESOLUTION ── */
+        /* ── ADDRESS VECTOR RESOLUTION ── */
         function initAutonomousSearchMatrix() {
             const input = document.getElementById('osm-engine-input');
             const dropdown = document.getElementById('osm-engine-dropdown');
