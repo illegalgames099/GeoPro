@@ -307,7 +307,7 @@
                 <!-- Open Search Entry Vector -->
                 <div class="search-field-container">
                     <div class="search-input-wrapper">
-                        <input type="text" class="search-input-node" id="osm-engine-input" placeholder="Search physical vectors...">
+                        <input type="text" class="search-input-node" id="osm-engine-input" placeholder="Search local vectors...">
                     </div>
                     <div class="osm-dropdown-menu" id="osm-engine-dropdown"></div>
                 </div>
@@ -344,7 +344,7 @@
     </div>
 
     <script>
-        // Default structural anchor point if the hardware sensor fails completely
+        // Fallback global default coordinates if hardware sensors are missing or blocked
         let defaultUserCoordinates = [-122.084, 37.422]; 
         let currentLiveGpsPosition = null; 
         let targetSelectedCoordinates = null;
@@ -357,7 +357,7 @@
             container: 'map',
             style: 'https://tiles.openfreemap.org/styles/dark', 
             center: defaultUserCoordinates, 
-            zoom: 2, // Start wide until telemetry resolves position
+            zoom: 2, 
             pitch: 25,
             bearing: 0,
             antialias: true
@@ -382,7 +382,6 @@
             initDirectMapInputListeners();
             initHardwareConsoleTriggers();
             
-            // Immediately run a high-accuracy geolocation capture loop
             establishLiveHardwarePositioningStream();
 
             map.on('mousemove', (e) => {
@@ -406,7 +405,6 @@
                 maximumAge: 0
             };
 
-            // WatchPosition handles the initial lock and streams subsequent changes
             navigator.geolocation.watchPosition(
                 (position) => {
                     const lon = position.coords.longitude;
@@ -418,7 +416,6 @@
                     diagnosticStatus.innerText = "ONLINE (LIVE)";
                     diagnosticStatus.style.color = "#007aff";
 
-                    // Update or generate the pulsing location beacon on the canvas map
                     if (!userLocationBeaconMarker) {
                         const beaconEl = document.createElement('div');
                         beaconEl.className = 'live-gps-beacon-node';
@@ -430,7 +427,6 @@
                         userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
                     }
 
-                    // On the very first telemetry capture, immediately snap the camera to position
                     if (initialLockAchieved) {
                         map.flyTo({
                             center: currentLiveGpsPosition,
@@ -507,7 +503,7 @@
             }
         }
 
-        /* ── ADDRESS VECTOR RESOLUTION ── */
+        /* ── LOCALIZED ADDRESS VECTOR RESOLUTION ── */
         function initAutonomousSearchMatrix() {
             const input = document.getElementById('osm-engine-input');
             const dropdown = document.getElementById('osm-engine-dropdown');
@@ -519,7 +515,16 @@
                 
                 querySearchDebounceTimer = setTimeout(async () => {
                     try {
-                        const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`);
+                        // Base query structure 
+                        let searchApiUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`;
+                        
+                        // Inject geographic location coordinates to bias local sorting results if active
+                        if (currentLiveGpsPosition && currentLiveGpsPosition.length === 2) {
+                            const [lon, lat] = currentLiveGpsPosition;
+                            searchApiUrl += `&lon=${lon}&lat=${lat}`;
+                        }
+                        
+                        const response = await fetch(searchApiUrl);
                         const payload = await response.json();
                         if (!payload.features || payload.features.length === 0) { dropdown.style.display = 'none'; return; }
                         
@@ -528,6 +533,7 @@
                             const segmentItem = document.createElement('div');
                             segmentItem.className = 'osm-suggest-item';
                             const p = feature.properties;
+                            
                             const labeledLocation = [p.name, p.city, p.state].filter(Boolean).join(', ');
                             segmentItem.innerText = labeledLocation;
                             
@@ -580,7 +586,6 @@
         async function runLocalSpatialRouteCalculation() {
             if (!targetSelectedCoordinates) return;
             
-            // Check if live coordinates exist; if not, fall back to our map center as origin anchor
             const originCoords = currentLiveGpsPosition ? currentLiveGpsPosition : [map.getCenter().lng, map.getCenter().lat];
             const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson`;
             
@@ -609,7 +614,6 @@
                 if (currentLiveGpsPosition) {
                     map.flyTo({ center: currentLiveGpsPosition, zoom: 15 });
                 } else {
-                    // Try to re-request if it wasn't available
                     establishLiveHardwarePositioningStream();
                 }
             });
