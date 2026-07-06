@@ -5,7 +5,6 @@
     <title>GeoPro - 3D World Navigation Engine</title>
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
     
-    <!-- MapLibre Core Dependencies -->
     <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 
@@ -499,7 +498,6 @@
         let gpsVelocityVector = { lng: 0, lat: 0 };
         let currentVehicleHeading = 0;
 
-        // Switched to a lightweight, highly optimized Carto Dark Matter style for massive performance boost
         const HIGH_PERFORMANCE_DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
         const map = new maplibregl.Map({
@@ -511,7 +509,7 @@
             maxPitch: 85,
             bearing: 0,
             antialias: true,
-            fadeDuration: 50, // Instantly snaps tiles in instead of slowly fading
+            fadeDuration: 50,
             crossSourceCollisions: false
         });
 
@@ -552,7 +550,7 @@
                 'color': '#050505',
                 'high-color': '#0f0f13',
                 'space-color': '#000000',
-                'horizon-blend': 0.05 // Crisper horizon for the dark theme
+                'horizon-blend': 0.05
             });
 
             map.on('mousemove', (e) => {
@@ -586,7 +584,6 @@
             const sourceKey = Object.keys(styleSources).find(key => styleSources[key].type === 'vector');
             if (!sourceKey || !map.getSource(sourceKey)) return;
 
-            // Render buildings beneath text labels so the map remains usable
             const layers = map.getStyle().layers;
             let labelLayerId;
             for (let i = 0; i < layers.length; i++) {
@@ -602,7 +599,7 @@
                     'source': sourceKey,
                     'source-layer': 'building',
                     'type': 'fill-extrusion',
-                    'minzoom': 15, // MASSIVE PERFORMANCE UPGRADE: Delays rendering 3D polys until zoomed in
+                    'minzoom': 15, 
                     'paint': {
                         'fill-extrusion-color': satelliteModeActive ? '#1a1a20' : '#111115',
                         'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 14],
@@ -817,6 +814,8 @@
             if (!diagnosticStatus) return;
             if (!navigator.geolocation) { diagnosticStatus.innerText = "SENSOR FAULT"; return; }
 
+            let initialLockAcquired = false;
+
             navigator.geolocation.watchPosition(
                 (position) => {
                     const lon = position.coords.longitude;
@@ -827,6 +826,29 @@
                     diagnosticStatus.innerText = "GPS TRACKING ACTIVE";
                     diagnosticStatus.style.color = "var(--action-red)";
 
+                    // Fixed: Eliminate GPS rubber-banding glitch on boot
+                    if (!initialLockAcquired) {
+                        initialLockAcquired = true;
+                        currentLiveGpsPosition = incomingLoc;
+                        lastGpsTimestamp = now;
+
+                        if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
+                            currentVehicleHeading = position.coords.heading;
+                        }
+
+                        if (!userLocationBeaconMarker) {
+                            const beaconEl = document.createElement('div');
+                            beaconEl.className = 'live-gps-beacon-node';
+                            userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })
+                                .setLngLat(currentLiveGpsPosition)
+                                .addTo(map);
+                        }
+
+                        // JUMP instantly instead of easing across the map
+                        map.jumpTo({ center: currentLiveGpsPosition, zoom: 17.5, pitch: 70, bearing: currentVehicleHeading });
+                        return; 
+                    }
+
                     if (lastGpsTimestamp && currentLiveGpsPosition) {
                         const elapsedSecs = (now - lastGpsTimestamp) / 1000;
                         if (elapsedSecs > 0) {
@@ -835,7 +857,7 @@
                         }
                     }
 
-                    if (position.coords.heading !== null && position.coords.heading !== undefined) {
+                    if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
                         currentVehicleHeading = position.coords.heading;
                     } else if (currentLiveGpsPosition) {
                         currentVehicleHeading = calculateBearingAngle(currentLiveGpsPosition, incomingLoc);
@@ -844,13 +866,7 @@
                     currentLiveGpsPosition = incomingLoc;
                     lastGpsTimestamp = now;
 
-                    if (!userLocationBeaconMarker) {
-                        const beaconEl = document.createElement('div');
-                        beaconEl.className = 'live-gps-beacon-node';
-                        userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })
-                            .setLngLat(currentLiveGpsPosition)
-                            .addTo(map);
-                    } else {
+                    if (userLocationBeaconMarker) {
                         userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
                     }
 
@@ -860,7 +876,7 @@
                             pitch: 70,
                             bearing: currentVehicleHeading,
                             zoom: 17.5,
-                            duration: 250
+                            duration: 500
                         });
                     }
                 },
@@ -872,11 +888,12 @@
             );
 
             function executePredictiveTrackingFrame() {
-                if (cameraTrackingMode && currentLiveGpsPosition && lastGpsTimestamp) {
+                if (cameraTrackingMode && currentLiveGpsPosition && lastGpsTimestamp && initialLockAcquired) {
                     const frameTime = performance.now();
                     const deltaSec = (frameTime - lastGpsTimestamp) / 1000;
                     
-                    if (deltaSec > 0.3 && deltaSec < 3.0) {
+                    // Fixed: Only predict if the time gap is realistic to prevent infinite scrolling
+                    if (deltaSec > 0.3 && deltaSec < 2.0) {
                         const predictedLng = currentLiveGpsPosition[0] + (gpsVelocityVector.lng * 0.016);
                         const predictedLat = currentLiveGpsPosition[1] + (gpsVelocityVector.lat * 0.016);
                         
@@ -903,232 +920,4 @@
             if (recenterBtn) {
                 recenterBtn.addEventListener('click', () => {
                     cameraTrackingMode = true; 
-                    recenterBtn.classList.add('active-state');
-                    if (currentLiveGpsPosition) {
-                        map.flyTo({ 
-                            center: currentLiveGpsPosition, 
-                            zoom: 17.5, 
-                            pitch: 70, 
-                            bearing: currentVehicleHeading, 
-                            duration: 500 
-                        });
-                    }
-                });
-            }
-
-            const satelliteBtn = document.getElementById('toggle-satellite-view');
-            if (satelliteBtn) {
-                satelliteBtn.addEventListener('click', () => {
-                    satelliteModeActive = !satelliteModeActive;
-                    clearActiveRouteLayers(); 
-
-                    if (satelliteModeActive) {
-                        satelliteBtn.style.borderColor = 'var(--action-red)';
-                        satelliteBtn.style.color = 'var(--action-red)';
-
-                        map.setStyle({
-                            'version': 8,
-                            'sources': {
-                                'satellite-imagery-tiles': {
-                                    'type': 'raster',
-                                    'tiles': ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-                                    'tileSize': 256,
-                                    'attribution': 'Esri'
-                                },
-                                'terrain-dem-mesh': {
-                                    'type': 'raster-dem',
-                                    'tiles': ['https://demotiles.maplibre.org/terrain-tiles/{z}/{x}/{y}.png'],
-                                    'tileSize': 256,
-                                    'maxzoom': 14
-                                },
-                                'openfreemap': {
-                                    'type': 'vector',
-                                    'url': 'https://tiles.openfreemap.org/styles/liberty'
-                                }
-                            },
-                            'layers': [
-                                {
-                                    'id': 'satellite-reality-layer',
-                                    'type': 'raster',
-                                    'source': 'satellite-imagery-tiles'
-                                }
-                            ],
-                            'terrain': {
-                                'source': 'terrain-dem-mesh',
-                                'exaggeration': 1.6
-                            }
-                        });
-                    } else {
-                        satelliteBtn.style.borderColor = '';
-                        satelliteBtn.style.color = '';
-                        if (map.getTerrain()) map.setTerrain(null);
-                        map.setStyle(HIGH_PERFORMANCE_DARK_STYLE);
-                    }
-                });
-            }
-
-            const routingBtn = document.getElementById('launch-routing-action');
-            if (routingBtn) {
-                routingBtn.addEventListener('click', handleRoutingButtonClick);
-            }
-            
-            const flushBtn = document.getElementById('flush-workspace-trigger');
-            if (flushBtn) {
-                flushBtn.addEventListener('click', () => {
-                    clearActiveRouteLayers();
-                    activeRouteDataStore = [];
-                    if (activeMapMarker) { activeMapMarker.remove(); activeMapMarker = null; }
-                    document.getElementById('context-destination-panel').style.display = 'none';
-                    document.getElementById('osm-engine-input').value = '';
-                    document.getElementById('launch-routing-action').style.display = 'none';
-                    document.getElementById('route-variants-dashboard').style.display = 'none';
-                    document.getElementById('control-panel-deck').classList.remove('minimized');
-                    targetSelectedCoordinates = null;
-                });
-            }
-        }
-
-        function initTacticalPanelDraggingPhysics() {
-            const panel = document.getElementById('control-panel-deck');
-            const handle = document.getElementById('drag-handle');
-            if (!panel || !handle) return;
-            
-            let isDragging = false, startY = 0;
-
-            handle.addEventListener('mousedown', startDrag);
-            window.addEventListener('mousemove', processDrag);
-            window.addEventListener('mouseup', endDrag);
-            handle.addEventListener('touchstart', (e) => startDrag(e.touches[0]), { passive: true });
-            window.addEventListener('touchmove', (e) => processDrag(e.touches[0]), { passive: false });
-            window.addEventListener('touchend', endDrag);
-
-            handle.addEventListener('click', () => {
-                if (!isDragging) {
-                    panel.classList.toggle('minimized');
-                    panel.style.transform = '';
-                }
-            });
-
-            function startDrag(e) { 
-                isDragging = true; 
-                startY = e.clientY; 
-                panel.classList.add('dragging'); 
-            }
-            
-            function processDrag(e) {
-                if (!isDragging) return;
-                let deltaY = e.clientY - startY;
-                
-                if (panel.classList.contains('minimized')) {
-                    if (deltaY < 0) {
-                        panel.style.transform = `translateX(-50%) translateY(calc(100% - 28px + ${deltaY}px))`;
-                    }
-                } else {
-                    if (deltaY > 0) {
-                        panel.style.transform = `translateX(-50%) translateY(${deltaY}px)`;
-                    }
-                }
-            }
-            
-            function endDrag(e) {
-                if (!isDragging) return; 
-                isDragging = false; 
-                panel.classList.remove('dragging');
-                panel.style.transform = '';
-
-                let deltaY = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY) - startY;
-
-                if (panel.classList.contains('minimized')) {
-                    if (deltaY < -50) panel.classList.remove('minimized');
-                } else {
-                    if (deltaY > 50) panel.classList.add('minimized');
-                }
-            }
-        }
-
-        function initAutonomousSearchMatrix() {
-            const input = document.getElementById('osm-engine-input');
-            const dropdown = document.getElementById('osm-engine-dropdown');
-            if (!input || !dropdown) return;
-
-            input.addEventListener('input', (e) => {
-                const queryVal = e.target.value.trim();
-                clearTimeout(querySearchDebounceTimer);
-                if (queryVal.length < 3) { dropdown.style.display = 'none'; return; }
-                 
-                querySearchDebounceTimer = setTimeout(async () => {
-                    try {
-                        let searchApiUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`;
-                        if (currentLiveGpsPosition) searchApiUrl += `&lon=${currentLiveGpsPosition[0]}&lat=${currentLiveGpsPosition[1]}`;
-                        const response = await fetch(searchApiUrl);
-                        const payload = await response.json();
-                        if (!payload.features || payload.features.length === 0) { dropdown.style.display = 'none'; return; }
-                         
-                        dropdown.innerHTML = '';
-                        payload.features.forEach(feature => {
-                            const segmentItem = document.createElement('div');
-                            segmentItem.className = 'osm-suggest-item';
-                            const p = feature.properties;
-                            const labeledLocation = [p.name, p.city, p.state].filter(Boolean).join(', ');
-                            segmentItem.innerText = labeledLocation;
-                             
-                            segmentItem.addEventListener('click', () => {
-                                const targetLoc = feature.geometry.coordinates;
-                                dropdown.style.display = 'none';
-                                input.value = labeledLocation;
-                                
-                                cameraTrackingMode = false;
-                                document.getElementById('force-gps-recenter').classList.remove('active-state');
-
-                                map.flyTo({ center: targetLoc, zoom: 17, pitch: 65 });
-                                triggerWorkspaceTargetDeck(targetLoc, p.name || "Target Vector", labeledLocation);
-                            });
-                            dropdown.appendChild(segmentItem);
-                        });
-                        dropdown.style.display = 'block';
-                    } catch (err) {}
-                }, 250);
-            });
-        }
-
-        function initDirectMapInputListeners() {
-            map.on('click', async (e) => {
-                const pinpoint = [e.lngLat.lng, e.lngLat.lat];
-                document.getElementById('control-panel-deck').classList.remove('minimized');
-
-                triggerWorkspaceTargetDeck(pinpoint, "Target Spatial Vector", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
-                try {
-                    const lookup = await fetch(`https://photon.komoot.io/api/?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
-                    const details = await lookup.json();
-                    if (details.features && details.features.length > 0) {
-                        const p = details.features[0].properties;
-                        const addressString = [p.name, p.street, p.city].filter(Boolean).join(', ');
-                        triggerWorkspaceTargetDeck(pinpoint, p.name || "Identified Point", addressString || "Raw Matrix Grid Reference");
-                    }
-                } catch(error){}
-            });
-        }
-
-        function triggerWorkspaceTargetDeck(coords, title, details) {
-            clearActiveRouteLayers();
-            activeRouteDataStore = [];
-            targetSelectedCoordinates = coords;
-            
-            document.getElementById('node-panel-title').innerText = title;
-            document.getElementById('node-panel-address').innerText = details;
-            document.getElementById('context-destination-panel').style.display = 'flex';
-            
-            const routingBtn = document.getElementById('launch-routing-action');
-            routingBtn.style.display = 'block';
-            routingBtn.innerText = "GET DIRECTIONS";
-
-            document.getElementById('route-variants-dashboard').style.display = 'none';
-
-            if (activeMapMarker) activeMapMarker.remove();
-            activeMapMarker = new maplibregl.Marker({ element: createCustomMarkerElement() })
-                .setLngLat(coords)
-                .addTo(map);
-        }
-    </script>
-</body>
-</html>
+                    recenterBtn.classList.add('
