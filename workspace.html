@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GeoPro Navigation Workspace</title>
+    <title>GeoPro Premium Navigation</title>
     
     <!-- Mapbox GL JS Core Engine -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
@@ -15,13 +15,14 @@
 
     <style>
         :root {
-            --bg-color: #050505;
-            --panel-bg: rgba(18, 18, 18, 0.75);
-            --accent-color: #ff2222;
-            --border-color: rgba(255, 255, 255, 0.08);
-            --text-color: #f5f5f7;
-            --text-muted: #86868b;
-            --card-bg: rgba(30, 30, 30, 0.4);
+            --bg-color: #000000;
+            --panel-bg: #1c1c1e; /* Core Apple Maps Dark Surface */
+            --card-bg: #2c2c2e;  /* Secondary Apple Sheet Surface */
+            --accent-blue: #0a84ff;
+            --accent-red: #ff453a;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --text-color: #ffffff;
+            --text-muted: #8e8e93;
         }
 
         * {
@@ -54,68 +55,57 @@
             left: 16px;
             z-index: 30;
             background: var(--panel-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border-color);
             color: var(--text-color);
-            padding: 12px 18px;
-            border-radius: 12px;
-            font-size: 0.8rem;
+            padding: 12px 20px;
+            border-radius: 14px;
+            font-size: 0.85rem;
             font-weight: 600;
-            letter-spacing: 0.5px;
             cursor: pointer;
-            box-shadow: 0 4px 30px rgba(0,0,0,0.4);
+            box-shadow: 0 4px 25px rgba(0,0,0,0.5);
         }
 
-        /* ── APPLE MAPS GLASSMORPHIC SIDEBAR PANEL ── */
+        /* ── SIDEBAR SHEET (APPLE MAPS LAYOUT STANDARD) ── */
         #sidebar {
-            width: 360px;
+            width: 380px;
             height: calc(100% - 32px);
             margin: 16px;
             background: var(--panel-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border-color);
-            border-radius: 20px;
+            border-radius: 24px;
             display: flex;
             flex-direction: column;
             z-index: 20;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            box-shadow: 0 16px 40px rgba(0,0,0,0.6);
             transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             position: absolute;
             top: 0;
             left: 0;
+            overflow: hidden;
         }
 
         .sidebar-header {
-            padding: 24px 24px 16px 24px;
+            padding: 24px 24px 12px 24px;
             display: flex;
             align-items: center;
             justify-content: space-between;
         }
 
         .sidebar-header h1 {
-            font-size: 1.25rem;
+            font-size: 1.4rem;
             font-weight: 700;
             letter-spacing: -0.5px;
         }
-
-        .sidebar-header h1 span { color: var(--accent-color); }
+        .sidebar-header h1 span { color: var(--accent-red); }
 
         .back-home {
             color: var(--text-muted);
             text-decoration: none;
-            font-size: 0.75rem;
+            font-size: 0.8rem;
             border: 1px solid var(--border-color);
-            padding: 6px 12px;
-            border-radius: 8px;
+            padding: 6px 14px;
+            border-radius: 10px;
             font-weight: 500;
             background: rgba(255,255,255,0.03);
-            transition: all 0.2s;
-        }
-        .back-home:hover {
-            background: rgba(255,255,255,0.08);
-            color: var(--text-color);
         }
 
         .sidebar-content {
@@ -124,20 +114,7 @@
             overflow-y: auto;
         }
 
-        .control-group { margin-bottom: 24px; }
-
-        .control-group h3 {
-            font-size: 0.75rem;
-            text-transform: uppercase;
-            color: var(--text-muted);
-            letter-spacing: 0.5px;
-            margin-bottom: 10px;
-            font-weight: 600;
-        }
-
-        .search-wrapper { margin-bottom: 16px; min-height: 40px; }
-        
-        /* ── DIRECTIONS CONTROLLER LAYOUT DESIGN SYSTEM ── */
+        /* ── CRITICAL FIXES FOR THE DEFAULTS IN IMG_4602.jpg ── */
         .mapboxgl-ctrl-directions {
             width: 100% !important;
             max-width: 100% !important;
@@ -145,209 +122,255 @@
             box-shadow: none !important;
             margin: 0 !important;
         }
-        .mapboxgl-ctrl-directions .mapboxgl-ctrl-geocoder {
-            background-color: var(--card-bg) !important;
-            border: 1px solid var(--border-color) !important;
-            border-radius: 12px !important;
-            margin-bottom: 10px !important;
-            transition: border-color 0.2s;
-        }
-        .mapboxgl-ctrl-directions .mapboxgl-ctrl-geocoder:focus-within {
-            border-color: rgba(255, 34, 34, 0.4) !important;
-        }
-        .mapboxgl-ctrl-directions input[type="text"] {
-            color: var(--text-color) !important;
-            padding: 12px 12px 12px 42px !important;
-            font-size: 0.9rem !important;
-            height: 44px !important;
-            background-color: transparent !important;
-        }
+        
+        /* Smooth, unified input container layer */
         .mapboxgl-ctrl-directions .directions-control-inputs {
             padding: 0 !important;
             background: transparent !important;
+            border: none !important;
             position: relative;
         }
-        .mapboxgl-ctrl-directions .mapboxgl-ctrl-geocoder--icon-search {
-            fill: var(--text-muted) !important;
-            top: 12px !important;
-            left: 14px !important;
+
+        /* Strip out the harsh white horizontal line divider shown in IMG_4602.jpg */
+        .mapboxgl-ctrl-directions .mapbox-directions-inputs {
+            border: none !important;
+            background-color: transparent !important;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
         }
+
+        .mapboxgl-ctrl-directions .mapboxgl-ctrl-geocoder {
+            background-color: var(--card-bg) !important;
+            border: none !important;
+            border-radius: 14px !important;
+            margin-bottom: 0 !important;
+            height: 48px !important;
+        }
+
+        .mapboxgl-ctrl-directions input[type="text"] {
+            color: var(--text-color) !important;
+            padding: 12px 14px 12px 48px !important;
+            font-size: 0.95rem !important;
+            height: 48px !important;
+            background-color: transparent !important;
+        }
+
+        /* Remodeling the rigid A/B blocks into sleek, glowing micro-nodes */
+        .mapboxgl-ctrl-directions .mapbox-directions-component-key {
+            border-radius: 50% !important;
+            width: 14px !important;
+            height: 14px !important;
+            min-width: 14px !important;
+            font-size: 0 !important; /* Erases the raw text characters 'A' and 'B' */
+            position: absolute !important;
+            top: 17px !important;
+            left: 18px !important;
+            z-index: 5;
+            box-shadow: none !important;
+        }
+
+        /* Apple Maps Origin Node Style Optimization */
+        .mapboxgl-ctrl-directions .mapbox-directions-origin-key {
+            background-color: var(--accent-blue) !important;
+            border: 3px solid #ffffff !important;
+            box-shadow: 0 0 10px rgba(10, 132, 255, 0.5) !important;
+        }
+
+        /* Apple Maps Destination Node Style Optimization */
+        .mapboxgl-ctrl-directions .mapbox-directions-destination-key {
+            background-color: var(--accent-red) !important;
+            border: 3px solid #ffffff !important;
+            box-shadow: 0 0 10px rgba(255, 69, 58, 0.5) !important;
+        }
+
+        /* Clean positioning for secondary action buttons inside inputs */
         .mapboxgl-ctrl-directions .directions-icon {
-            top: 12px !important;
-            left: 12px !important;
+            top: 14px !important;
         }
-        
-        /* Premium Modality Tabs Switcher Styling */
+        .mapboxgl-ctrl-directions .directions-icon-reverse {
+            right: 14px !important;
+            left: auto !important;
+            fill: var(--text-muted) !important;
+        }
+        .mapboxgl-ctrl-directions .geocoder-icon-close {
+            top: 14px !important;
+            right: 14px !important;
+        }
+
+        /* Hide built-in profile buttons to accommodate native-looking deck space */
         .mapboxgl-ctrl-directions .directions-control-profiles {
-            display: flex !important;
-            background: rgba(0, 0, 0, 0.3) !important;
-            border: 1px solid var(--border-color) !important;
-            border-radius: 10px !important;
-            overflow: hidden;
-            padding: 2px !important;
-            margin-bottom: 16px !important;
-        }
-        .mapboxgl-ctrl-directions .directions-control-profiles input[type="radio"] {
             display: none !important;
         }
-        .mapboxgl-ctrl-directions .directions-control-profiles label {
-            flex: 1 !important;
-            background: transparent !important;
-            color: var(--text-muted) !important;
-            text-align: center !important;
-            padding: 8px 0 !important;
-            font-size: 0.75rem !important;
-            font-weight: 600 !important;
-            cursor: pointer !important;
-            margin: 0 !important;
-            border-radius: 8px !important;
-            transition: all 0.2s cubic-bezier(0.25, 1, 0.5, 1) !important;
-        }
-        .mapboxgl-ctrl-directions .directions-control-profiles input[type="radio"]:checked + label {
-            background: rgba(255, 255, 255, 0.1) !important;
-            color: var(--text-color) !important;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2) !important;
-        }
 
-        /* Micro-Instruction Step Panel */
-        .mapboxgl-ctrl-directions .directions-control-instructions {
-            background-color: var(--card-bg) !important;
-            border: 1px solid var(--border-color) !important;
-            color: var(--text-color) !important;
-            border-radius: 14px;
-            margin-top: 12px;
-            max-height: 220px;
-            overflow-y: auto;
-        }
-        .mapboxgl-ctrl-directions .mapbox-directions-instruction {
-            border-bottom: 1px solid var(--border-color) !important;
-            color: var(--text-color) !important;
-            padding: 12px 14px !important;
-            font-size: 0.85rem !important;
-        }
-        .mapboxgl-ctrl-directions .mapbox-directions-instruction:hover {
-            background-color: rgba(255,255,255,0.02) !important;
-        }
-        .mapboxgl-ctrl-directions .mapbox-directions-steps {
-            background: transparent !important;
-        }
-
-        /* ── SEARCH AUTOCOMPLETE SUGGESTIONS PORTAL FIXED OVERRIDES ── */
-        .mapboxgl-ctrl-directions .suggestions,
-        .mapboxgl-ctrl-geocoder .suggestions,
-        .suggestions {
-            background-color: #161618 !important;
-            border: 1px solid rgba(255,255,255,0.12) !important;
-            border-radius: 12px !important;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.6) !important;
-            z-index: 9999 !important;
-            padding: 6px !important;
-            list-style: none !important;
-            margin-top: 4px !important;
-        }
-        .mapboxgl-ctrl-directions .suggestions > li,
-        .mapboxgl-ctrl-geocoder .suggestions > li {
-            padding: 0 !important;
-            margin: 0 !important;
-            background-color: transparent !important;
-            border-radius: 8px !important;
-            overflow: hidden !important;
-        }
-        .mapboxgl-ctrl-directions .suggestions > li > a,
-        .mapboxgl-ctrl-geocoder .suggestions > li > a,
-        .suggestions > li > a {
-            color: var(--text-color) !important;
-            padding: 10px 14px !important;
-            font-size: 0.85rem !important;
-            display: block !important;
-            text-decoration: none !important;
-        }
-        .mapboxgl-ctrl-directions .suggestions > .active > a,
-        .mapboxgl-ctrl-directions .suggestions > li > a:hover,
-        .mapboxgl-ctrl-geocoder .suggestions > .active > a,
-        .mapboxgl-ctrl-geocoder .suggestions > li > a:hover {
-            background-color: rgba(255, 255, 255, 0.08) !important;
-            color: #ffffff !important;
-        }
-
-        .toggle-container {
+        /* ── ASSEMBLED DECK EXTENSIONS FROM IMG_4601.jpeg ── */
+        .section-title-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: var(--card-bg);
-            padding: 14px 16px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-        }
-
-        .action-btn {
-            width: 100%;
-            background: var(--card-bg);
-            color: var(--text-color);
-            border: 1px solid var(--border-color);
-            padding: 14px;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            font-weight: 600;
+            margin: 24px 0 12px 0;
             cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            margin-bottom: 12px;
         }
-        .action-btn:hover {
-            background: rgba(255,255,255,0.05);
-            border-color: rgba(255,255,255,0.15);
+        .section-title-row h3 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--text-color);
         }
-        .action-btn.active {
-            background: var(--accent-color);
-            color: #fff;
-            border-color: transparent;
-            box-shadow: 0 4px 20px rgba(255, 34, 34, 0.4);
+        .section-title-row .chevron-link {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
         }
 
-        .metrics-board {
-            background: var(--card-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 14px 16px;
-            font-family: -apple-system, system-ui, sans-serif;
-            font-size: 0.8rem;
+        /* Dynamic Horizontal Places Layout Grid */
+        .places-scroll-deck {
+            display: flex;
+            gap: 16px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            scrollbar-width: none;
         }
-        .metric-line { display: flex; justify-content: space-between; margin-bottom: 8px; }
-        .metric-line:last-child { margin-bottom: 0; }
-        .metric-line span:first-child { color: var(--text-muted); font-weight: 500; }
-        .metric-val { color: var(--text-color); font-weight: 600; font-family: monospace; }
-        #gps-status.active-status { color: #34c759; font-weight: bold; }
+        .places-scroll-deck::-webkit-scrollbar { display: none; }
+
+        .place-action-chip {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            min-width: 68px;
+            cursor: pointer;
+        }
+        .place-icon-circle {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background-color: var(--card-bg);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 6px;
+            transition: transform 0.2s;
+        }
+        .place-icon-circle.home-blue { background-color: rgba(10, 132, 255, 0.15); color: var(--accent-blue); }
+        .place-icon-circle.pin-pink { background-color: rgba(255, 59, 128, 0.15); color: #ff3b80; }
+        .place-action-chip:hover .place-icon-circle { transform: scale(1.05); }
+        
+        .place-label { font-size: 0.78rem; font-weight: 500; color: var(--text-color); width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .place-sub-action { font-size: 0.72rem; color: var(--accent-blue); margin-top: 1px; }
+        .place-distance { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
+
+        /* Unified Recents Component Container Stack */
+        .recents-card-stack {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        .recent-item-row {
+            display: flex;
+            align-items: center;
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .recent-item-row:last-child { border-bottom: none; }
+        .recent-item-row:hover { background-color: rgba(255,255,255,0.03); }
+
+        .recent-icon-wrapper {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 14px;
+            flex-shrink: 0;
+        }
+        .recent-icon-wrapper.park-green { background-color: #34c759; color: #fff; }
+        .recent-icon-wrapper.food-orange { background-color: #ff9500; color: #fff; }
+        .recent-icon-wrapper.search-grey { background-color: #767680; color: #fff; }
+
+        .recent-text-block { flex-grow: 1; overflow: hidden; padding-right: 8px; }
+        .recent-title { font-size: 0.95rem; font-weight: 600; color: var(--text-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .recent-subtitle { font-size: 0.8rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
+        
+        .recent-options-trigger {
+            color: var(--text-muted);
+            font-weight: bold;
+            letter-spacing: 1px;
+            padding: 4px;
+        }
+
+        /* Autocomplete Suggestions Panel Override Integration */
+        .mapboxgl-ctrl-directions .suggestions,
+        .mapboxgl-ctrl-geocoder .suggestions {
+            background-color: #242426 !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 12px 35px rgba(0,0,0,0.6) !important;
+            z-index: 9999 !important;
+            padding: 6px !important;
+            list-style: none !important;
+            margin-top: 6px !important;
+        }
+        .mapboxgl-ctrl-directions .suggestions > li > a,
+        .mapboxgl-ctrl-geocoder .suggestions > li > a {
+            color: var(--text-color) !important;
+            padding: 12px 16px !important;
+            font-size: 0.9rem !important;
+        }
+        .mapboxgl-ctrl-directions .suggestions > .active > a,
+        .mapboxgl-ctrl-geocoder .suggestions > li > a:hover {
+            background-color: rgba(255, 255, 255, 0.08) !important;
+            border-radius: 10px;
+        }
+
+        /* Turn-by-Turn Instruction Output Styling */
+        .mapboxgl-ctrl-directions .directions-control-instructions {
+            background-color: var(--card-bg) !important;
+            border: none !important;
+            color: var(--text-color) !important;
+            border-radius: 16px;
+            margin-top: 16px;
+            max-height: 240px;
+            overflow-y: auto;
+        }
+        .mapboxgl-ctrl-directions .mapbox-directions-instruction {
+            border-bottom: 1px solid rgba(255,255,255,0.04) !important;
+            color: var(--text-color) !important;
+            padding: 14px !important;
+        }
 
         #map { flex-grow: 1; height: 100%; position: relative; background-color: #000; }
 
-        /* ── FLOATING PREMIUM LAYER CONTROLLER CONSOLE ── */
+        /* Floating Layout UI Elements */
         #map-style-console {
             position: absolute;
             top: 16px;
             right: 16px;
             z-index: 10;
-            background: rgba(20, 20, 20, 0.85);
+            background: rgba(28, 28, 30, 0.85);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border-color);
-            border-radius: 12px;
+            border-radius: 14px;
             padding: 4px;
             display: flex;
             gap: 4px;
-            box-shadow: 0 4px 25px rgba(0,0,0,0.4);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
         }
         .console-tab {
             background: transparent;
             border: none;
             color: var(--text-muted);
-            padding: 8px 14px;
-            border-radius: 8px;
-            font-size: 0.75rem;
+            padding: 8px 16px;
+            border-radius: 10px;
+            font-size: 0.8rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s ease;
         }
-        .console-tab:hover { color: var(--text-color); }
         .console-tab.active {
             background: rgba(255,255,255,0.12);
             color: #ffffff;
@@ -357,27 +380,25 @@
             position: absolute;
             bottom: 24px;
             right: 24px;
-            background: rgba(15, 15, 15, 0.85);
+            background: rgba(28, 28, 30, 0.85);
             backdrop-filter: blur(10px);
             padding: 8px 14px;
-            border-radius: 8px;
+            border-radius: 10px;
             border: 1px solid var(--border-color);
             font-family: monospace;
             font-size: 0.75rem;
             pointer-events: none;
             z-index: 5;
-            letter-spacing: 0.5px;
         }
 
         .custom-user-marker {
             display: block;
             width: 18px;
             height: 18px;
-            background-color: #ff2222;
+            background-color: var(--accent-blue);
             border: 2.5px solid #ffffff;
             border-radius: 50%;
-            box-shadow: 0 0 12px #ff2222, 0 0 24px #ff2222;
-            cursor: pointer;
+            box-shadow: 0 0 12px var(--accent-blue);
         }
 
         @media (max-width: 768px) {
@@ -396,53 +417,77 @@
 <body>
 
     <div id="workspace-container">
-        <button id="mobile-menu-trigger">Navigation Menu</button>
+        <button id="mobile-menu-trigger">Search Infrastructure</button>
 
-        <!-- Dynamic Map Engine Controller Console -->
         <div id="map-style-console">
-            <button class="console-tab active" onclick="switchMapStyle('dark')">Vector Dark</button>
-            <button class="console-tab" onclick="switchMapStyle('satellite')">Satellite Hybrid</button>
+            <button class="console-tab active" onclick="switchMapStyle('dark')">Map</button>
+            <button class="console-tab" onclick="switchMapStyle('satellite')">Satellite</button>
         </div>
 
         <div id="sidebar">
             <div class="sidebar-header">
-                <h1>Geo<span>Pro</span></h1>
-                <a href="index.html" class="back-home">Exit Map</a>
+                <h1>Explore</h1>
+                <a href="index.html" class="back-home">Exit</a>
             </div>
             
             <div class="sidebar-content">
-                <div class="control-group">
-                    <h3>Spatial Exploration Pipeline</h3>
-                    <div id="search-container" class="search-wrapper"></div>
+                <!-- Top Mounted Apple-Style Routing Input Wrapper -->
+                <div id="search-container"></div>
+
+                <!-- Places Horizontal Panel Section (Derived from IMG_4601.jpeg) -->
+                <div class="section-title-row">
+                    <h3>Places</h3>
+                    <span class="chevron-link">See All ❯</span>
+                </div>
+                <div class="places-scroll-deck">
+                    <div class="place-action-chip">
+                        <div class="place-icon-circle home-blue">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                        </div>
+                        <span class="place-label">Home</span>
+                        <span class="place-sub-action">Add</span>
+                    </div>
+                    <div class="place-action-chip" onclick="quickRoute([-121.9628, 47.2094])">
+                        <div class="place-icon-circle pin-pink">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                        </div>
+                        <span class="place-label">Kanaskat</span>
+                        <span class="place-distance">565 mi</span>
+                    </div>
+                    <div class="place-action-chip">
+                        <div class="place-icon-circle">
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="12" y2="12"/></svg>
+                        </div>
+                        <span class="place-label">New Pin</span>
+                        <span class="place-sub-action">Setup</span>
+                    </div>
                 </div>
 
-                <div class="control-group">
-                    <h3>Data Layers</h3>
-                    <label class="toggle-container">
-                        <span class="toggle-label">3D Building Extrusions</span>
-                        <input type="checkbox" id="layer-toggle-3d" checked>
-                    </label>
+                <!-- Recents Vertical List Section (Derived from IMG_4601.jpeg) -->
+                <div class="section-title-row">
+                    <h3>Recents</h3>
+                    <span class="chevron-link">Clear ❯</span>
                 </div>
-
-                <div class="control-group">
-                    <h3>Telemetry Link</h3>
-                    <button id="gps-init-btn" class="action-btn">
-                        Initialize Core GPS
-                    </button>
-                    
-                    <div class="metrics-board">
-                        <div class="metric-line">
-                            <span>TRACKING ENGINE</span>
-                            <span class="metric-val" id="gps-status">OFFLINE</span>
+                <div class="recents-card-stack">
+                    <div class="recent-item-row" onclick="quickRoute([-121.9047, 47.3188])">
+                        <div class="recent-icon-wrapper park-green">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
                         </div>
-                        <div class="metric-line">
-                            <span>LATITUDE</span>
-                            <span class="metric-val" id="telemetry-lat">0.00000</span>
+                        <div class="recent-text-block">
+                            <div class="recent-title">Kanaskat-Palmer State Park</div>
+                            <div class="recent-subtitle">32101 Cumberland-Kanaskat Rd SE</div>
                         </div>
-                        <div class="metric-line">
-                            <span>LONGITUDE</span>
-                            <span class="metric-val" id="telemetry-lng">0.00000</span>
+                        <span class="recent-options-trigger">•••</span>
+                    </div>
+                    <div class="recent-item-row">
+                        <div class="recent-icon-wrapper food-orange">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2vol12v10M12 12h9M3 12h9"/></svg>
                         </div>
+                        <div class="recent-text-block">
+                            <div class="recent-title">Jimmy John's</div>
+                            <div class="recent-subtitle">3336 Gateway St, Springfield</div>
+                        </div>
+                        <span class="recent-options-trigger">•••</span>
                     </div>
                 </div>
             </div>
@@ -456,7 +501,6 @@
     <script>
         mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
 
-        // Available Map Interfaces Map
         const mapStyles = {
             dark: 'mapbox://styles/mapbox/dark-v11',
             satellite: 'mapbox://styles/mapbox/satellite-streets-v12'
@@ -467,21 +511,17 @@
             style: mapStyles.dark, 
             center: [-123.2078, 39.1502],
             zoom: 14.5,
-            pitch: 45,
-            bearing: -10
+            pitch: 0,
+            bearing: 0
         });
 
         const menuBtn = document.getElementById('mobile-menu-trigger');
         const sidebar = document.getElementById('sidebar');
-        const gpsBtn = document.getElementById('gps-init-btn');
-        const layerToggle3d = document.getElementById('layer-toggle-3d');
         
         menuBtn.addEventListener('click', () => {
             sidebar.classList.toggle('open');
-            menuBtn.innerText = sidebar.classList.contains('open') ? 'Close Panel' : 'Navigation Menu';
         });
 
-        // ── Initialize Advanced Routing Architecture with Deep POI Tracking ──
         let directions = null;
         try {
             directions = new MapboxDirections({
@@ -490,148 +530,27 @@
                 profile: 'mapbox/driving',
                 alternatives: true,
                 congestion: true,
-                controls: { inputs: true, instructions: true, profileSwitcher: true },
-                // Expanding discovery indexing criteria to explicitly capture businesses, structures, and POIs
+                controls: { inputs: true, instructions: true, profileSwitcher: false },
                 geocoder: {
                     types: 'poi,address,building,neighborhood,locality',
-                    placeholder: 'Search business, address, or station...'
+                    placeholder: 'Search for a place or address'
                 }
             });
             
             document.getElementById('search-container').appendChild(directions.onAdd(map));
         } catch(e) {
-            console.error("Directions engine failed to assemble:", e);
+            console.error("Directions engine assembly failure:", e);
         }
 
-        // Live Telemetry Engine State Management
-        let livePosition = null;
-        let isTrackingActive = false; 
-        let isFollowingActive = false; 
-        let isMarkerAdded = false; 
-        
-        const markerElement = document.createElement('div');
-        markerElement.className = 'custom-user-marker';
-        const locationMarker = new mapboxgl.Marker({ element: markerElement });
-
-        function startTelemetryPipeline() {
-            if (window.isSecureContext === false) {
-                document.getElementById('gps-status').innerText = 'SECURE_ERR';
-                alert("🚨 SECURITY BLOCK:\nGeolocation requires HTTPS or localhost connections on mobile browsers.");
-                return;
+        // Quick Routing Interaction Utility Function
+        window.quickRoute = function(targetCoordinates) {
+            if (directions) {
+                // Instantly pushes destination properties down the telemetry channel pipeline
+                directions.setDestination(targetCoordinates);
             }
+        };
 
-            if (!('geolocation' in navigator)) {
-                document.getElementById('gps-status').innerText = 'NOT_SUPPORTED';
-                return;
-            }
-
-            document.getElementById('gps-status').innerText = 'PROMPTING...';
-            
-            navigator.geolocation.watchPosition(
-                (position) => {
-                    livePosition = [position.coords.longitude, position.coords.latitude];
-                    const statusEl = document.getElementById('gps-status');
-                    statusEl.innerText = 'ACTIVE';
-                    statusEl.classList.add('active-status');
-                    
-                    if (!isTrackingActive) {
-                        isTrackingActive = true;
-                        isFollowingActive = true;
-                        gpsBtn.classList.add('active');
-                        gpsBtn.innerText = 'Stop Following Position';
-                        
-                        if (directions) {
-                            directions.setOrigin(livePosition);
-                        }
-                    }
-                },
-                (error) => {
-                    console.error('GPS Link Exception:', error);
-                    document.getElementById('gps-status').innerText = 'HARDWARE_ERR';
-                },
-                { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
-            );
-
-            setInterval(() => {
-                if (livePosition) {
-                    locationMarker.setLngLat(livePosition);
-                    
-                    if (!isMarkerAdded) {
-                        locationMarker.addTo(map);
-                        isMarkerAdded = true;
-                    }
-                    
-                    if (isFollowingActive) {
-                        map.setCenter(livePosition);
-                    }
-                    
-                    document.getElementById('telemetry-lat').innerText = livePosition[1].toFixed(5);
-                    document.getElementById('telemetry-lng').innerText = livePosition[0].toFixed(5);
-                }
-            }, 100);
-        }
-
-        gpsBtn.addEventListener('click', () => {
-            if (!isTrackingActive) {
-                startTelemetryPipeline();
-            } else {
-                isFollowingActive = !isFollowingActive;
-                
-                if (isFollowingActive) {
-                    gpsBtn.innerText = 'Stop Following Position';
-                    gpsBtn.classList.add('active');
-                    if (livePosition) {
-                        map.flyTo({ center: livePosition, zoom: 16, essential: true });
-                    }
-                } else {
-                    gpsBtn.innerText = 'Follow Position';
-                    gpsBtn.classList.remove('active');
-                }
-            }
-        });
-
-        // 3D Building Injection Function Block
-        function renderStructuralExtrusions() {
-            if (!layerToggle3d.checked) return;
-            
-            // Check if source layer data structure exists before mounting layer
-            if (map.getSource('composite') && !map.getLayer('3d-buildings')) {
-                try {
-                    map.addLayer({
-                        'id': '3d-buildings',
-                        'source': 'composite',
-                        'source-layer': 'building',
-                        'filter': ['==', 'extrude', 'true'],
-                        'type': 'fill-extrusion',
-                        'minzoom': 14,
-                        'paint': {
-                            'fill-extrusion-color': '#222224',
-                            'fill-extrusion-height': ['get', 'height'],
-                            'fill-extrusion-base': ['get', 'min_height'],
-                            'fill-extrusion-opacity': 0.75
-                        }
-                    });
-                } catch(e) {
-                    console.warn("Extrusion compiler context bypassed on this style framework update.");
-                }
-            }
-        }
-
-        map.on('style.load', () => {
-            renderStructuralExtrusions();
-        });
-
-        layerToggle3d.addEventListener('change', () => {
-            if (layerToggle3d.checked) {
-                renderStructuralExtrusions();
-            } else {
-                if (map.getLayer('3d-buildings')) map.removeLayer('3d-buildings');
-            }
-        });
-
-        // ── Smooth Map Engine Core Style Switcher Function ──
         window.switchMapStyle = function(styleKey) {
-            // Update tracking active tab indicator state styles
             const buttons = document.querySelectorAll('.console-tab');
             buttons.forEach(btn => btn.classList.remove('active'));
             event.target.classList.add('active');
