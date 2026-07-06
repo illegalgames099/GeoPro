@@ -3,570 +3,587 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GeoPro Premium Navigation</title>
+    <title>GeoPro Quantum Navigation</title>
     
     <!-- Mapbox GL JS Core Engine -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
 
-    <!-- Official Mapbox GL Directions Routing Plugin -->
-    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.3.1/mapbox-gl-directions.js"></script>
-    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-directions/v4.3.1/mapbox-gl-directions.css" type="text/css" />
+    <!-- Mapbox Geocoder (Single Input Spatial Engine) -->
+    <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.min.js"></script>
+    <link rel="stylesheet" href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v5.0.0/mapbox-gl-geocoder.css" type="text/css">
 
     <style>
         :root {
-            --bg-color: #000000;
-            --panel-bg: #1c1c1e; /* Core Apple Maps Dark Surface */
-            --card-bg: #2c2c2e;  /* Secondary Apple Sheet Surface */
-            --accent-blue: #0a84ff;
-            --accent-red: #ff453a;
-            --border-color: rgba(255, 255, 255, 0.1);
-            --text-color: #ffffff;
-            --text-muted: #8e8e93;
+            --bg-pure: #000000;
+            --hud-bg: rgba(10, 10, 12, 0.82);
+            --card-surface: rgba(22, 22, 26, 0.6);
+            --neon-red: #ff2222;
+            --neon-blue: #0071e3;
+            --border-glow: rgba(255, 34, 34, 0.15);
+            --border-line: rgba(255, 255, 255, 0.06);
+            --text-primary: #ffffff;
+            --text-secondary: #8e8e93;
+            --traffic-green: #30d158;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, sans-serif;
-            -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+            letter-spacing: -0.2px;
         }
 
         body, html {
             width: 100%;
             height: 100vh;
             overflow: hidden;
-            background-color: var(--bg-color);
-            color: var(--text-color);
+            background-color: var(--bg-pure);
+            color: var(--text-primary);
         }
 
-        #workspace-container {
-            display: flex;
+        #app-viewport {
+            position: relative;
             width: 100%;
             height: 100vh;
-            position: relative;
-        }
-
-        #mobile-menu-trigger {
-            display: none;
-            position: absolute;
-            top: 16px;
-            left: 16px;
-            z-index: 30;
-            background: var(--panel-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-color);
-            padding: 12px 20px;
-            border-radius: 14px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 4px 25px rgba(0,0,0,0.5);
-        }
-
-        /* ── SIDEBAR SHEET (APPLE MAPS LAYOUT STANDARD) ── */
-        #sidebar {
-            width: 380px;
-            height: calc(100% - 32px);
-            margin: 16px;
-            background: var(--panel-bg);
-            border-radius: 24px;
             display: flex;
-            flex-direction: column;
-            z-index: 20;
-            box-shadow: 0 16px 40px rgba(0,0,0,0.6);
-            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        #map {
             position: absolute;
             top: 0;
             left: 0;
-            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-pure);
+            z-index: 1;
         }
 
-        .sidebar-header {
-            padding: 24px 24px 12px 24px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-
-        .sidebar-header h1 {
-            font-size: 1.4rem;
-            font-weight: 700;
-            letter-spacing: -0.5px;
-        }
-        .sidebar-header h1 span { color: var(--accent-red); }
-
-        .back-home {
-            color: var(--text-muted);
-            text-decoration: none;
-            font-size: 0.8rem;
-            border: 1px solid var(--border-color);
-            padding: 6px 14px;
-            border-radius: 10px;
-            font-weight: 500;
-            background: rgba(255,255,255,0.03);
-        }
-
-        .sidebar-content {
-            padding: 0 24px 24px 24px;
-            flex-grow: 1;
-            overflow-y: auto;
-        }
-
-        /* ── CRITICAL FIXES FOR THE DEFAULTS IN IMG_4602.jpg ── */
-        .mapboxgl-ctrl-directions {
-            width: 100% !important;
-            max-width: 100% !important;
-            background-color: transparent !important;
-            box-shadow: none !important;
-            margin: 0 !important;
-        }
-        
-        /* Smooth, unified input container layer */
-        .mapboxgl-ctrl-directions .directions-control-inputs {
-            padding: 0 !important;
-            background: transparent !important;
-            border: none !important;
-            position: relative;
-        }
-
-        /* Strip out the harsh white horizontal line divider shown in IMG_4602.jpg */
-        .mapboxgl-ctrl-directions .mapbox-directions-inputs {
-            border: none !important;
-            background-color: transparent !important;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        .mapboxgl-ctrl-directions .mapboxgl-ctrl-geocoder {
-            background-color: var(--card-bg) !important;
-            border: none !important;
-            border-radius: 14px !important;
-            margin-bottom: 0 !important;
-            height: 48px !important;
-        }
-
-        .mapboxgl-ctrl-directions input[type="text"] {
-            color: var(--text-color) !important;
-            padding: 12px 14px 12px 48px !important;
-            font-size: 0.95rem !important;
-            height: 48px !important;
-            background-color: transparent !important;
-        }
-
-        /* Remodeling the rigid A/B blocks into sleek, glowing micro-nodes */
-        .mapboxgl-ctrl-directions .mapbox-directions-component-key {
-            border-radius: 50% !important;
-            width: 14px !important;
-            height: 14px !important;
-            min-width: 14px !important;
-            font-size: 0 !important; /* Erases the raw text characters 'A' and 'B' */
-            position: absolute !important;
-            top: 17px !important;
-            left: 18px !important;
-            z-index: 5;
-            box-shadow: none !important;
-        }
-
-        /* Apple Maps Origin Node Style Optimization */
-        .mapboxgl-ctrl-directions .mapbox-directions-origin-key {
-            background-color: var(--accent-blue) !important;
-            border: 3px solid #ffffff !important;
-            box-shadow: 0 0 10px rgba(10, 132, 255, 0.5) !important;
-        }
-
-        /* Apple Maps Destination Node Style Optimization */
-        .mapboxgl-ctrl-directions .mapbox-directions-destination-key {
-            background-color: var(--accent-red) !important;
-            border: 3px solid #ffffff !important;
-            box-shadow: 0 0 10px rgba(255, 69, 58, 0.5) !important;
-        }
-
-        /* Clean positioning for secondary action buttons inside inputs */
-        .mapboxgl-ctrl-directions .directions-icon {
-            top: 14px !important;
-        }
-        .mapboxgl-ctrl-directions .directions-icon-reverse {
-            right: 14px !important;
-            left: auto !important;
-            fill: var(--text-muted) !important;
-        }
-        .mapboxgl-ctrl-directions .geocoder-icon-close {
-            top: 14px !important;
-            right: 14px !important;
-        }
-
-        /* Hide built-in profile buttons to accommodate native-looking deck space */
-        .mapboxgl-ctrl-directions .directions-control-profiles {
-            display: none !important;
-        }
-
-        /* ── ASSEMBLED DECK EXTENSIONS FROM IMG_4601.jpeg ── */
-        .section-title-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin: 24px 0 12px 0;
-            cursor: pointer;
-        }
-        .section-title-row h3 {
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: var(--text-color);
-        }
-        .section-title-row .chevron-link {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        /* Dynamic Horizontal Places Layout Grid */
-        .places-scroll-deck {
-            display: flex;
-            gap: 16px;
-            overflow-x: auto;
-            padding-bottom: 8px;
-            scrollbar-width: none;
-        }
-        .places-scroll-deck::-webkit-scrollbar { display: none; }
-
-        .place-action-chip {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            min-width: 68px;
-            cursor: pointer;
-        }
-        .place-icon-circle {
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background-color: var(--card-bg);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 6px;
-            transition: transform 0.2s;
-        }
-        .place-icon-circle.home-blue { background-color: rgba(10, 132, 255, 0.15); color: var(--accent-blue); }
-        .place-icon-circle.pin-pink { background-color: rgba(255, 59, 128, 0.15); color: #ff3b80; }
-        .place-action-chip:hover .place-icon-circle { transform: scale(1.05); }
-        
-        .place-label { font-size: 0.78rem; font-weight: 500; color: var(--text-color); width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .place-sub-action { font-size: 0.72rem; color: var(--accent-blue); margin-top: 1px; }
-        .place-distance { font-size: 0.72rem; color: var(--text-muted); margin-top: 1px; }
-
-        /* Unified Recents Component Container Stack */
-        .recents-card-stack {
-            background-color: var(--card-bg);
-            border-radius: 16px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
-        .recent-item-row {
-            display: flex;
-            align-items: center;
-            padding: 14px 16px;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        .recent-item-row:last-child { border-bottom: none; }
-        .recent-item-row:hover { background-color: rgba(255,255,255,0.03); }
-
-        .recent-icon-wrapper {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-right: 14px;
-            flex-shrink: 0;
-        }
-        .recent-icon-wrapper.park-green { background-color: #34c759; color: #fff; }
-        .recent-icon-wrapper.food-orange { background-color: #ff9500; color: #fff; }
-        .recent-icon-wrapper.search-grey { background-color: #767680; color: #fff; }
-
-        .recent-text-block { flex-grow: 1; overflow: hidden; padding-right: 8px; }
-        .recent-title { font-size: 0.95rem; font-weight: 600; color: var(--text-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .recent-subtitle { font-size: 0.8rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 2px; }
-        
-        .recent-options-trigger {
-            color: var(--text-muted);
-            font-weight: bold;
-            letter-spacing: 1px;
-            padding: 4px;
-        }
-
-        /* Autocomplete Suggestions Panel Override Integration */
-        .mapboxgl-ctrl-directions .suggestions,
-        .mapboxgl-ctrl-geocoder .suggestions {
-            background-color: #242426 !important;
-            border: 1px solid var(--border-color) !important;
-            border-radius: 16px !important;
-            box-shadow: 0 12px 35px rgba(0,0,0,0.6) !important;
-            z-index: 9999 !important;
-            padding: 6px !important;
-            list-style: none !important;
-            margin-top: 6px !important;
-        }
-        .mapboxgl-ctrl-directions .suggestions > li > a,
-        .mapboxgl-ctrl-geocoder .suggestions > li > a {
-            color: var(--text-color) !important;
-            padding: 12px 16px !important;
-            font-size: 0.9rem !important;
-        }
-        .mapboxgl-ctrl-directions .suggestions > .active > a,
-        .mapboxgl-ctrl-geocoder .suggestions > li > a:hover {
-            background-color: rgba(255, 255, 255, 0.08) !important;
-            border-radius: 10px;
-        }
-
-        /* Turn-by-Turn Instruction Output Styling */
-        .mapboxgl-ctrl-directions .directions-control-instructions {
-            background-color: var(--card-bg) !important;
-            border: none !important;
-            color: var(--text-color) !important;
-            border-radius: 16px;
-            margin-top: 16px;
-            max-height: 240px;
-            overflow-y: auto;
-        }
-        .mapboxgl-ctrl-directions .mapbox-directions-instruction {
-            border-bottom: 1px solid rgba(255,255,255,0.04) !important;
-            color: var(--text-color) !important;
-            padding: 14px !important;
-        }
-
-        #map { flex-grow: 1; height: 100%; position: relative; background-color: #000; }
-
-        /* Floating Layout UI Elements */
-        #map-style-console {
+        /* ── FUTURE-FORWARD FLOATING HUD COMMAND DECK ── */
+        #command-deck {
             position: absolute;
-            top: 16px;
-            right: 16px;
+            top: 20px;
+            left: 20px;
+            width: 380px;
             z-index: 10;
-            background: rgba(28, 28, 30, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border-color);
-            border-radius: 14px;
-            padding: 4px;
+            background: var(--hud-bg);
+            backdrop-filter: blur(30px) saturate(200%);
+            -webkit-backdrop-filter: blur(30px) saturate(200%);
+            border: 1px solid var(--border-line);
+            border-radius: 24px;
+            padding: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 40px var(--border-glow);
             display: flex;
-            gap: 4px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            flex-direction: column;
+            gap: 20px;
         }
-        .console-tab {
-            background: transparent;
-            border: none;
-            color: var(--text-muted);
-            padding: 8px 16px;
+
+        .deck-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .brand-logo {
+            font-size: 1.35rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .brand-logo span { color: var(--neon-red); text-shadow: 0 0 10px rgba(255,34,34,0.4); }
+
+        .sys-exit-btn {
+            background: var(--card-surface);
+            border: 1px solid var(--border-line);
+            color: var(--text-secondary);
+            padding: 6px 14px;
             border-radius: 10px;
             font-size: 0.8rem;
             font-weight: 600;
-            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s ease;
         }
-        .console-tab.active {
-            background: rgba(255,255,255,0.12);
-            color: #ffffff;
+        .sys-exit-btn:hover {
+            color: var(--text-primary);
+            border-color: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05);
         }
 
-        #geo-overlay {
+        /* ── SINGLE INPUT GEOCODER CUSTOM LOOK ── */
+        .search-container-box {
+            width: 100%;
+            position: relative;
+        }
+
+        .mapboxgl-ctrl-geocoder {
+            width: 100% !important;
+            max-width: 100% !important;
+            background-color: var(--card-surface) !important;
+            border: 1px solid var(--border-line) !important;
+            border-radius: 16px !important;
+            box-shadow: none !important;
+            height: 52px !important;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .mapboxgl-ctrl-geocoder:focus-within {
+            border-color: rgba(255, 34, 34, 0.5) !important;
+            box-shadow: 0 0 15px rgba(255, 34, 34, 0.15) !important;
+            background-color: rgba(15, 15, 18, 0.9) !important;
+        }
+
+        .mapboxgl-ctrl-geocoder--input {
+            height: 52px !important;
+            color: var(--text-primary) !important;
+            font-size: 1rem !important;
+            font-weight: 500 !important;
+            padding: 12px 16px 12px 48px !important;
+        }
+        .mapboxgl-ctrl-geocoder--input::placeholder { color: var(--text-secondary); }
+
+        .mapboxgl-ctrl-geocoder--icon-search {
+            top: 16px !important;
+            left: 16px !important;
+            fill: var(--text-secondary) !important;
+            width: 20px !important;
+            height: 20px !important;
+        }
+        .mapboxgl-ctrl-geocoder--button { top: 14px !important; background: transparent !important; }
+        .mapboxgl-ctrl-geocoder--icon-close { fill: var(--text-secondary) !important; }
+
+        /* Autocomplete Results Panel Customization */
+        .mapboxgl-ctrl-geocoder .suggestions {
+            background-color: #0f0f11 !important;
+            border: 1px solid rgba(255,255,255,0.08) !important;
+            backdrop-filter: blur(20px) !important;
+            border-radius: 18px !important;
+            box-shadow: 0 16px 40px rgba(0,0,0,0.8) !important;
+            padding: 6px !important;
+            margin-top: 8px !important;
+        }
+        .mapboxgl-ctrl-geocoder .suggestions > li { border-radius: 10px !important; }
+        .mapboxgl-ctrl-geocoder .suggestions > li > a {
+            color: var(--text-primary) !important;
+            padding: 12px 14px !important;
+            font-size: 0.9rem !important;
+            font-weight: 500 !important;
+        }
+        .mapboxgl-ctrl-geocoder .suggestions > .active > a,
+        .mapboxgl-ctrl-geocoder .suggestions > li > a:hover {
+            background-color: rgba(255, 255, 255, 0.06) !important;
+            color: var(--neon-red) !important;
+        }
+
+        /* ── DYNAMIC DESTINATION SUMMARY CARD ── */
+        #destination-card {
+            background: var(--card-surface);
+            border: 1px solid var(--border-line);
+            border-radius: 16px;
+            padding: 16px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(10px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .dest-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); }
+        .dest-address { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.3; }
+        
+        .nav-action-row { display: flex; gap: 10px; margin-top: 4px; }
+        .nav-btn {
+            flex: 1;
+            background: var(--neon-blue);
+            color: #fff;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .nav-btn:hover { opacity: 0.9; }
+        .clear-route-btn {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid var(--border-line);
+            color: var(--text-primary);
+            width: 48px;
+            border-radius: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ── REAL-TIME MATRIX WIDGETS ── */
+        .telemetry-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(0,0,0,0.25);
+            padding: 14px 16px;
+            border-radius: 16px;
+            border: 1px solid var(--border-line);
+        }
+        .matrix-row { display: flex; justify-content: space-between; font-size: 0.8rem; }
+        .matrix-row span:first-child { color: var(--text-secondary); font-weight: 500; }
+        .matrix-row span:last-child { font-family: monospace; font-weight: 600; }
+        
+        .traffic-status-indicator { color: var(--traffic-green); display: flex; align-items: center; gap: 6px; }
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--traffic-green);
+            border-radius: 50%;
+            animation: blink 1.5s infinite;
+        }
+        @keyframes blink { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+
+        /* Floating Dashboard Controller Consoles */
+        #right-console-stack {
             position: absolute;
-            bottom: 24px;
-            right: 24px;
-            background: rgba(28, 28, 30, 0.85);
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .glass-panel-btn {
+            background: var(--hud-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-line);
+            padding: 12px;
+            border-radius: 14px;
+            color: var(--text-primary);
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .glass-panel-btn:hover { background: rgba(255,255,255,0.05); }
+        .glass-panel-btn.active {
+            border-color: var(--neon-red);
+            box-shadow: 0 0 15px rgba(255,34,34,0.2);
+            color: var(--neon-red);
+        }
+
+        #spatial-overlay {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: var(--hud-bg);
             backdrop-filter: blur(10px);
             padding: 8px 14px;
             border-radius: 10px;
-            border: 1px solid var(--border-color);
+            border: 1px solid var(--border-line);
             font-family: monospace;
             font-size: 0.75rem;
-            pointer-events: none;
             z-index: 5;
+            pointer-events: none;
         }
 
-        .custom-user-marker {
-            display: block;
-            width: 18px;
-            height: 18px;
-            background-color: var(--accent-blue);
-            border: 2.5px solid #ffffff;
+        /* Premium Node Custom Icons */
+        .custom-tracking-marker {
+            width: 20px;
+            height: 20px;
+            background-color: var(--neon-blue);
+            border: 3px solid #ffffff;
             border-radius: 50%;
-            box-shadow: 0 0 12px var(--accent-blue);
+            box-shadow: 0 0 15px var(--neon-blue);
         }
-
-        @media (max-width: 768px) {
-            #mobile-menu-trigger { display: block; }
-            #sidebar {
-                height: calc(100% - 80px);
-                top: 64px;
-                margin: 8px;
-                width: calc(100% - 16px);
-                transform: translateX(-110%);
-            }
-            #sidebar.open { transform: translateX(0); }
+        .custom-dest-marker {
+            width: 16px;
+            height: 16px;
+            background-color: var(--neon-red);
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 15px var(--neon-red);
         }
     </style>
 </head>
 <body>
 
-    <div id="workspace-container">
-        <button id="mobile-menu-trigger">Search Infrastructure</button>
+    <div id="app-viewport">
+        <!-- Main Map Layer Output -->
+        <div id="map"></div>
 
-        <div id="map-style-console">
-            <button class="console-tab active" onclick="switchMapStyle('dark')">Map</button>
-            <button class="console-tab" onclick="switchMapStyle('satellite')">Satellite</button>
-        </div>
-
-        <div id="sidebar">
-            <div class="sidebar-header">
-                <h1>Explore</h1>
-                <a href="index.html" class="back-home">Exit</a>
+        <!-- Left Command Deck HUD -->
+        <div id="command-deck">
+            <div class="deck-header">
+                <div class="brand-logo">Geo<span>Pro</span></div>
+                <a href="index.html" class="sys-exit-btn">Exit</a>
             </div>
-            
-            <div class="sidebar-content">
-                <!-- Top Mounted Apple-Style Routing Input Wrapper -->
-                <div id="search-container"></div>
 
-                <!-- Places Horizontal Panel Section (Derived from IMG_4601.jpeg) -->
-                <div class="section-title-row">
-                    <h3>Places</h3>
-                    <span class="chevron-link">See All ❯</span>
-                </div>
-                <div class="places-scroll-deck">
-                    <div class="place-action-chip">
-                        <div class="place-icon-circle home-blue">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                        </div>
-                        <span class="place-label">Home</span>
-                        <span class="place-sub-action">Add</span>
-                    </div>
-                    <div class="place-action-chip" onclick="quickRoute([-121.9628, 47.2094])">
-                        <div class="place-icon-circle pin-pink">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                        </div>
-                        <span class="place-label">Kanaskat</span>
-                        <span class="place-distance">565 mi</span>
-                    </div>
-                    <div class="place-action-chip">
-                        <div class="place-icon-circle">
-                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="12" y2="12"/></svg>
-                        </div>
-                        <span class="place-label">New Pin</span>
-                        <span class="place-sub-action">Setup</span>
-                    </div>
-                </div>
+            <!-- Single Input Geocoder Wrapper -->
+            <div class="search-container-box">
+                <div id="geocoder-mount"></div>
+            </div>
 
-                <!-- Recents Vertical List Section (Derived from IMG_4601.jpeg) -->
-                <div class="section-title-row">
-                    <h3>Recents</h3>
-                    <span class="chevron-link">Clear ❯</span>
+            <!-- Contextual Destination Card -->
+            <div id="destination-card">
+                <div class="dest-title" id="card-title">Destination Loaded</div>
+                <div class="dest-address" id="card-address">Analyzing coordinates...</div>
+                <div class="nav-action-row">
+                    <button class="nav-btn" id="launch-nav-trigger">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
+                        Start Navigation
+                    </button>
+                    <button class="clear-route-btn" id="clear-route-trigger" title="Clear Route">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
                 </div>
-                <div class="recents-card-stack">
-                    <div class="recent-item-row" onclick="quickRoute([-121.9047, 47.3188])">
-                        <div class="recent-icon-wrapper park-green">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
-                        </div>
-                        <div class="recent-text-block">
-                            <div class="recent-title">Kanaskat-Palmer State Park</div>
-                            <div class="recent-subtitle">32101 Cumberland-Kanaskat Rd SE</div>
-                        </div>
-                        <span class="recent-options-trigger">•••</span>
-                    </div>
-                    <div class="recent-item-row">
-                        <div class="recent-icon-wrapper food-orange">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2vol12v10M12 12h9M3 12h9"/></svg>
-                        </div>
-                        <div class="recent-text-block">
-                            <div class="recent-title">Jimmy John's</div>
-                            <div class="recent-subtitle">3336 Gateway St, Springfield</div>
-                        </div>
-                        <span class="recent-options-trigger">•••</span>
-                    </div>
+            </div>
+
+            <!-- Diagnostics Matrix Grid -->
+            <div class="telemetry-grid">
+                <div class="matrix-row">
+                    <span>TRAFFIC FLOW RADAR</span>
+                    <span class="traffic-status-indicator" id="traffic-status">
+                        <div class="pulse-dot"></div>OPTIMAL
+                    </span>
+                </div>
+                <div class="matrix-row">
+                    <span>TELEMETRY FEED</span>
+                    <span id="telemetry-feed" style="color: var(--neon-blue);">ACTIVE_GPS</span>
+                </div>
+                <div class="matrix-row">
+                    <span>SYSTEM LATENCY</span>
+                    <span style="color: #ffcc00;">14ms</span>
                 </div>
             </div>
         </div>
 
-        <div id="map">
-            <div id="geo-overlay">LNG: -123.2078 | LAT: 39.1502</div>
+        <!-- Right Side Utility Button Bar -->
+        <div id="right-console-stack">
+            <button class="glass-panel-btn active" id="toggle-traffic" title="Toggle Traffic Data View">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18H19M5 6H19M5 12H19"/></svg>
+            </button>
+            <button class="glass-panel-btn" id="toggle-satellite" title="Toggle Satellite Hybrid Base">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+            </button>
         </div>
+
+        <!-- Dynamic Coordinates Overlay -->
+        <div id="spatial-overlay">LNG: -- | LAT: --</div>
     </div>
 
     <script>
         mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
 
+        // High-fidelity map structures embedding integrated real-time traffic tile layers out of the box
         const mapStyles = {
-            dark: 'mapbox://styles/mapbox/dark-v11',
-            satellite: 'mapbox://styles/mapbox/satellite-streets-v12'
+            vectorDark: 'mapbox://styles/mapbox/traffic-dark-v11',
+            satelliteHybrid: 'mapbox://styles/mapbox/satellite-streets-v12'
         };
 
+        // Core map engine generation
         const map = new mapboxgl.Map({
             container: 'map',
-            style: mapStyles.dark, 
+            style: mapStyles.vectorDark,
             center: [-123.2078, 39.1502],
-            zoom: 14.5,
-            pitch: 0,
+            zoom: 14,
+            pitch: 35,
             bearing: 0
         });
 
-        const menuBtn = document.getElementById('mobile-menu-trigger');
-        const sidebar = document.getElementById('sidebar');
-        
-        menuBtn.addEventListener('click', () => {
-            sidebar.classList.toggle('open');
-        });
+        // Setup Tracking State Controls
+        let currentOriginCoords = [-123.2078, 39.1502]; // Hardware Fallback Base Point
+        let selectedDestinationCoords = null;
+        let destinationMarker = null;
 
-        let directions = null;
-        try {
-            directions = new MapboxDirections({
-                accessToken: mapboxgl.accessToken,
-                unit: 'imperial',
-                profile: 'mapbox/driving',
-                alternatives: true,
-                congestion: true,
-                controls: { inputs: true, instructions: true, profileSwitcher: false },
-                geocoder: {
-                    types: 'poi,address,building,neighborhood,locality',
-                    placeholder: 'Search for a place or address'
-                }
-            });
-            
-            document.getElementById('search-container').appendChild(directions.onAdd(map));
-        } catch(e) {
-            console.error("Directions engine assembly failure:", e);
+        // Custom User Origin Tracking Node Initialization
+        const userMarkerEl = document.createElement('div');
+        userMarkerEl.className = 'custom-tracking-marker';
+        const userLocationMarker = new mapboxgl.Marker({ element: userMarkerEl })
+            .setLngLat(currentOriginCoords)
+            .addTo(map);
+
+        // Capture Live Mobile Browser Hardware Telemetry Coordinates
+        if ('geolocation' in navigator) {
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    currentOriginCoords = [position.coords.longitude, position.coords.latitude];
+                    userLocationMarker.setLngLat(currentOriginCoords);
+                },
+                (err) => console.warn("Hardware GPS telemetry delayed. Reverting to base station metrics.", err),
+                { enableHighAccuracy: true }
+            );
         }
 
-        // Quick Routing Interaction Utility Function
-        window.quickRoute = function(targetCoordinates) {
-            if (directions) {
-                // Instantly pushes destination properties down the telemetry channel pipeline
-                directions.setDestination(targetCoordinates);
+        // ── Single Input Destination Discovery Mount Engine ──
+        const geocoder = new MapboxGeocoder({
+            accessToken: mapboxgl.accessToken,
+            mapboxgl: mapboxgl,
+            types: 'poi,address,building,neighborhood',
+            placeholder: 'Where to?',
+            marker: false // Disables generic standard markers to keep map layers clean
+        });
+
+        document.getElementById('geocoder-mount').appendChild(geocoder.onAdd(map));
+
+        // Event Handling Layer when User Selects Destination Address
+        geocoder.on('result', (e) => {
+            const result = e.result;
+            selectedDestinationCoords = result.center;
+
+            // Clear any previously instantiated search endpoints
+            if (destinationMarker) destinationMarker.remove();
+
+            // Construct custom destination interface asset node
+            const destEl = document.createElement('div');
+            destEl.className = 'custom-dest-marker';
+            destinationMarker = new mapboxgl.Marker({ element: destEl })
+                .setLngLat(selectedDestinationCoords)
+                .addTo(map);
+
+            // Pop and update Contextual Summary Deck UI Cards
+            document.getElementById('card-title').innerText = result.text || "Selected Destination";
+            document.getElementById('card-address').innerText = result.place_name || "";
+            document.getElementById('destination-card').style.display = 'flex';
+
+            // Fluid cinematic pan to focus area
+            map.flyTo({
+                center: selectedDestinationCoords,
+                zoom: 15,
+                pitch: 45,
+                essential: true
+            });
+
+            // Automatically clean current drawn line tracks to prepare execution channel pipelines
+            clearActiveNavigationTracks();
+        });
+
+        // ── Programmatic Routing Transit Line Generation (Better than Default Widgets) ──
+        async function compileHighSpeedRoutingVector() {
+            if (!currentOriginCoords || !selectedDestinationCoords) return;
+
+            const directionApiEndpoint = `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${currentOriginCoords[0]},${currentOriginCoords[1]};${selectedDestinationCoords[0]},${selectedDestinationCoords[1]}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
+
+            try {
+                const query = await fetch(directionApiEndpoint);
+                const response = await query.json();
+                
+                if (response.code !== 'Ok') {
+                    alert("Unable to safely map a drive vector to this configuration footprint.");
+                    return;
+                }
+
+                const routeData = response.routes[0];
+                const routeGeoJson = routeData.geometry;
+
+                // Update UI Card Metadata Parameters
+                const durationMinutes = Math.round(routeData.duration / 60);
+                const distanceMiles = (routeData.distance / 1609.34).toFixed(1);
+                
+                document.getElementById('card-title').innerText = `${durationMinutes} min (${distanceMiles} mi)`;
+                
+                // Adjust contextual status feeds based on real-time traffic delay indexes
+                const radarStatus = document.getElementById('traffic-status');
+                if (routeData.weight_typical && routeData.weight > routeData.weight_typical * 1.15) {
+                    radarStatus.innerHTML = `<div class="pulse-dot" style="background-color: var(--neon-red);"></div>HEAVY_DELAY`;
+                    radarStatus.style.color = 'var(--neon-red)';
+                } else {
+                    radarStatus.innerHTML = `<div class="pulse-dot"></div>OPTIMAL`;
+                    radarStatus.style.color = 'var(--traffic-green)';
+                }
+
+                // Append vector data streams onto global layer maps
+                if (map.getSource('route-line-source')) {
+                    map.getSource('route-line-source').setData(routeGeoJson);
+                } else {
+                    map.addSource('route-line-source', {
+                        type: 'geojson',
+                        data: routeGeoJson
+                    });
+
+                    // Premium glowing aesthetic transit line trace layout matching core visualization models
+                    map.addLayer({
+                        id: 'route-line-layer',
+                        type: 'line',
+                        source: 'route-line-source',
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: {
+                            'line-color': '#ff2222',
+                            'line-width': 5,
+                            'line-opacity': 0.85
+                        }
+                    });
+                }
+
+                // Perfectly snap camera box viewport frame coordinates around path paths
+                const coordinates = routeGeoJson.coordinates;
+                const bounds = coordinates.reduce((acc, coord) => {
+                    return acc.extend(coord);
+                }, new mapboxgl.LngLatBounds(coordinates[0], coordinates[0]));
+
+                map.fitBounds(bounds, {
+                    padding: { top: 60, bottom: 60, left: 440, right: 60 },
+                    exponential: true
+                });
+
+            } catch (error) {
+                console.error("Critical core routing pipeline compile execution block fault:", error);
             }
-        };
+        }
 
-        window.switchMapStyle = function(styleKey) {
-            const buttons = document.querySelectorAll('.console-tab');
-            buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            if (mapStyles[styleKey]) {
-                map.setStyle(mapStyles[styleKey]);
-            }
-        };
+        function clearActiveNavigationTracks() {
+            if (map.getLayer('route-line-layer')) map.removeLayer('route-line-layer');
+            if (map.getSource('route-line-source')) map.removeSource('route-line-source');
+        }
 
-        const updateOverlay = (lngLat) => {
-            document.getElementById('geo-overlay').innerHTML = 
-                `LNG: ${lngLat.lng.toFixed(4)} | LAT: ${lngLat.lat.toFixed(4)}`;
-        };
+        // Wire Interface Event Trigger Listeners
+        document.getElementById('launch-nav-trigger').addEventListener('click', compileHighSpeedRoutingVector);
+        
+        document.getElementById('clear-route-trigger').addEventListener('click', () => {
+            clearActiveNavigationTracks();
+            if (destinationMarker) destinationMarker.remove();
+            geocoder.clear();
+            document.getElementById('destination-card').style.display = 'none';
+            document.getElementById('traffic-status').innerHTML = `<div class="pulse-dot"></div>OPTIMAL`;
+            document.getElementById('traffic-status').style.color = 'var(--traffic-green)';
+            map.flyTo({ center: currentOriginCoords, zoom: 14, pitch: 35 });
+        });
 
-        map.on('mousemove', (e) => updateOverlay(e.lngLat));
-        map.on('touchmove', (e) => updateOverlay(e.lngLat));
+        // ── Real-Time Console Map Layer Toggle Controls ──
+        const trafficBtn = document.getElementById('toggle-traffic');
+        const satelliteBtn = document.getElementById('toggle-satellite');
+
+        trafficBtn.addEventListener('click', () => {
+            const isActive = trafficBtn.classList.toggle('active');
+            // Scan structure styles list and alter structural layers toggle parameters inside engine compiler mapping slots
+            const trafficLayers = ['traffic-local', 'traffic-secondary', 'traffic-primary', 'traffic-motorway', 'traffic-trunk'];
+            trafficLayers.forEach(layer => {
+                if (map.getLayer(layer)) {
+                    map.setLayoutProperty(layer, 'visibility', isActive ? 'visible' : 'none');
+                }
+            });
+        });
+
+        satelliteBtn.addEventListener('click', () => {
+            const isSat = satelliteBtn.classList.toggle('active');
+            map.setStyle(isSat ? mapStyles.satelliteHybrid : mapStyles.vectorDark);
+        });
+
+        // Continuous Coordinates Mouse Hover Tracker
+        const spatialOverlay = document.getElementById('spatial-overlay');
+        const trackCursorCoordinates = (lngLat) => {
+            spatialOverlay.innerHTML = `LNG: ${lngLat.lng.toFixed(4)} | LAT: ${lngLat.lat.toFixed(4)}`;
+        };
+        map.on('mousemove', (e) => trackCursorCoordinates(e.lngLat));
+        map.on('touchmove', (e) => trackCursorCoordinates(e.lngLat));
     </script>
 </body>
 </html>
