@@ -369,10 +369,9 @@
          
         let activeMapMarker = null; 
         let userLocationBeaconMarker = null;
-        let activeRouteDataStore = []; // Retains raw line arrays for seamless layer hot-swapping
+        let activeRouteDataStore = []; 
         let satelliteModeActive = false;
 
-        // OpenFreeMap physical terrain layout (Realistic natural colors over generic black canvas)
         const REGULAR_MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
         const map = new maplibregl.Map({
@@ -411,7 +410,7 @@
             });
         });
 
-        // Continuous application of 3D structural building layers upon runtime changes
+        // Safe pipeline handler that listens to complete rendering style events before mounting routes
         map.on('style.data', () => {
             injectRealtime3DGeometry();
             redrawActiveRoutePipelines();
@@ -419,6 +418,7 @@
 
         function injectRealtime3DGeometry() {
             const styleSources = map.getStyle().sources;
+            if (!styleSources) return;
             const sourceKey = Object.keys(styleSources).find(key => styleSources[key].type === 'vector') || 'openfreemap';
 
             if (map.getSource(sourceKey) && !map.getLayer('spatial-3d-buildings')) {
@@ -429,7 +429,6 @@
                     'type': 'fill-extrusion',
                     'minzoom': 13,
                     'paint': {
-                        // Muted natural charcoal shade for organic embedding
                         'fill-extrusion-color': satelliteModeActive ? '#1c1c1f' : '#cbd2db',
                         'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 15],
                         'fill-extrusion-base': ['coalesce', ['get', 'min_height'], ['get', 'render_min_height'], 0],
@@ -477,7 +476,6 @@
 
                 activeRouteDataStore.sort((a, b) => a.compositeScore - b.compositeScore);
                 
-                // Mount constructed structures directly into runtime map layers
                 redrawActiveRoutePipelines();
                 renderRouteDashboardUI();
 
@@ -485,6 +483,14 @@
         }
 
         function redrawActiveRoutePipelines() {
+            if (!activeRouteDataStore || activeRouteDataStore.length === 0) return;
+            
+            // Check map style readiness state before pushing data blocks
+            if (!map.isStyleLoaded()) {
+                setTimeout(redrawActiveRoutePipelines, 50);
+                return;
+            }
+
             activeRouteDataStore.forEach((r, idx) => {
                 const isTopPick = (idx === 0);
                 const srcId = `route-src-${r.index}`;
@@ -505,7 +511,7 @@
                             'line-color': '#000000',
                             'line-width': isTopPick ? 6 : 4,
                             'line-opacity': satelliteModeActive ? 0.7 : 0.35,
-                            'line-offset': 4, // Pushes line along layout coordinates to simulate height separation
+                            'line-offset': 4, 
                             'line-blur': 3
                         }
                     });
@@ -565,7 +571,6 @@
                 if (map.getLayer(shadowId)) map.removeLayer(shadowId);
                 if (map.getSource(srcId)) map.removeSource(srcId);
             });
-            // Keeping activeRouteDataStore untouched allows seamless re-rendering during hot style switches
         }
 
         /* ── SYSTEM TIMING & CONTROL LAYER PLUMBING ── */
@@ -580,19 +585,17 @@
                 }
             });
 
-            // Satellite Raster Engine Interactivity Toggling Control
             document.getElementById('toggle-satellite-view').addEventListener('click', () => {
                 satelliteModeActive = !satelliteModeActive;
                 const toggleBtn = document.getElementById('toggle-satellite-view');
 
-                clearActiveRouteLayers(); // Temporarily flush layers to prevent rendering conflicts during re-styling
+                clearActiveRouteLayers(); 
 
                 if (satelliteModeActive) {
                     toggleBtn.style.borderColor = 'var(--action-red)';
                     toggleBtn.style.color = 'var(--action-red)';
                     toggleBtn.style.boxShadow = '0 0 10px rgba(255, 51, 51, 0.2)';
 
-                    // Hot-swap core map stack over to empty satellite platform vector map
                     map.setStyle({
                         'version': 8,
                         'sources': {
@@ -616,8 +619,6 @@
                     toggleBtn.style.borderColor = '';
                     toggleBtn.style.color = '';
                     toggleBtn.style.boxShadow = '';
-
-                    // Restore customized natural, organic vector mapping environment
                     map.setStyle(REGULAR_MAP_STYLE);
                 }
             });
