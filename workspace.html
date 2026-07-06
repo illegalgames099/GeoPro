@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GeoPro | Autonomous Spatial Workspace</title>
+    <title>GeoPro | Premium Spatial Workspace</title>
 
     <!-- MapLibre GL JS Core -->
     <script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
@@ -12,25 +12,27 @@
     <style>
         :root {
             --bg-base: #020203;
-            --bg-panel: rgba(10, 10, 12, 0.94);
-            --bg-surface: rgba(20, 20, 25, 0.7);
-            --bg-surface-hover: rgba(35, 35, 42, 0.9);
+            --bg-panel: rgba(12, 12, 16, 0.82);
+            --bg-surface: rgba(255, 255, 255, 0.04);
+            --bg-surface-hover: rgba(255, 255, 255, 0.08);
             --action-red: #ff2222;
-            --action-red-glow: rgba(255, 34, 34, 0.35);
-            --border-subtle: rgba(255, 255, 255, 0.06);
+            --action-red-glow: rgba(255, 34, 34, 0.4);
+            --border-subtle: rgba(255, 255, 255, 0.08);
             --text-main: #ffffff;
             --text-secondary: #a0a0ab;
-            --text-muted: #4b4b54;
+            --text-muted: #52525b;
             --accent-green: #30d158;
             --sidebar-width: 380px;
+            --apple-easing: cubic-bezier(0.25, 1, 0.5, 1);
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, monospace;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             letter-spacing: -0.2px;
+            -webkit-font-smoothing: antialiased;
         }
 
         body, html {
@@ -56,23 +58,30 @@
             z-index: 1;
         }
 
-        button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        button { 
+            font: inherit; 
+            background: none; 
+            border: none; 
+            cursor: pointer; 
+            color: inherit; 
+            transition: all 0.3s var(--apple-easing); 
+        }
         input { font: inherit; }
 
-        /* ── FIXED LOWER-LEFT PANEL DECK ── */
+        /* ── MAC-INSPIRED INTERACTIVE FLOATING CONTAINER ── */
         #control-panel-deck {
             position: absolute;
-            bottom: 25px;
-            left: 25px;
+            bottom: 32px;
+            left: 32px;
             width: var(--sidebar-width);
-            max-height: calc(100% - 50px);
+            max-height: calc(100% - 64px);
             z-index: 10;
             background: var(--bg-panel);
-            backdrop-filter: blur(35px) saturate(210%);
-            -webkit-backdrop-filter: blur(35px) saturate(210%);
+            backdrop-filter: blur(40px) saturate(210%);
+            -webkit-backdrop-filter: blur(40px) saturate(210%);
             border: 1px solid var(--border-subtle);
             border-radius: 24px;
-            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 1px rgba(255, 255, 255, 0.1) inset;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -81,12 +90,12 @@
         }
 
         #control-panel-deck.snapping {
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.45s var(--apple-easing);
         }
 
         .drag-handle-bar {
             width: 100%;
-            padding: 14px 0 8px 0;
+            padding: 16px 0 6px 0;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -96,20 +105,21 @@
         }
         .drag-handle-bar:active { cursor: grabbing; }
         .drag-handle-pill {
-            width: 40px;
+            width: 36px;
             height: 5px;
-            background: rgba(255, 255, 255, 0.15);
-            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            transition: background 0.3s var(--apple-easing);
         }
-        .drag-handle-bar:hover .drag-handle-pill { background: rgba(255, 255, 255, 0.3); }
+        .drag-handle-bar:hover .drag-handle-pill { background: rgba(255, 255, 255, 0.25); }
 
         .panel-scrollable-body {
             flex: 1;
             overflow-y: auto;
-            padding: 0 20px 20px 20px;
+            padding: 0 24px 24px 24px;
             display: flex;
             flex-direction: column;
-            gap: 18px;
+            gap: 20px;
         }
 
         .panel-branding-header {
@@ -117,10 +127,10 @@
             align-items: center;
             justify-content: space-between;
         }
-        .brand-logo { font-size: 1.3rem; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
-        .brand-logo span { color: var(--action-red); text-shadow: 0 0 12px var(--action-red-glow); }
+        .brand-logo { font-size: 1.25rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+        .brand-logo span { color: var(--action-red); text-shadow: 0 0 15px var(--action-red-glow); }
 
-        /* Search Interface */
+        /* Search Layout Architecture */
         .search-field-container { position: relative; width: 100%; }
         .search-input-wrapper {
             display: flex;
@@ -129,10 +139,12 @@
             border-radius: 14px;
             padding: 2px;
             align-items: center;
+            transition: all 0.3s var(--apple-easing);
         }
         .search-input-wrapper:focus-within {
-            border-color: var(--action-red);
-            background: var(--bg-surface-hover);
+            border-color: rgba(255, 34, 34, 0.5);
+            background: rgba(0, 0, 0, 0.2);
+            box-shadow: 0 0 0 3px rgba(255, 34, 34, 0.15);
         }
         .search-input-node {
             flex: 1;
@@ -140,8 +152,9 @@
             border: none;
             outline: none;
             color: var(--text-main);
-            padding: 12px 14px;
-            font-size: 0.9rem;
+            padding: 12px 16px;
+            font-size: 0.95rem;
+            font-weight: 400;
         }
         .search-input-node::placeholder { color: var(--text-muted); }
 
@@ -150,79 +163,174 @@
             top: 100%;
             left: 0;
             width: 100%;
-            background: #09090b;
+            background: rgba(15, 15, 20, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border-subtle);
             border-radius: 14px;
-            margin-top: 6px;
-            max-height: 220px;
+            margin-top: 8px;
+            max-height: 240px;
             overflow-y: auto;
             z-index: 150;
             display: none;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
         }
         .osm-suggest-item {
-            padding: 12px 16px;
-            font-size: 0.85rem;
+            padding: 12px 18px;
+            font-size: 0.9rem;
             cursor: pointer;
             color: var(--text-secondary);
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            transition: all 0.2s ease;
         }
-        .osm-suggest-item:hover { background: rgba(255, 34, 34, 0.08); color: var(--action-red); }
+        .osm-suggest-item:hover { background: rgba(255, 34, 34, 0.1); color: var(--text-main); }
 
-        /* Context Workspace Card */
+        /* Dynamic Context Workspace Card */
         #context-destination-panel {
-            background: linear-gradient(135deg, var(--bg-surface), rgba(10,10,14,0.1));
+            background: rgba(255, 255, 255, 0.02);
             border: 1px solid var(--border-subtle);
-            border-radius: 16px;
-            padding: 16px;
+            border-radius: 18px;
+            padding: 18px;
             display: none;
             flex-direction: column;
-            gap: 12px;
+            gap: 16px;
+            animation: slideUpFade 0.4s var(--apple-easing);
         }
-        .panel-header-title { font-size: 1rem; font-weight: 700; }
-        .panel-address-sub { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4; }
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .panel-header-title { font-size: 1.05rem; font-weight: 600; letter-spacing: -0.1px; }
+        .panel-address-sub { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45; }
         
-        .action-button-matrix { display: flex; gap: 8px; }
-        .primary-action-btn { flex: 1; background: var(--action-red); padding: 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; text-align: center; box-shadow: 0 6px 16px var(--action-red-glow); }
-        .primary-action-btn:hover { opacity: 0.9; }
-        .kill-action-btn { background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); width: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-        .kill-action-btn:hover { border-color: var(--action-red); color: var(--action-red); }
+        .action-button-matrix { display: flex; gap: 10px; }
+        .primary-action-btn { 
+            flex: 1; 
+            background: var(--action-red); 
+            padding: 14px; 
+            border-radius: 12px; 
+            font-size: 0.9rem; 
+            font-weight: 600; 
+            text-align: center; 
+            box-shadow: 0 4px 12px var(--action-red-glow); 
+        }
+        .primary-action-btn:hover { 
+            transform: translateY(-1px); 
+            box-shadow: 0 6px 20px rgba(255, 34, 34, 0.5); 
+        }
+        .primary-action-btn:active { transform: translateY(1px); }
+        
+        .kill-action-btn { 
+            background: rgba(255,255,255,0.04); 
+            border: 1px solid var(--border-subtle); 
+            width: 48px; 
+            border-radius: 12px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 0.85rem;
+        }
+        .kill-action-btn:hover { background: rgba(255, 34, 34, 0.15); border-color: var(--action-red); color: var(--action-red); }
 
         .hardware-diagnostics-deck {
-            background: rgba(0,0,0,0.3);
+            background: rgba(0, 0, 0, 0.15);
             border: 1px solid var(--border-subtle);
             border-radius: 14px;
-            padding: 12px;
+            padding: 14px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
-            font-family: monospace;
-            font-size: 0.7rem;
+            gap: 8px;
+            font-size: 0.75rem;
         }
         .diagnostic-row { display: flex; justify-content: space-between; align-items: center; }
-        .diagnostic-row span:first-child { color: var(--text-muted); text-transform: uppercase; }
-        .diagnostic-row span:last-child { color: var(--text-secondary); font-weight: bold; }
+        .diagnostic-row span:first-child { color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px; }
+        .diagnostic-row span:last-child { color: var(--text-secondary); font-family: monospace; font-weight: 600; }
 
-        /* Toolstack Controls */
+        /* Floating Controls Display */
         #right-floating-console-stack {
-            position: absolute; top: 25px; right: 25px; z-index: 100; display: flex; flex-direction: column; gap: 8px;
+            position: absolute; top: 32px; right: 32px; z-index: 100; display: flex; flex-direction: column; gap: 10px;
         }
         .console-action-btn-node {
-            background: var(--bg-panel); backdrop-filter: blur(20px); border: 1px solid var(--border-subtle); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.05rem;
+            background: var(--bg-panel); 
+            backdrop-filter: blur(30px) saturate(210%);
+            -webkit-backdrop-filter: blur(30px) saturate(210%);
+            border: 1px solid var(--border-subtle); 
+            width: 46px; 
+            height: 46px; 
+            border-radius: 14px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 1.1rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
         }
-        .console-action-btn-node:hover { background: var(--bg-surface-hover); border-color: var(--text-secondary); }
+        .console-action-btn-node:hover { background: var(--bg-surface-hover); transform: scale(1.04); border-color: rgba(255,255,255,0.2); }
+        .console-action-btn-node:active { transform: scale(0.96); }
 
-        #coordinate-overlay-tracker { position: absolute; bottom: 25px; right: 25px; background: var(--bg-panel); backdrop-filter: blur(10px); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-subtle); font-family: monospace; font-size: 0.7rem; z-index: 5; color: var(--text-secondary); }
+        #coordinate-overlay-tracker { 
+            position: absolute; 
+            bottom: 32px; 
+            right: 32px; 
+            background: var(--bg-panel); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px);
+            padding: 8px 14px; 
+            border-radius: 10px; 
+            border: 1px solid var(--border-subtle); 
+            font-family: monospace; 
+            font-size: 0.75rem; 
+            z-index: 5; 
+            color: var(--text-secondary); 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+        }
 
-        /* Responsive Mobile Handling Layer */
-        @media (max-width: 480px) {
+        /* ── CUSTOM REFINED TELEMETRY MARKER ── */
+        .telemetry-pulse-marker {
+            width: 20px;
+            height: 20px;
+            position: relative;
+        }
+        .telemetry-pulse-core {
+            width: 14px;
+            height: 14px;
+            background: var(--action-red);
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            z-index: 2;
+            box-shadow: 0 0 10px var(--action-red-glow);
+        }
+        .telemetry-pulse-ring {
+            width: 32px;
+            height: 32px;
+            background: rgba(255, 34, 34, 0.25);
+            border-radius: 50%;
+            position: absolute;
+            top: -6px;
+            left: -6px;
+            animation: pulseGlow 1.8s infinite ease-out;
+            z-index: 1;
+            pointer-events: none;
+        }
+        @keyframes pulseGlow {
+            0% { transform: scale(0.4); opacity: 1; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+
+        /* Responsive Safe Boundaries Configuration Dumps */
+        @media (max-width: 500px) {
             #control-panel-deck {
-                width: calc(100% - 32px);
-                left: 16px;
-                bottom: 16px;
+                width: calc(100% - 32px) !important;
+                left: 16px !important;
+                bottom: 16px !important;
+                max-height: calc(100% - 32px);
             }
-            --sidebar-width: 100%;
+            #right-floating-console-stack { top: 16px; right: 16px; }
+            #coordinate-overlay-tracker { display: none; }
         }
     </style>
 </head>
@@ -231,7 +339,7 @@
     <div id="app-viewport">
         <div id="map"></div>
 
-        <!-- Draggable UI Deck Panel (Perfected Bottom-Left Boundary Alignment) -->
+        <!-- Draggable Controls Panel Workspace Deck -->
         <div id="control-panel-deck">
             <div class="drag-handle-bar" id="drag-handle">
                 <div class="drag-handle-pill"></div>
@@ -240,72 +348,96 @@
             <div class="panel-scrollable-body">
                 <div class="panel-branding-header">
                     <div class="brand-logo">Geo<span>Pro</span></div>
-                    <div style="font-family: monospace; font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">AUTONOMOUS STACK</div>
+                    <div style="font-size: 0.7rem; color: var(--text-muted); font-weight: 700; tracking-spacing: 0.5px;">PROTOTYPE STACK</div>
                 </div>
 
-                <!-- Open Search Entry Vector -->
+                <!-- Photon API Smart Vector Lookup Entry Component -->
                 <div class="search-field-container">
                     <div class="search-input-wrapper">
-                        <input type="text" class="search-input-node" id="osm-engine-input" placeholder="Search physical vectors...">
+                        <input type="text" class="search-input-node" id="osm-engine-input" placeholder="Search vectors globally...">
                     </div>
                     <div class="osm-dropdown-menu" id="osm-engine-dropdown"></div>
                 </div>
 
-                <!-- Focus Target Information Workspace -->
+                <!-- Selection Inspector UI Drawer Card -->
                 <div id="context-destination-panel">
-                    <div class="panel-header-title" id="node-panel-title">Target Vector</div>
-                    <div class="panel-address-sub" id="node-panel-address">Analyzing coordinates...</div>
+                    <div class="panel-header-title" id="node-panel-title">Target Node Vector</div>
+                    <div class="panel-address-sub" id="node-panel-address">Resolving geographic coordinates...</div>
                     <div class="action-button-matrix">
-                        <button class="primary-action-btn" id="launch-routing-action">Calculate Route</button>
+                        <button class="primary-action-btn" id="launch-routing-action">Generate Route Path</button>
                         <button class="kill-action-btn" id="flush-workspace-trigger">✖</button>
                     </div>
                 </div>
 
+                <!-- Internal Workspace Diagnostics Matrix Summary -->
                 <div class="hardware-diagnostics-deck">
-                    <div class="diagnostic-row"><span>Engine Source</span><style color: var(--accent-green);>MAPLIBRE V4</style><span>MAPLIBRE V4</span></div>
-                    <div class="diagnostic-row"><span>Search Registry</span><span>PHOTON INDEX</span></div>
-                    <div class="diagnostic-row"><span>Routing Pipeline</span><span id="routing-engine-status">LOCAL SYSTEM MOCK</span></div>
+                    <div class="diagnostic-row"><span>Tile Core</span><span style="color: var(--accent-green);">MapLibre v4 (Pure Open)</span></div>
+                    <div class="diagnostic-row"><span>Search Grid</span><span>Photon Open Index</span></div>
+                    <div class="diagnostic-row"><span>Route Compiler</span><span id="routing-engine-status">OSRM Multi-Node Node</span></div>
                 </div>
             </div>
         </div>
 
-        <!-- System Control Cluster -->
+        <!-- Right Vertical Floating Command Deck -->
         <div id="right-floating-console-stack">
-            <button class="console-action-btn-node" id="force-gps-recenter" title="Recenter Engine">🎯</button>
-            <button class="console-action-btn-node" id="compass-orientation-lock" title="True North">🧭</button>
+            <button class="console-action-btn-node" id="force-gps-recenter" title="Recenter Engine Coordinate Origin">🎯</button>
+            <button class="console-action-btn-node" id="compass-orientation-lock" title="True North Orientation Reset">🧭</button>
         </div>
 
+        <!-- Matrix Global Space Multi-Coordinate Overlay Tracking Node -->
         <div id="coordinate-overlay-tracker">X: -- | Y: --</div>
     </div>
 
     <script>
-        // Initializing MapLibre Engine instance with open dark vector styles
+        // High-fidelity open Dark vector map configuration profile initialization
         const map = new maplibregl.Map({
             container: 'map',
             style: 'https://tiles.openfreemap.org/styles/dark', 
             center: [-123.2078, 39.1502], 
-            zoom: 13,
-            pitch: 25,
+            zoom: 13.5,
+            pitch: 35,
             bearing: 0,
             antialias: true
         });
 
+        // Mock base user telemetry connection coordinates
         let defaultUserCoordinates = [-123.2078, 39.1502];
         let targetSelectedCoordinates = null;
         let querySearchDebounceTimer = null;
+        let livePositionTelemetryMarkerNode = null;
 
         map.on('load', () => {
+            initPremiumTelemetryMarker();
             initTacticalPanelDraggingPhysics();
             initAutonomousSearchMatrix();
             initDirectMapInputListeners();
             initHardwareConsoleTriggers();
 
             map.on('mousemove', (e) => {
-                document.getElementById('coordinate-overlay-tracker').innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
+                document.getElementById('coordinate-overlay-tracker').innerText = `LNGLAT: ${e.lngLat.lng.toFixed(5)}, ${e.lngLat.lat.toFixed(5)}`;
             });
         });
 
-        /* ── SOLIDIFIED POSITIONING & SLIDEOVER DRAG PHYSICS ── */
+        /* ── ANIMATED TELEMETRY CORE ELEMENT PLOTTING ── */
+        function initPremiumTelemetryMarker() {
+            const markerContainer = document.createElement('div');
+            markerContainer.className = 'telemetry-pulse-marker';
+            
+            const pulseRing = document.createElement('div');
+            pulseRing.className = 'telemetry-pulse-ring';
+            
+            const pulseCore = document.createElement('div');
+            pulseCore.className = 'telemetry-pulse-core';
+            
+            markerContainer.appendChild(pulseRing);
+            markerContainer.appendChild(pulseCore);
+
+            livePositionTelemetryMarkerNode = new maplibregl.Marker({ element: markerContainer })
+                .setLngLat(defaultUserCoordinates)
+                .addTo(map);
+        }
+
+        /* ── REFINED INTERACTIVE SLIDEOVER DRAG PHYSICS ENGINE ── */
         function initTacticalPanelDraggingPhysics() {
             const panel = document.getElementById('control-panel-deck');
             const handle = document.getElementById('drag-handle');
@@ -334,9 +466,9 @@
                 let deltaY = e.clientY - startY;
                 let nextY = lastTranslateY + deltaY;
 
-                // Safeguards preventing panel overflow offscreen boundaries
-                if (nextY < -150) nextY = -150;
-                if (nextY > 400) nextY = 400;
+                // Restrict sliding mechanics to protect responsive frame viewport limits
+                if (nextY < -120) nextY = -120;
+                if (nextY > 380) nextY = 380;
 
                 currentTranslateY = nextY;
                 panel.style.transform = `translateY(${currentTranslateY}px)`;
@@ -347,13 +479,13 @@
                 isDragging = false;
                 panel.classList.add('snapping');
 
-                // Snapping steps
-                if (currentTranslateY > 150) {
-                    currentTranslateY = 320; // Collapsed compact status profile
-                } else if (currentTranslateY < -50) {
-                    currentTranslateY = -80; // Tall analytical window extension
+                // Kinetic step layout snaps
+                if (currentTranslateY > 120) {
+                    currentTranslateY = 320; // Docked minimal readout state
+                } else if (currentTranslateY < -40) {
+                    currentTranslateY = -80; // Maximal detail view state extension
                 } else {
-                    currentTranslateY = 0;   // Centered standard view format
+                    currentTranslateY = 0;   // Native floating baseline standard alignment
                 }
 
                 panel.style.transform = `translateY(${currentTranslateY}px)`;
@@ -361,7 +493,7 @@
             }
         }
 
-        /* ── COMPREHENSIVE ADDRESS VECTOR RESOLUTION ── */
+        /* ── SMART AUTOMATED ADDRESS VECTOR RESOLUTION ── */
         function initAutonomousSearchMatrix() {
             const input = document.getElementById('osm-engine-input');
             const dropdown = document.getElementById('osm-engine-dropdown');
@@ -389,13 +521,13 @@
                                 const targetLoc = feature.geometry.coordinates;
                                 dropdown.style.display = 'none';
                                 input.value = labeledLocation;
-                                map.flyTo({ center: targetLoc, zoom: 15 });
-                                triggerWorkspaceTargetDeck(targetLoc, p.name || "Target Vector", labeledLocation);
+                                map.flyTo({ center: targetLoc, zoom: 15, duration: 2500, essential: true });
+                                triggerWorkspaceTargetDeck(targetLoc, p.name || "Target Vector Node", labeledLocation);
                             });
                             dropdown.appendChild(segmentItem);
                         });
                         dropdown.style.display = 'block';
-                    } catch (err) { console.error("Search pipeline fault:", err); }
+                    } catch (err) { console.error("Search index connection drop fault:", err); }
                 }, 250);
             });
         }
@@ -403,7 +535,7 @@
         function initDirectMapInputListeners() {
             map.on('click', async (e) => {
                 const pinpoint = [e.lngLat.lng, e.lngLat.lat];
-                triggerWorkspaceTargetDeck(pinpoint, "Selected Matrix Node", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
+                triggerWorkspaceTargetDeck(pinpoint, "Selected Matrix Node Coordinate", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
                 
                 try {
                     const lookup = await fetch(`https://photon.komoot.io/api/?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
@@ -443,14 +575,28 @@
                 map.addSource('active-route-source', { type: 'geojson', data: { type: 'Feature', geometry: pathGeometry } });
                 map.addLayer({
                     id: 'active-route-line', type: 'line', source: 'active-route-source',
-                    paint: { 'line-color': '#ff2222', 'line-width': 5, 'line-opacity': 0.9 }
+                    paint: { 
+                        'line-color': '#ff2222', 
+                        'line-width': 6, 
+                        'line-opacity': 0.95
+                    },
+                    layout: {
+                        'line-cap': 'round',
+                        'line-join': 'round'
+                    }
                 });
-            } catch (err) { console.error("Routing resolution pipeline error:", err); }
+
+                // Smooth cinematic boundary fitting wrapper transitions
+                const coordinates = pathGeometry.coordinates;
+                const bounds = coordinates.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+                map.fitBounds(bounds, { padding: 80, duration: 2000 });
+
+            } catch (err) { console.error("Routing trace mapping path evaluation error:", err); }
         }
 
         function initHardwareConsoleTriggers() {
-            document.getElementById('compass-orientation-lock').addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 25 }));
-            document.getElementById('force-gps-recenter').addEventListener('click', () => map.flyTo({ center: defaultUserCoordinates, zoom: 14 }));
+            document.getElementById('compass-orientation-lock').addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 35, duration: 1200 }));
+            document.getElementById('force-gps-recenter').addEventListener('click', () => map.flyTo({ center: defaultUserCoordinates, zoom: 14.5, speed: 1.2, curve: 1.4, essential: true }));
             document.getElementById('launch-routing-action').addEventListener('click', runLocalSpatialRouteCalculation);
             document.getElementById('flush-workspace-trigger').addEventListener('click', () => {
                 if (map.getLayer('active-route-line')) map.removeLayer('active-route-line');
