@@ -2,312 +2,722 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>StudioOS Studio Map Engine</title>
-    <!-- MapLibre GL CSS and JS -->
-    <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
-    <link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>GeoPro | Autonomous Spatial Workspace</title>
+
+    <!-- MapLibre GL JS Core -->
+    <script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" rel="stylesheet" />
+
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
-            background: #0a0a0a; 
-            color: #fff; 
-            overflow: hidden; 
+        :root {
+            --bg-base: #020203;
+            --bg-panel: rgba(10, 10, 12, 0.94);
+            --bg-surface: rgba(20, 20, 25, 0.7);
+            --bg-surface-hover: rgba(35, 35, 42, 0.9);
+            --action-red: #ff2222;
+            --action-red-glow: rgba(255, 34, 34, 0.35);
+            --border-subtle: rgba(255, 255, 255, 0.06);
+            --text-main: #ffffff;
+            --text-secondary: #a0a0ab;
+            --text-muted: #4b4b54;
+            --sidebar-width: 380px;
         }
-        #map { 
-            position: absolute; 
-            top: 0; 
-            bottom: 0; 
-            width: 100%; 
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, monospace;
+            letter-spacing: -0.2px;
         }
-        
-        /* High-fidelity StudioOS Interface Panel Overlay */
-        #nav-panel {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 10;
-            width: 320px;
-            background: rgba(15, 15, 15, 0.95);
-            border: 1px solid #2a0808;
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.7);
-            backdrop-filter: blur(8px);
-        }
-        h3 { 
-            margin: 0 0 10px 0; 
-            font-size: 16px; 
-            text-transform: uppercase; 
-            letter-spacing: 1px; 
-            color: #ff3b30; 
-        }
-        p { 
-            font-size: 13px; 
-            color: #aaa; 
-            margin: 0 0 20px 0; 
-            line-height: 1.4; 
-        }
-        
-        .btn {
-            display: block;
+
+        body, html {
             width: 100%;
-            background: #ff3b30;
-            color: #fff;
-            border: none;
-            padding: 12px;
-            border-radius: 6px;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: background 0.2s, transform 0.1s;
-            text-align: center;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-base);
+            color: var(--text-main);
         }
-        .btn:hover { background: #e03228; }
-        .btn:active { transform: scale(0.98); }
-        .hidden { display: none !important; }
+
+        #app-viewport {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+        input { font: inherit; }
+
+        /* ── CONTROL PANEL DECK ── */
+        #control-panel-deck {
+            position: absolute;
+            bottom: 25px;
+            left: 25px;
+            width: var(--sidebar-width);
+            max-height: calc(100% - 50px);
+            z-index: 2000;
+            background: var(--bg-panel);
+            backdrop-filter: blur(35px) saturate(210%);
+            -webkit-backdrop-filter: blur(35px) saturate(210%);
+            border: 1px solid var(--border-subtle);
+            border-radius: 24px;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transform: translateY(0);
+            user-select: none;
+        }
+
+        #control-panel-deck.snapping {
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .drag-handle-bar {
+            width: 100%;
+            padding: 14px 0 8px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: grab;
+            background: transparent;
+            z-index: 2010;
+        }
+        .drag-handle-bar:active { cursor: grabbing; }
+        .drag-handle-pill {
+            width: 40px;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 3px;
+        }
+        .drag-handle-bar:hover .drag-handle-pill { background: rgba(255, 255, 255, 0.3); }
+
+        .panel-scrollable-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 20px 20px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .panel-branding-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .brand-logo { font-size: 1.3rem; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #ffffff; }
+        .brand-logo span { color: var(--action-red); text-shadow: 0 0 12px var(--action-red-glow); }
+
+        /* Search Interface */
+        .search-field-container { position: relative; width: 100%; }
+        .search-input-wrapper {
+            display: flex;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 2px;
+            align-items: center;
+        }
+        .search-input-wrapper:focus-within {
+            border-color: var(--action-red);
+            background: var(--bg-surface-hover);
+            box-shadow: 0 0 10px rgba(255, 34, 34, 0.15);
+        }
+        .search-input-node {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-main);
+            padding: 12px 14px;
+            font-size: 0.9rem;
+        }
+        .search-input-node::placeholder { color: var(--text-muted); }
+
+        .osm-dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background: #09090b;
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            margin-top: 6px;
+            max-height: 220px;
+            overflow-y: auto;
+            z-index: 2500;
+            display: none;
+        }
+        .osm-suggest-item {
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .osm-suggest-item:hover { background: rgba(255, 34, 34, 0.08); color: var(--action-red); }
+
+        /* Context Workspace Card */
+        #context-destination-panel {
+            background: linear-gradient(135deg, var(--bg-surface), rgba(10,10,14,0.1));
+            border: 1px solid var(--border-subtle);
+            border-radius: 16px;
+            padding: 16px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .panel-header-title { font-size: 1rem; font-weight: 700; border-left: 2px solid var(--action-red); padding-left: 8px; }
+        .panel-address-sub { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4; }
+         
+        /* Multi-Route Metadata Panel */
+        #route-variants-dashboard {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 4px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.08);
+            padding-top: 10px;
+        }
+        .route-badge-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            font-size: 0.75rem;
+        }
+        .route-badge-row.active-variant {
+            border-color: rgba(255, 34, 34, 0.4);
+            background: rgba(255, 34, 34, 0.04);
+        }
+        .badge-tag-label { font-weight: bold; text-transform: uppercase; font-size: 0.65rem; }
+
+        .action-button-matrix { display: flex; gap: 8px; }
+        .primary-action-btn { flex: 1; background: var(--action-red); padding: 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; text-align: center; box-shadow: 0 6px 16px var(--action-red-glow); }
+        .primary-action-btn:hover { opacity: 0.9; }
+        .kill-action-btn { background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); width: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+        .kill-action-btn:hover { border-color: var(--action-red); color: var(--action-red); }
+
+        .hardware-diagnostics-deck {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            font-family: monospace;
+            font-size: 0.7rem;
+        }
+        .diagnostic-row { display: flex; justify-content: space-between; align-items: center; }
+        .diagnostic-row span:first-child { color: var(--text-muted); text-transform: uppercase; }
+        .diagnostic-row span:last-child { color: var(--text-secondary); font-weight: bold; }
+        .diagnostic-row .brand-status { color: var(--action-red); text-shadow: 0 0 8px var(--action-red-glow); }
+
+        /* Floating Console Toolstack Controls */
+        #right-floating-console-stack {
+            position: absolute; 
+            top: 25px; 
+            right: 25px; 
+            z-index: 2000; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 8px;
+        }
+        .console-action-btn-node {
+            background: var(--bg-panel); 
+            backdrop-filter: blur(20px); 
+            border: 1px solid var(--border-subtle); 
+            width: 44px; 
+            height: 44px; 
+            border-radius: 12px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            font-size: 1.1rem;
+            color: var(--text-main);
+        }
+        .console-action-btn-node:hover { 
+            background: var(--bg-surface-hover); 
+            border-color: var(--action-red); 
+            box-shadow: 0 0 10px rgba(255, 34, 34, 0.2); 
+            color: var(--action-red);
+        }
+
+        #coordinate-overlay-tracker { 
+            position: absolute; 
+            bottom: 25px; 
+            right: 25px; 
+            background: var(--bg-panel); 
+            backdrop-filter: blur(10px); 
+            padding: 8px 12px; 
+            border-radius: 10px; 
+            border: 1px solid var(--border-subtle); 
+            font-family: monospace; 
+            font-size: 0.7rem; 
+            z-index: 2000; 
+            color: var(--text-secondary); 
+        }
+
+        .custom-spatial-marker {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+
+        /* Distinctive Live Device Location Blue Pulsing Beacon */
+        .live-gps-beacon-node {
+            width: 18px;
+            height: 18px;
+            background: #007aff;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 0 8px rgba(0, 122, 255, 0.25), 0 2px 6px rgba(0,0,0,0.4);
+            animation: beaconPulse 2.5s infinite ease-in-out;
+        }
+
+        @keyframes beaconPulse {
+            0% { box-shadow: 0 0 0 0px rgba(0, 122, 255, 0.4), 0 2px 6px rgba(0,0,0,0.4); }
+            70% { box-shadow: 0 0 0 12px rgba(0, 122, 255, 0), 0 2px 6px rgba(0,0,0,0.4); }
+            100% { box-shadow: 0 0 0 0px rgba(0, 122, 255, 0), 0 2px 6px rgba(0,0,0,0.4); }
+        }
+
+        @media (max-width: 480px) {
+            #control-panel-deck {
+                width: calc(100% - 32px);
+                left: 16px;
+                bottom: 16px;
+            }
+            --sidebar-width: 100%;
+        }
     </style>
 </head>
 <body>
 
-<div id="map"></div>
+    <div id="app-viewport">
+        <div id="map"></div>
 
-<!-- Route & Navigation Overlay Control Center -->
-<div id="nav-panel">
-    <div id="route-summary">
-        <h3>Route Calculated</h3>
-        <p>Dynamic track vector optimized. Client-side mesh calculations complete.</p>
-        <button class="btn" id="start-route-btn">Start Route</button>
+        <!-- Draggable UI Deck Panel -->
+        <div id="control-panel-deck">
+            <div class="drag-handle-bar" id="drag-handle">
+                <div class="drag-handle-pill"></div>
+            </div>
+             
+            <div class="panel-scrollable-body">
+                <div class="panel-branding-header">
+                    <div class="brand-logo">Geo<span>Pro</span></div>
+                    <div style="font-family: monospace; font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">AUTONOMOUS STACK</div>
+                </div>
+
+                <!-- Open Search Entry Vector -->
+                <div class="search-field-container">
+                    <div class="search-input-wrapper">
+                        <input type="text" class="search-input-node" id="osm-engine-input" placeholder="Search local vectors...">
+                    </div>
+                    <div class="osm-dropdown-menu" id="osm-engine-dropdown"></div>
+                </div>
+
+                <!-- Focus Target Information Workspace -->
+                <div id="context-destination-panel">
+                    <div class="panel-header-title" id="node-panel-title">Target Vector</div>
+                    <div class="panel-address-sub" id="node-panel-address">Analyzing coordinates...</div>
+                     
+                    <!-- Dynamic Alternatives Readout Element -->
+                    <div id="route-variants-dashboard" style="display: none;"></div>
+
+                    <div class="action-button-matrix">
+                        <button class="primary-action-btn" id="launch-routing-action">Calculate Route</button>
+                        <button class="kill-action-btn" id="flush-workspace-trigger">✖</button>
+                    </div>
+                </div>
+
+                <div class="hardware-diagnostics-deck">
+                    <div class="diagnostic-row"><span>Engine Source</span><span class="brand-status">MAPLIBRE V4</span></div>
+                    <div class="diagnostic-row"><span>Telemetry Status</span><span id="telemetry-status-node" style="color: #ff9500;">WAITING PERMISSION</span></div>
+                    <div class="diagnostic-row"><span>Routing Pipeline</span><span id="routing-engine-status">MULTI-ROUTE EVALUATOR</span></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Control Cluster -->
+        <div id="right-floating-console-stack">
+            <button class="console-action-btn-node" id="force-gps-recenter" title="Recenter Engine">🎯</button>
+            <button class="console-action-btn-node" id="compass-orientation-lock" title="True North">🧭</button>
+        </div>
+
+        <div id="coordinate-overlay-tracker">X: -- | Y: --</div>
     </div>
-    <div id="navigation-active" class="hidden">
-        <h3>3D Guidance Active</h3>
-        <p style="color: #fff; font-weight: 500;">Following real-time local lane projection.</p>
-        <button class="btn" id="stop-route-btn" style="background: #1a1a1a; border: 1px solid #333;">Exit Route</button>
-    </div>
-</div>
 
-<script>
-// --- CORE CONFIGURATION & SAMPLE DATA ---
-// Active path data string representing calculated travel coordinates
-const SAMPLE_ROUTE = [
-    [-123.2078, 39.1502],
-    [-123.2065, 39.1501],
-    [-123.2050, 39.1500],
-    [-123.2048, 39.1525],
-    [-123.2045, 39.1550],
-    [-123.2020, 39.1552]
-];
+    <script>
+        // Fallback global default coordinates if hardware sensors are missing or blocked
+        let defaultUserCoordinates = [-122.084, 37.422]; 
+        let currentLiveGpsPosition = null; 
+        let targetSelectedCoordinates = null;
+        let querySearchDebounceTimer = null;
+         
+        let activeMapMarker = null; 
+        let userLocationBeaconMarker = null;
+        let activeRouteIdsCollection = []; // Track active layout layers on map
 
-// --- INITIALIZE MAP CONTAINER ---
-const map = new maplibregl.Map({
-    container: 'map',
-    style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', // Deep dark baseline canvas
-    center: [-123.2055, 39.1520],
-    zoom: 14.5,
-    pitch: 0,
-    bearing: 0
-});
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: 'https://tiles.openfreemap.org/styles/dark', 
+            center: defaultUserCoordinates, 
+            zoom: 2, 
+            pitch: 25,
+            bearing: 0,
+            antialias: true
+        });
 
-// Map Engine Configuration Hooks
-map.on('load', () => {
-    // Configure natural horizon fade parameters for low camera angles
-    map.setFog({
-        'range': [1, 8],
-        'color': '#0a0a0a',
-        'horizon-blend': 0.35
-    });
-
-    // Auto-frame initial canvas view to encompass route line boundaries
-    const bounds = SAMPLE_ROUTE.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(SAMPLE_ROUTE[0], SAMPLE_ROUTE[0]));
-    map.fitBounds(bounds, { padding: 60 });
-});
-
-
-// --- CLIENT-SIDE WEBGL 3D RIBBON LANE ENGINE ---
-class Custom3DLaneLayer {
-    constructor(id, coordinates, laneWidthMeters = 8.0) {
-        this.id = id;
-        this.type = 'custom';
-        this.renderingMode = '3d';
-        this.coordinates = coordinates;
-        this.width = laneWidthMeters;
-        this.program = null;
-        this.vertexBuffer = null;
-        this.vertexCount = 0;
-    }
-
-    onAdd(map, gl) {
-        const vertexShaderSource = `
-            uniform mat4 u_matrix;
-            attribute vec3 a_position;
-            attribute vec2 a_texcoord;
-            varying vec2 v_texcoord;
-            void main() {
-                v_texcoord = a_texcoord;
-                gl_Position = u_matrix * vec4(a_position, 1.0);
-            }
-        `;
-
-        const fragmentShaderSource = `
-            precision mediump float;
-            varying vec2 v_texcoord;
-            void main() {
-                // Outer tracking margins and base track profile colors
-                vec4 baseColor = vec4(0.45, 0.02, 0.02, 0.85); // Subdued deep dark red base
-                float centerDist = abs(v_texcoord.x - 0.5);
-                
-                // Procedural center guidance arrow dash tracker
-                if (centerDist < 0.04) {
-                    float dashPattern = step(0.4, fract(v_texcoord.y * 15.0));
-                    baseColor = mix(baseColor, vec4(1.0, 0.15, 0.15, 1.0), dashPattern); // Neon red active dash
-                }
-                // Bright outer lane boundary guard lines
-                if (centerDist > 0.46) {
-                    baseColor = vec4(1.0, 0.1, 0.1, 0.95);
-                }
-                gl_FragColor = baseColor;
-            }
-        `;
-
-        const vertexShader = gl.createShader(gl.VERTEX_SHADER);
-        gl.shaderSource(vertexShader, vertexShaderSource);
-        gl.compileShader(vertexShader);
-
-        const fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(fragmentShader, fragmentShaderSource);
-        gl.compileShader(fragmentShader);
-
-        this.program = gl.createProgram();
-        gl.attachShader(this.program, vertexShader);
-        gl.attachShader(this.program, fragmentShader);
-        gl.linkProgram(this.program);
-
-        this.generateRibbonMesh(map, gl);
-    }
-
-    generateRibbonMesh(map, gl) {
-        const vertices = [];
-        const totalPoints = this.coordinates.length;
-        if (totalPoints < 2) return;
-
-        // Convert meter scale directly to Mercator coordinate projection space dimensions
-        const meterScale = 1.0 / (40075016.686 / 360.0) / 111320.0;
-        const offsetDist = this.width * meterScale;
-
-        for (let i = 0; i < totalPoints; i++) {
-            const curr = maplibregl.MercatorCoordinate.fromLngLat(this.coordinates[i]);
-            let next = (i < totalPoints - 1) ? maplibregl.MercatorCoordinate.fromLngLat(this.coordinates[i + 1]) : curr;
-            let prev = (i > 0) ? maplibregl.MercatorCoordinate.fromLngLat(this.coordinates[i - 1]) : curr;
-
-            let dx = next.x - prev.x;
-            let dy = next.y - prev.y;
-            let len = Math.sqrt(dx * dx + dy * dy);
-            if (len === 0) len = 1;
-            
-            let nx = -dy / len;
-            let ny = dx / len;
-
-            const leftX = curr.x + nx * offsetDist;
-            const leftY = curr.y + ny * offsetDist;
-            const rightX = curr.x - nx * offsetDist;
-            const rightY = curr.y - ny * offsetDist;
-
-            const progress = i / (totalPoints - 1);
-
-            // Left Node coordinate array parameters (Elevated 0.000005 above terrain stack layers)
-            vertices.push(leftX, leftY, 0.000005, 0.0, progress);
-            // Right Node coordinate array parameters
-            vertices.push(rightX, rightY, 0.000005, 1.0, progress);
+        function createCustomMarkerElement() {
+            const el = document.createElement('div');
+            el.className = 'custom-spatial-marker';
+            el.innerHTML = `
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="8" fill="#ff2222" fill-opacity="0.25"/>
+                    <circle cx="12" cy="12" r="4" fill="#ff2222"/>
+                    <circle cx="12" cy="12" r="3.5" stroke="#ffffff" stroke-width="1"/>
+                </svg>
+            `;
+            return el;
         }
 
-        this.vertexCount = vertices.length / 5;
-        this.vertexBuffer = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-    }
+        map.on('load', () => {
+            initTacticalPanelDraggingPhysics();
+            initAutonomousSearchMatrix();
+            initDirectMapInputListeners();
+            initHardwareConsoleTriggers();
+             
+            establishLiveHardwarePositioningStream();
 
-    render(gl, matrix) {
-        gl.useProgram(this.program);
-        gl.uniformMatrix4fv(gl.getUniformLocation(this.program, 'u_matrix'), false, matrix);
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+            map.on('mousemove', (e) => {
+                document.getElementById('coordinate-overlay-tracker').innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
+            });
+        });
 
-        const positionLocation = gl.getAttribLocation(this.program, 'a_position');
-        gl.enableVertexAttribArray(positionLocation);
-        gl.vertexAttribPointer(positionLocation, 3, gl.FLOAT, false, 20, 0);
+        /* ── HARDWARE GEOLOCATION ORCHESTRATION ── */
+        function establishLiveHardwarePositioningStream() {
+            const diagnosticStatus = document.getElementById('telemetry-status-node');
 
-        const texcoordLocation = gl.getAttribLocation(this.program, 'a_texcoord');
-        gl.enableVertexAttribArray(texcoordLocation);
-        gl.vertexAttribPointer(texcoordLocation, 2, gl.FLOAT, false, 20, 12);
+            if (!navigator.geolocation) {
+                diagnosticStatus.innerText = "UNSUPPORTED SENSOR";
+                diagnosticStatus.style.color = "#ff2222";
+                return;
+            }
 
-        gl.enable(gl.BLEND);
-        gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
-        gl.drawArrays(gl.TRIANGLE_STRIP, 0, this.vertexCount);
-    }
-}
+            const geoOptions = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
 
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    const lon = position.coords.longitude;
+                    const lat = position.coords.latitude;
+                    const initialLockAchieved = (currentLiveGpsPosition === null);
+                     
+                    currentLiveGpsPosition = [lon, lat];
+                     
+                    diagnosticStatus.innerText = "ONLINE (LIVE)";
+                    diagnosticStatus.style.color = "#007aff";
 
-// --- INTERACTION & LIFECYCLE CONTROLLERS ---
+                    if (!userLocationBeaconMarker) {
+                        const beaconEl = document.createElement('div');
+                        beaconEl.className = 'live-gps-beacon-node';
+                         
+                        userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })
+                            .setLngLat(currentLiveGpsPosition)
+                            .addTo(map);
+                    } else {
+                        userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
+                    }
 
-const startBtn = document.getElementById('start-route-btn');
-const stopBtn = document.getElementById('stop-route-btn');
-const routeSummary = document.getElementById('route-summary');
-const navActivePanel = document.getElementById('navigation-active');
+                    if (initialLockAchieved) {
+                        map.flyTo({ center: currentLiveGpsPosition, zoom: 14, essential: true });
+                    }
+                },
+                (error) => {
+                    console.warn("Telemetry connection failed:", error.message);
+                    diagnosticStatus.style.color = "#ff2222";
+                    if (error.code === 1) { diagnosticStatus.innerText = "ACCESS DENIED"; } 
+                    else { diagnosticStatus.innerText = "SIGNAL TIMEOUT"; }
+                },
+                geoOptions
+            );
+        }
 
-// Calculate target angle tracking header
-function getBearing(p1, p2) {
-    const dLng = p2[0] - p1[0];
-    const dLat = p2[1] - p1[1];
-    return (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
-}
+        /* ── POSITIONING & DRAG PHYSICS ── */
+        function initTacticalPanelDraggingPhysics() {
+            const panel = document.getElementById('control-panel-deck');
+            const handle = document.getElementById('drag-handle');
+             
+            let isDragging = false;
+            let startY = 0;
+            let currentTranslateY = 0;
+            let lastTranslateY = 0;
 
-// Handler: Initialize Immersive Navigation Experience
-startBtn.addEventListener('click', () => {
-    // UI state transitions
-    routeSummary.classList.add('hidden');
-    navActivePanel.classList.remove('hidden');
+            handle.addEventListener('mousedown', startDrag);
+            window.addEventListener('mousemove', processDrag);
+            window.addEventListener('mouseup', endDrag);
 
-    // 1. Inject custom client-side 3D WebGL Lane layer configuration
-    if (!map.getLayer('custom-3d-lanes')) {
-        const laneEngineInstance = new Custom3DLaneLayer('custom-3d-lanes', SAMPLE_ROUTE, 8.0);
-        map.addLayer(laneEngineInstance);
-    }
+            handle.addEventListener('touchstart', (e) => { startDrag(e.touches[0]); }, { passive: true });
+            window.addEventListener('touchmove', (e) => { processDrag(e.touches[0]); }, { passive: false });
+            window.addEventListener('touchend', endDrag);
 
-    // 2. Drive camera down into dynamic low-altitude angle perspective
-    const initialBearing = getBearing(SAMPLE_ROUTE[0], SAMPLE_ROUTE[1]);
-    map.flyTo({
-        center: SAMPLE_ROUTE[0],
-        zoom: 18.8,
-        pitch: 68,
-        bearing: initialBearing,
-        duration: 2500,
-        essential: true
-    });
-});
+            function startDrag(e) {
+                isDragging = true;
+                startY = e.clientY;
+                panel.classList.remove('snapping');
+            }
 
-// Handler: Terminate active navigation layout systems
-stopBtn.addEventListener('click', () => {
-    // UI panel view state cleanup
-    navActivePanel.classList.add('hidden');
-    routeSummary.classList.remove('hidden');
+            function processDrag(e) {
+                if (!isDragging) return;
+                let deltaY = e.clientY - startY;
+                let nextY = lastTranslateY + deltaY;
 
-    // Clear structural 3D custom layer engine components safely
-    if (map.getLayer('custom-3d-lanes')) {
-        map.removeLayer('custom-3d-lanes');
-    }
+                if (nextY < -150) nextY = -150;
+                if (nextY > 400) nextY = 400;
 
-    // Transition back smoothly to top-down flat birds-eye view configuration frame bounds
-    const bounds = SAMPLE_ROUTE.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(SAMPLE_ROUTE[0], SAMPLE_ROUTE[0]));
-    map.flyTo({
-        pitch: 0,
-        bearing: 0,
-        duration: 1500
-    });
-    
-    setTimeout(() => { 
-        map.fitBounds(bounds, { padding: 60 }); 
-    }, 200);
-});
-</script>
+                currentTranslateY = nextY;
+                panel.style.transform = `translateY(${currentTranslateY}px)`;
+            }
+
+            function endDrag() {
+                if (!isDragging) return;
+                isDragging = false;
+                panel.classList.add('snapping');
+
+                if (currentTranslateY > 150) { currentTranslateY = 320; } 
+                else if (currentTranslateY < -50) { currentTranslateY = -80; } 
+                else { currentTranslateY = 0; }
+
+                panel.style.transform = `translateY(${currentTranslateY}px)`;
+                lastTranslateY = currentTranslateY;
+            }
+        }
+
+        /* ── LOCALIZED ADDRESS SEARCH ── */
+        function initAutonomousSearchMatrix() {
+            const input = document.getElementById('osm-engine-input');
+            const dropdown = document.getElementById('osm-engine-dropdown');
+
+            input.addEventListener('input', (e) => {
+                const queryVal = e.target.value.trim();
+                clearTimeout(querySearchDebounceTimer);
+                if (queryVal.length < 3) { dropdown.style.display = 'none'; return; }
+                 
+                querySearchDebounceTimer = setTimeout(async () => {
+                    try {
+                        let searchApiUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`;
+                        if (currentLiveGpsPosition && currentLiveGpsPosition.length === 2) {
+                            const [lon, lat] = currentLiveGpsPosition;
+                            searchApiUrl += `&lon=${lon}&lat=${lat}`;
+                        }
+                         
+                        const response = await fetch(searchApiUrl);
+                        const payload = await response.json();
+                        if (!payload.features || payload.features.length === 0) { dropdown.style.display = 'none'; return; }
+                         
+                        dropdown.innerHTML = '';
+                        payload.features.forEach(feature => {
+                            const segmentItem = document.createElement('div');
+                            segmentItem.className = 'osm-suggest-item';
+                            const p = feature.properties;
+                             
+                            const labeledLocation = [p.name, p.city, p.state].filter(Boolean).join(', ');
+                            segmentItem.innerText = labeledLocation;
+                             
+                            segmentItem.addEventListener('click', () => {
+                                const targetLoc = feature.geometry.coordinates;
+                                dropdown.style.display = 'none';
+                                input.value = labeledLocation;
+                                map.flyTo({ center: targetLoc, zoom: 15 });
+                                triggerWorkspaceTargetDeck(targetLoc, p.name || "Target Vector", labeledLocation);
+                            });
+                            dropdown.appendChild(segmentItem);
+                        });
+                        dropdown.style.display = 'block';
+                    } catch (err) { console.error("Search pipeline fault:", err); }
+                }, 250);
+            });
+        }
+
+        function initDirectMapInputListeners() {
+            map.on('click', async (e) => {
+                const pinpoint = [e.lngLat.lng, e.lngLat.lat];
+                triggerWorkspaceTargetDeck(pinpoint, "Selected Matrix Node", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
+                 
+                try {
+                    const lookup = await fetch(`https://photon.komoot.io/api/?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
+                    const details = await lookup.json();
+                    if (details.features && details.features.length > 0) {
+                        const p = details.features[0].properties;
+                        const addressString = [p.name, p.street, p.postcode].filter(Boolean).join(', ');
+                        triggerWorkspaceTargetDeck(pinpoint, p.name || "Discovered Feature Context", addressString || "Raw Geographic Geometry Data");
+                    }
+                } catch(error){}
+            });
+        }
+
+        function triggerWorkspaceTargetDeck(coords, title, details) {
+            clearActiveRouteLayers();
+            targetSelectedCoordinates = coords;
+            document.getElementById('node-panel-title').innerText = title;
+            document.getElementById('node-panel-address').innerText = details;
+            document.getElementById('context-destination-panel').style.display = 'flex';
+
+            if (activeMapMarker) activeMapMarker.remove();
+
+            activeMapMarker = new maplibregl.Marker({ element: createCustomMarkerElement() })
+                .setLngLat(coords)
+                .addTo(map);
+        }
+
+        /* ── SAFER & MULTI-ROUTE ALTERNATIVES PIPELINE ── */
+        async function runLocalSpatialRouteCalculation() {
+            if (!targetSelectedCoordinates) return;
+             
+            const originCoords = currentLiveGpsPosition ? currentLiveGpsPosition : [map.getCenter().lng, map.getCenter().lat];
+            const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&alternatives=true&steps=true`;
+             
+            try {
+                const stream = await fetch(routingQueryUrl);
+                const results = await stream.json();
+                if (results.code !== 'Ok' || !results.routes || results.routes.length === 0) return;
+                 
+                clearActiveRouteLayers();
+
+                // Process and calculate custom safety/speed metrics for every track option
+                const evaluatedVariants = results.routes.map((route, idx) => {
+                    let safetyPenaltyScore = 0;
+                     
+                    route.legs.forEach(leg => {
+                        leg.steps.forEach(step => {
+                            const streetName = step.name || '';
+                            // Contextual structural weights: penalize narrow alley shortcuts
+                            if (streetName.toLowerCase().includes('alley') || streetName.toLowerCase().includes('way')) {
+                                safetyPenaltyScore += step.distance * 1.2;
+                            }
+                            // Penalize high-density intersections
+                            if (step.intersections && step.intersections.length > 3) {
+                                safetyPenaltyScore += 40;
+                            }
+                        });
+                    });
+
+                    return {
+                        index: idx,
+                        geometry: route.geometry,
+                        duration: route.duration, // seconds
+                        distance: route.distance, // meters
+                        safetyPenalty: safetyPenaltyScore,
+                        // Custom Composite Cost calculation (lower values prioritized)
+                        compositeScore: route.duration + (safetyPenaltyScore * 0.25)
+                    };
+                });
+
+                // Sort alternatives: primary variant (safest/fastest balance) bubbles to the top
+                evaluatedVariants.sort((a, b) => a.compositeScore - b.compositeScore);
+
+                const dashboard = document.getElementById('route-variants-dashboard');
+                dashboard.innerHTML = '';
+                dashboard.style.display = 'flex';
+
+                // Render each individual geometry track to the MapLibre layer stack
+                // Render in reverse index sequence so top prioritized paths stack over background paths
+                for (let i = evaluatedVariants.length - 1; i >= 0; i--) {
+                    const r = evaluatedVariants[i];
+                    const isTopPick = (i === 0);
+                     
+                    const srcId = `route-src-${r.index}`;
+                    const lyrId = `route-lyr-${r.index}`;
+                     
+                    map.addSource(srcId, { type: 'geojson', data: { type: 'Feature', geometry: r.geometry } });
+                    map.addLayer({
+                        id: lyrId, type: 'line', source: srcId,
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: {
+                            // Primary variant uses bright red; options use a low-impact slate grey
+                            'line-color': isTopPick ? '#ff2222' : '#5c6bc0',
+                            'line-width': isTopPick ? 5 : 3.5,
+                            'line-opacity': isTopPick ? 1.0 : 0.55
+                        }
+                    });
+
+                    activeRouteIdsCollection.push({ src: srcId, lyr: lyrId });
+
+                    // Append metadata text row to dashboard UI panel elements
+                    if (isTopPick || i < 3) { // Cap visual readout rows to top 3 choices
+                        const mins = Math.round(r.duration / 60);
+                        const miles = (r.distance / 1609.34).toFixed(1);
+                         
+                        const row = document.createElement('div');
+                        row.className = `route-badge-row ${isTopPick ? 'active-variant' : ''}`;
+                        row.innerHTML = `
+                            <div>
+                                <span class="badge-tag-label" style="color: ${isTopPick ? 'var(--action-red)' : '#7986cb'}">
+                                    ${isTopPick ? '★ Safest / Fastest' : `Alternative ${i}`}
+                                </span>
+                                <div style="color: var(--text-secondary); margin-top: 2px;">${mins} mins | ${miles} mi</div>
+                            </div>
+                            <div style="font-family: monospace; color: var(--text-muted); font-size: 0.65rem;">
+                                Hazard Index: ${Math.round(r.safetyPenalty)}
+                            </div>
+                        `;
+                        // Insert higher ranked items back at top of vertical HTML container layout
+                        dashboard.insertBefore(row, dashboard.firstChild);
+                    }
+                }
+            } catch (err) { console.error("Routing resolution pipeline error:", err); }
+        }
+
+        function clearActiveRouteLayers() {
+            activeRouteIdsCollection.forEach(item => {
+                if (map.getLayer(item.lyr)) map.removeLayer(item.lyr);
+                if (map.getSource(item.src)) map.removeSource(item.src);
+            });
+            activeRouteIdsCollection = [];
+            const dashboard = document.getElementById('route-variants-dashboard');
+            dashboard.innerHTML = '';
+            dashboard.style.display = 'none';
+        }
+
+        function initHardwareConsoleTriggers() {
+            document.getElementById('compass-orientation-lock').addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 25 }));
+             
+            document.getElementById('force-gps-recenter').addEventListener('click', () => {
+                if (currentLiveGpsPosition) {
+                    map.flyTo({ center: currentLiveGpsPosition, zoom: 15 });
+                } else {
+                    establishLiveHardwarePositioningStream();
+                }
+            });
+
+            document.getElementById('launch-routing-action').addEventListener('click', runLocalSpatialRouteCalculation);
+            document.getElementById('flush-workspace-trigger').addEventListener('click', () => {
+                clearActiveRouteLayers();
+                if (activeMapMarker) { activeMapMarker.remove(); activeMapMarker = null; }
+                document.getElementById('context-destination-panel').style.display = 'none';
+                document.getElementById('osm-engine-input').value = '';
+                targetSelectedCoordinates = null;
+            });
+        }
+    </script>
 </body>
 </html>
