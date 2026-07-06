@@ -183,6 +183,31 @@
         .panel-header-title { font-size: 1rem; font-weight: 700; border-left: 2px solid var(--action-red); padding-left: 8px; }
         .panel-address-sub { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4; }
         
+        /* Multi-Route Metadata Panel */
+        #route-variants-dashboard {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 4px;
+            border-top: 1px dashed rgba(255, 255, 255, 0.08);
+            padding-top: 10px;
+        }
+        .route-badge-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid var(--border-subtle);
+            border-radius: 8px;
+            font-size: 0.75rem;
+        }
+        .route-badge-row.active-variant {
+            border-color: rgba(255, 34, 34, 0.4);
+            background: rgba(255, 34, 34, 0.04);
+        }
+        .badge-tag-label { font-weight: bold; text-transform: uppercase; font-size: 0.65rem; }
+
         .action-button-matrix { display: flex; gap: 8px; }
         .primary-action-btn { flex: 1; background: var(--action-red); padding: 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; text-align: center; box-shadow: 0 6px 16px var(--action-red-glow); }
         .primary-action-btn:hover { opacity: 0.9; }
@@ -234,7 +259,6 @@
             box-shadow: 0 0 10px rgba(255, 34, 34, 0.2); 
             color: var(--action-red);
         }
-        .console-action-btn-node svg { width: 18px; height: 18px; fill: currentColor; }
 
         #coordinate-overlay-tracker { 
             position: absolute; 
@@ -260,7 +284,7 @@
             cursor: pointer;
         }
 
-        /* Distinctive Styling for Live Device Location Dot */
+        /* Distinctive Live Device Location Blue Pulsing Beacon */
         .live-gps-beacon-node {
             width: 18px;
             height: 18px;
@@ -316,6 +340,10 @@
                 <div id="context-destination-panel">
                     <div class="panel-header-title" id="node-panel-title">Target Vector</div>
                     <div class="panel-address-sub" id="node-panel-address">Analyzing coordinates...</div>
+                    
+                    <!-- Dynamic Alternatives Readout Element -->
+                    <div id="route-variants-dashboard" style="display: none;"></div>
+
                     <div class="action-button-matrix">
                         <button class="primary-action-btn" id="launch-routing-action">Calculate Route</button>
                         <button class="kill-action-btn" id="flush-workspace-trigger">✖</button>
@@ -325,7 +353,7 @@
                 <div class="hardware-diagnostics-deck">
                     <div class="diagnostic-row"><span>Engine Source</span><span class="brand-status">MAPLIBRE V4</span></div>
                     <div class="diagnostic-row"><span>Telemetry Status</span><span id="telemetry-status-node" style="color: #ff9500;">WAITING PERMISSION</span></div>
-                    <div class="diagnostic-row"><span>Routing Pipeline</span><span id="routing-engine-status">OSRM ROUTER</span></div>
+                    <div class="diagnostic-row"><span>Routing Pipeline</span><span id="routing-engine-status">MULTI-ROUTE EVALUATOR</span></div>
                 </div>
             </div>
         </div>
@@ -333,11 +361,7 @@
         <!-- System Control Cluster -->
         <div id="right-floating-console-stack">
             <button class="console-action-btn-node" id="force-gps-recenter" title="Recenter Engine">🎯</button>
-            <button class="console-action-btn-node" id="compass-orientation-lock" title="True North">
-                <svg viewBox="0 0 24 24">
-                    <path d="M7 11h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
-                </svg>
-            </button>
+            <button class="console-action-btn-node" id="compass-orientation-lock" title="True North">🧭</button>
         </div>
 
         <div id="coordinate-overlay-tracker">X: -- | Y: --</div>
@@ -352,6 +376,7 @@
         
         let activeMapMarker = null; 
         let userLocationBeaconMarker = null;
+        let activeRouteIdsCollection = []; // Track active layout layers on map
 
         const map = new maplibregl.Map({
             container: 'map',
@@ -399,11 +424,7 @@
                 return;
             }
 
-            const geoOptions = {
-                enableHighAccuracy: true,
-                timeout: 10000,
-                maximumAge: 0
-            };
+            const geoOptions = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
 
             navigator.geolocation.watchPosition(
                 (position) => {
@@ -428,22 +449,14 @@
                     }
 
                     if (initialLockAchieved) {
-                        map.flyTo({
-                            center: currentLiveGpsPosition,
-                            zoom: 14,
-                            essential: true
-                        });
+                        map.flyTo({ center: currentLiveGpsPosition, zoom: 14, essential: true });
                     }
                 },
                 (error) => {
                     console.warn("Telemetry connection failed:", error.message);
                     diagnosticStatus.style.color = "#ff2222";
-                    
-                    if (error.code === 1) {
-                        diagnosticStatus.innerText = "ACCESS DENIED";
-                    } else {
-                        diagnosticStatus.innerText = "SIGNAL TIMEOUT";
-                    }
+                    if (error.code === 1) { diagnosticStatus.innerText = "ACCESS DENIED"; } 
+                    else { diagnosticStatus.innerText = "SIGNAL TIMEOUT"; }
                 },
                 geoOptions
             );
@@ -490,20 +503,16 @@
                 isDragging = false;
                 panel.classList.add('snapping');
 
-                if (currentTranslateY > 150) {
-                    currentTranslateY = 320; 
-                } else if (currentTranslateY < -50) {
-                    currentTranslateY = -80; 
-                } else {
-                    currentTranslateY = 0;   
-                }
+                if (currentTranslateY > 150) { currentTranslateY = 320; } 
+                else if (currentTranslateY < -50) { currentTranslateY = -80; } 
+                else { currentTranslateY = 0; }
 
                 panel.style.transform = `translateY(${currentTranslateY}px)`;
                 lastTranslateY = currentTranslateY;
             }
         }
 
-        /* ── LOCALIZED ADDRESS VECTOR RESOLUTION ── */
+        /* ── LOCALIZED ADDRESS SEARCH ── */
         function initAutonomousSearchMatrix() {
             const input = document.getElementById('osm-engine-input');
             const dropdown = document.getElementById('osm-engine-dropdown');
@@ -515,10 +524,7 @@
                 
                 querySearchDebounceTimer = setTimeout(async () => {
                     try {
-                        // Base query structure 
                         let searchApiUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`;
-                        
-                        // Inject geographic location coordinates to bias local sorting results if active
                         if (currentLiveGpsPosition && currentLiveGpsPosition.length === 2) {
                             const [lon, lat] = currentLiveGpsPosition;
                             searchApiUrl += `&lon=${lon}&lat=${lat}`;
@@ -570,6 +576,7 @@
         }
 
         function triggerWorkspaceTargetDeck(coords, title, details) {
+            clearActiveRouteLayers();
             targetSelectedCoordinates = coords;
             document.getElementById('node-panel-title').innerText = title;
             document.getElementById('node-panel-address').innerText = details;
@@ -582,29 +589,114 @@
                 .addTo(map);
         }
 
-        /* ── SYSTEM NAV ROUTE GENERATOR ── */
+        /* ── SAFER & MULTI-ROUTE ALTERNATIVES PIPELINE ── */
         async function runLocalSpatialRouteCalculation() {
             if (!targetSelectedCoordinates) return;
             
             const originCoords = currentLiveGpsPosition ? currentLiveGpsPosition : [map.getCenter().lng, map.getCenter().lat];
-            const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson`;
+            // alternatives=true gathers path variants from OSRM engine layout splits
+            const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&alternatives=true&steps=true`;
             
             try {
                 const stream = await fetch(routingQueryUrl);
                 const results = await stream.json();
-                if (results.code !== 'Ok' || !results.routes[0]) return;
+                if (results.code !== 'Ok' || !results.routes || results.routes.length === 0) return;
                 
-                const pathGeometry = results.routes[0].geometry;
-                
-                if (map.getLayer('active-route-line')) map.removeLayer('active-route-line');
-                if (map.getSource('active-route-source')) map.removeSource('active-route-source');
-                
-                map.addSource('active-route-source', { type: 'geojson', data: { type: 'Feature', geometry: pathGeometry } });
-                map.addLayer({
-                    id: 'active-route-line', type: 'line', source: 'active-route-source',
-                    paint: { 'line-color': '#ff2222', 'line-width': 5, 'line-opacity': 0.9 }
+                clearActiveRouteLayers();
+
+                // Process and calculate custom safety/speed metrics for every track option
+                const evaluatedVariants = results.routes.map((route, idx) => {
+                    let safetyPenaltyScore = 0;
+                    
+                    route.legs.forEach(leg => {
+                        leg.steps.forEach(step => {
+                            const streetName = step.name || '';
+                            // Contextual structural weights: penalize narrow alley shortcuts
+                            if (streetName.toLowerCase().includes('alley') || streetName.toLowerCase().includes('way')) {
+                                safetyPenaltyScore += step.distance * 1.2;
+                            }
+                            // Penalize high-density intersections
+                            if (step.intersections && step.intersections.length > 3) {
+                                safetyPenaltyScore += 40;
+                            }
+                        });
+                    });
+
+                    return {
+                        index: idx,
+                        geometry: route.geometry,
+                        duration: route.duration, // seconds
+                        distance: route.distance, // meters
+                        safetyPenalty: safetyPenaltyScore,
+                        // Custom Composite Cost calculation (lower values prioritized)
+                        compositeScore: route.duration + (safetyPenaltyScore * 0.25)
+                    };
                 });
+
+                // Sort alternatives: primary variant (safest/fastest balance) bubbles to the top
+                evaluatedVariants.sort((a, b) => a.compositeScore - b.compositeScore);
+
+                const dashboard = document.getElementById('route-variants-dashboard');
+                dashboard.innerHTML = '';
+                dashboard.style.display = 'flex';
+
+                // Render each individual geometry track to the MapLibre layer stack
+                // Render in reverse index sequence so top prioritized paths stack over background paths
+                for (let i = evaluatedVariants.length - 1; i >= 0; i--) {
+                    const r = evaluatedVariants[i];
+                    const isTopPick = (i === 0);
+                    
+                    const srcId = `route-src-${r.index}`;
+                    const lyrId = `route-lyr-${r.index}`;
+                    
+                    map.addSource(srcId, { type: 'geojson', data: { type: 'Feature', geometry: r.geometry } });
+                    map.addLayer({
+                        id: lyrId, type: 'line', source: srcId,
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: {
+                            // Primary variant uses bright red; options use a low-impact slate grey
+                            'line-color': isTopPick ? '#ff2222' : '#5c6bc0',
+                            'line-width': isTopPick ? 5 : 3.5,
+                            'line-opacity': isTopPick ? 1.0 : 0.55
+                        }
+                    });
+
+                    activeRouteIdsCollection.push({ src: srcId, lyr: lyrId });
+
+                    // Append metadata text row to dashboard UI panel elements
+                    if (isTopPick || i < 3) { // Cap visual readout rows to top 3 choices
+                        const mins = Math.round(r.duration / 60);
+                        const miles = (r.distance / 1609.34).toFixed(1);
+                        
+                        const row = document.createElement('div');
+                        row.className = `route-badge-row ${isTopPick ? 'active-variant' : ''}`;
+                        row.innerHTML = `
+                            <div>
+                                <span class="badge-tag-label" style="color: ${isTopPick ? 'var(--action-red)' : '#7986cb'}">
+                                    ${isTopPick ? '★ Safest / Fastest' : `Alternative ${i}`}
+                                </span>
+                                <div style="color: var(--text-secondary); margin-top: 2px;">${mins} mins | ${miles} mi</div>
+                            </div>
+                            <div style="font-family: monospace; color: var(--text-muted); font-size: 0.65rem;">
+                                Hazard Index: ${Math.round(r.safetyPenalty)}
+                            </div>
+                        `;
+                        // Insert higher ranked items back at top of vertical HTML container layout
+                        dashboard.insertBefore(row, dashboard.firstChild);
+                    }
+                }
             } catch (err) { console.error("Routing resolution pipeline error:", err); }
+        }
+
+        function clearActiveRouteLayers() {
+            activeRouteIdsCollection.forEach(item => {
+                if (map.getLayer(item.lyr)) map.removeLayer(item.lyr);
+                if (map.getSource(item.src)) map.removeSource(item.src);
+            });
+            activeRouteIdsCollection = [];
+            const dashboard = document.getElementById('route-variants-dashboard');
+            dashboard.innerHTML = '';
+            dashboard.style.display = 'none';
         }
 
         function initHardwareConsoleTriggers() {
@@ -620,8 +712,7 @@
 
             document.getElementById('launch-routing-action').addEventListener('click', runLocalSpatialRouteCalculation);
             document.getElementById('flush-workspace-trigger').addEventListener('click', () => {
-                if (map.getLayer('active-route-line')) map.removeLayer('active-route-line');
-                if (map.getSource('active-route-source')) map.removeSource('active-route-source');
+                clearActiveRouteLayers();
                 if (activeMapMarker) { activeMapMarker.remove(); activeMapMarker = null; }
                 document.getElementById('context-destination-panel').style.display = 'none';
                 document.getElementById('osm-engine-input').value = '';
