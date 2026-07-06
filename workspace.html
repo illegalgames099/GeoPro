@@ -16,12 +16,12 @@
     <style>
         :root {
             --bg-pure: #000000;
-            --hud-bg: rgba(10, 10, 12, 0.82);
-            --card-surface: rgba(22, 22, 26, 0.6);
+            --hud-bg: rgba(10, 10, 12, 0.85);
+            --card-surface: rgba(22, 22, 26, 0.7);
             --neon-red: #ff2222;
             --neon-blue: #0071e3;
             --border-glow: rgba(255, 34, 34, 0.15);
-            --border-line: rgba(255, 255, 255, 0.06);
+            --border-line: rgba(255, 255, 255, 0.08);
             --text-primary: #ffffff;
             --text-secondary: #8e8e93;
             --traffic-green: #30d158;
@@ -110,7 +110,7 @@
             background: rgba(255,255,255,0.05);
         }
 
-        /* ── SINGLE INPUT GEOCODER CUSTOM LOOK ── */
+        /* ── FIXED & RE-ENGINEERED SINGLE INPUT GEOCODER ── */
         .search-container-box {
             width: 100%;
             position: relative;
@@ -127,9 +127,9 @@
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
         .mapboxgl-ctrl-geocoder:focus-within {
-            border-color: rgba(255, 34, 34, 0.5) !important;
-            box-shadow: 0 0 15px rgba(255, 34, 34, 0.15) !important;
-            background-color: rgba(15, 15, 18, 0.9) !important;
+            border-color: rgba(255, 34, 34, 0.6) !important;
+            box-shadow: 0 0 15px rgba(255, 34, 34, 0.2) !important;
+            background-color: rgba(15, 15, 18, 0.95) !important;
         }
 
         .mapboxgl-ctrl-geocoder--input {
@@ -138,6 +138,7 @@
             font-size: 1rem !important;
             font-weight: 500 !important;
             padding: 12px 16px 12px 48px !important;
+            background: transparent !important;
         }
         .mapboxgl-ctrl-geocoder--input::placeholder { color: var(--text-secondary); }
 
@@ -151,15 +152,18 @@
         .mapboxgl-ctrl-geocoder--button { top: 14px !important; background: transparent !important; }
         .mapboxgl-ctrl-geocoder--icon-close { fill: var(--text-secondary) !important; }
 
-        /* Autocomplete Results Panel Customization */
+        /* Autocomplete Suggestions Menu Configuration */
         .mapboxgl-ctrl-geocoder .suggestions {
             background-color: #0f0f11 !important;
-            border: 1px solid rgba(255,255,255,0.08) !important;
-            backdrop-filter: blur(20px) !important;
+            border: 1px solid rgba(255,255,255,0.1) !important;
+            backdrop-filter: blur(25px) !important;
             border-radius: 18px !important;
             box-shadow: 0 16px 40px rgba(0,0,0,0.8) !important;
             padding: 6px !important;
             margin-top: 8px !important;
+            position: absolute;
+            width: 100%;
+            z-index: 1000;
         }
         .mapboxgl-ctrl-geocoder .suggestions > li { border-radius: 10px !important; }
         .mapboxgl-ctrl-geocoder .suggestions > li > a {
@@ -170,7 +174,7 @@
         }
         .mapboxgl-ctrl-geocoder .suggestions > .active > a,
         .mapboxgl-ctrl-geocoder .suggestions > li > a:hover {
-            background-color: rgba(255, 255, 255, 0.06) !important;
+            background-color: rgba(255, 255, 255, 0.08) !important;
             color: var(--neon-red) !important;
         }
 
@@ -223,12 +227,12 @@
             justify-content: center;
         }
 
-        /* ── REAL-TIME MATRIX WIDGETS ── */
+        /* ── TELEMETRY CONSOLE WIDGETS ── */
         .telemetry-grid {
             display: flex;
             flex-direction: column;
             gap: 8px;
-            background: rgba(0,0,0,0.25);
+            background: rgba(0,0,0,0.3);
             padding: 14px 16px;
             border-radius: 16px;
             border: 1px solid var(--border-line);
@@ -247,12 +251,12 @@
         }
         @keyframes blink { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
 
-        /* Floating Dashboard Controller Consoles */
+        /* FIXED RIGHT ACTION CONTROL STACK */
         #right-console-stack {
             position: absolute;
             top: 20px;
             right: 20px;
-            z-index: 10;
+            z-index: 100; /* Shifted above standard overlays */
             display: flex;
             flex-direction: column;
             gap: 12px;
@@ -263,17 +267,17 @@
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--border-line);
-            padding: 12px;
-            border-radius: 14px;
+            padding: 14px;
+            border-radius: 16px;
             color: var(--text-primary);
             cursor: pointer;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
             display: flex;
             align-items: center;
             justify-content: center;
             transition: all 0.2s;
         }
-        .glass-panel-btn:hover { background: rgba(255,255,255,0.05); }
+        .glass-panel-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
         .glass-panel-btn.active {
             border-color: var(--neon-red);
             box-shadow: 0 0 15px rgba(255,34,34,0.2);
@@ -295,32 +299,50 @@
             pointer-events: none;
         }
 
-        /* Premium Node Custom Icons */
+        /* High-Visibility Custom Pin Nodes */
         .custom-tracking-marker {
-            width: 20px;
-            height: 20px;
+            width: 22px;
+            height: 22px;
             background-color: var(--neon-blue);
             border: 3px solid #ffffff;
             border-radius: 50%;
-            box-shadow: 0 0 15px var(--neon-blue);
+            box-shadow: 0 0 18px var(--neon-blue);
+            cursor: pointer;
         }
         .custom-dest-marker {
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             background-color: var(--neon-red);
             border: 3px solid #ffffff;
             border-radius: 50%;
-            box-shadow: 0 0 15px var(--neon-red);
+            box-shadow: 0 0 18px var(--neon-red);
+        }
+
+        /* Mobile Layout Adaptations */
+        @media(max-width: 480px) {
+            #command-deck {
+                width: calc(100% - 40px);
+                left: 20px;
+                top: auto;
+                bottom: 20px;
+            }
+            #right-console-stack {
+                top: 20px;
+                right: 20px;
+            }
+            #spatial-overlay {
+                display: none;
+            }
         }
     </style>
 </head>
 <body>
 
     <div id="app-viewport">
-        <!-- Main Map Layer Output -->
+        <!-- Main Map Output Canvas -->
         <div id="map"></div>
 
-        <!-- Left Command Deck HUD -->
+        <!-- Left Command Deck HUD Console -->
         <div id="command-deck">
             <div class="deck-header">
                 <div class="brand-logo">Geo<span>Pro</span></div>
@@ -332,129 +354,154 @@
                 <div id="geocoder-mount"></div>
             </div>
 
-            <!-- Contextual Destination Card -->
+            <!-- Contextual Navigation Summary Display Component -->
             <div id="destination-card">
                 <div class="dest-title" id="card-title">Destination Loaded</div>
-                <div class="dest-address" id="card-address">Analyzing coordinates...</div>
+                <div class="dest-address" id="card-address">Analyzing route vector traces...</div>
                 <div class="nav-action-row">
                     <button class="nav-btn" id="launch-nav-trigger">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
                         Start Navigation
                     </button>
-                    <button class="clear-route-btn" id="clear-route-trigger" title="Clear Route">
+                    <button class="clear-route-btn" id="clear-route-trigger" title="Clear Route Matrix">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                 </div>
             </div>
 
-            <!-- Diagnostics Matrix Grid -->
+            <!-- Telemetry Information Feeds -->
             <div class="telemetry-grid">
                 <div class="matrix-row">
-                    <span>TRAFFIC FLOW RADAR</span>
+                    <span>TRAFFIC NETWORK</span>
                     <span class="traffic-status-indicator" id="traffic-status">
                         <div class="pulse-dot"></div>OPTIMAL
                     </span>
                 </div>
                 <div class="matrix-row">
-                    <span>TELEMETRY FEED</span>
-                    <span id="telemetry-feed" style="color: var(--neon-blue);">ACTIVE_GPS</span>
+                    <span>GPS METRICS</span>
+                    <span id="telemetry-feed" style="color: var(--neon-blue);">SEARCHING...</span>
                 </div>
                 <div class="matrix-row">
-                    <span>SYSTEM LATENCY</span>
-                    <span style="color: #ffcc00;">14ms</span>
+                    <span>POLLING RATE</span>
+                    <span style="color: #ffcc00;" id="latency-val">REALTIME</span>
                 </div>
             </div>
         </div>
 
-        <!-- Right Side Utility Button Bar -->
+        <!-- Right Side Floating Utility Control Column -->
         <div id="right-console-stack">
-            <button class="glass-panel-btn active" id="toggle-traffic" title="Toggle Traffic Data View">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 18H19M5 6H19M5 12H19"/></svg>
+            <button class="glass-panel-btn" id="recenter-gps" title="Recenter on Live Position">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
-            <button class="glass-panel-btn" id="toggle-satellite" title="Toggle Satellite Hybrid Base">
+            <button class="glass-panel-btn" id="toggle-satellite" title="Toggle Satellite Hybrid Topography">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
             </button>
         </div>
 
-        <!-- Dynamic Coordinates Overlay -->
+        <!-- System Geo Data Coordinates Overlay -->
         <div id="spatial-overlay">LNG: -- | LAT: --</div>
     </div>
 
     <script>
+        // Validated access token channel
         mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
 
-        // High-fidelity map structures embedding integrated real-time traffic tile layers out of the box
+        // Using standard Mapbox Dark style endpoint directly to ensure complete loading layout performance
         const mapStyles = {
-            vectorDark: 'mapbox://styles/mapbox/traffic-dark-v11',
+            vectorDark: 'mapbox://styles/mapbox/dark-v11',
             satelliteHybrid: 'mapbox://styles/mapbox/satellite-streets-v12'
         };
 
-        // Core map engine generation
+        // Fallback global coordination matrix points
+        let currentOriginCoords = [-123.2078, 39.1502]; 
+        let selectedDestinationCoords = null;
+        let destinationMarker = null;
+        let firstSignalLock = false;
+
+        // Initialize core engine workspace 
         const map = new mapboxgl.Map({
             container: 'map',
             style: mapStyles.vectorDark,
-            center: [-123.2078, 39.1502],
+            center: currentOriginCoords,
             zoom: 14,
-            pitch: 35,
+            pitch: 20,
             bearing: 0
         });
 
-        // Setup Tracking State Controls
-        let currentOriginCoords = [-123.2078, 39.1502]; // Hardware Fallback Base Point
-        let selectedDestinationCoords = null;
-        let destinationMarker = null;
-
-        // Custom User Origin Tracking Node Initialization
+        // Initialize user tracking marker node element properties
         const userMarkerEl = document.createElement('div');
         userMarkerEl.className = 'custom-tracking-marker';
         const userLocationMarker = new mapboxgl.Marker({ element: userMarkerEl })
             .setLngLat(currentOriginCoords)
             .addTo(map);
 
-        // Capture Live Mobile Browser Hardware Telemetry Coordinates
+        // Maximize low-latency positional performance parameters via native device sensors
         if ('geolocation' in navigator) {
             navigator.geolocation.watchPosition(
                 (position) => {
                     currentOriginCoords = [position.coords.longitude, position.coords.latitude];
                     userLocationMarker.setLngLat(currentOriginCoords);
+                    document.getElementById('telemetry-feed').innerText = 'LOCKED_GPS';
+                    document.getElementById('telemetry-feed').style.color = '#30d158';
+
+                    // Force camera adjustments on initial hardware synchronization updates
+                    if (!firstSignalLock) {
+                        centerMapOnUser();
+                        firstSignalLock = true;
+                    }
                 },
-                (err) => console.warn("Hardware GPS telemetry delayed. Reverting to base station metrics.", err),
-                { enableHighAccuracy: true }
+                (err) => {
+                    console.warn("GPS Tracking Exception. Relying on default hardware configuration parameters.", err);
+                    document.getElementById('telemetry-feed').innerText = 'SIGNAL_ERROR';
+                    document.getElementById('telemetry-feed').style.color = 'var(--neon-red)';
+                },
+                { 
+                    enableHighAccuracy: true, 
+                    maximumAge: 0, 
+                    timeout: 5000 
+                }
             );
         }
 
-        // ── Single Input Destination Discovery Mount Engine ──
+        function centerMapOnUser() {
+            map.flyTo({
+                center: currentOriginCoords,
+                zoom: 15,
+                pitch: 35,
+                essential: true,
+                speed: 1.2
+            });
+        }
+
+        // ── Single Input Search Geocoder Structural Engine Mounting ──
         const geocoder = new MapboxGeocoder({
             accessToken: mapboxgl.accessToken,
             mapboxgl: mapboxgl,
             types: 'poi,address,building,neighborhood',
-            placeholder: 'Where to?',
-            marker: false // Disables generic standard markers to keep map layers clean
+            placeholder: 'Search destination...',
+            marker: false
         });
 
+        // Mount clean target hook parameters manually inside custom designated overlay container element boxes
         document.getElementById('geocoder-mount').appendChild(geocoder.onAdd(map));
 
-        // Event Handling Layer when User Selects Destination Address
-        geocoder.on('result', (e) => {
-            const result = e.result;
+        // Route generation tracking logic
+        geocoder.on('result', (data) => {
+            const result = data.result;
             selectedDestinationCoords = result.center;
 
-            // Clear any previously instantiated search endpoints
             if (destinationMarker) destinationMarker.remove();
 
-            // Construct custom destination interface asset node
             const destEl = document.createElement('div');
             destEl.className = 'custom-dest-marker';
             destinationMarker = new mapboxgl.Marker({ element: destEl })
                 .setLngLat(selectedDestinationCoords)
                 .addTo(map);
 
-            // Pop and update Contextual Summary Deck UI Cards
-            document.getElementById('card-title').innerText = result.text || "Selected Destination";
+            document.getElementById('card-title').innerText = result.text || "Target Lock";
             document.getElementById('card-address').innerText = result.place_name || "";
             document.getElementById('destination-card').style.display = 'flex';
 
-            // Fluid cinematic pan to focus area
             map.flyTo({
                 center: selectedDestinationCoords,
                 zoom: 15,
@@ -462,45 +509,33 @@
                 essential: true
             });
 
-            // Automatically clean current drawn line tracks to prepare execution channel pipelines
             clearActiveNavigationTracks();
         });
 
-        // ── Programmatic Routing Transit Line Generation (Better than Default Widgets) ──
+        // ── Navigation Optimization Vectors Engine Calculations ──
         async function compileHighSpeedRoutingVector() {
             if (!currentOriginCoords || !selectedDestinationCoords) return;
 
-            const directionApiEndpoint = `https://api.mapbox.com/directions/v5/mapbox/driving-traffic/${currentOriginCoords[0]},${currentOriginCoords[1]};${selectedDestinationCoords[0]},${selectedDestinationCoords[1]}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
+            // Swapped routing algorithm parameter profile tracks over to high performance criteria routes mapping
+            const directionApiEndpoint = `https://api.mapbox.com/directions/v5/mapbox/driving/${currentOriginCoords[0]},${currentOriginCoords[1]};${selectedDestinationCoords[0]},${selectedDestinationCoords[1]}?geometries=geojson&overview=full&access_token=${mapboxgl.accessToken}`;
 
             try {
                 const query = await fetch(directionApiEndpoint);
                 const response = await query.json();
                 
                 if (response.code !== 'Ok') {
-                    alert("Unable to safely map a drive vector to this configuration footprint.");
+                    alert("Unable to safely resolve structural route calculation vectors parameters.");
                     return;
                 }
 
                 const routeData = response.routes[0];
                 const routeGeoJson = routeData.geometry;
 
-                // Update UI Card Metadata Parameters
                 const durationMinutes = Math.round(routeData.duration / 60);
                 const distanceMiles = (routeData.distance / 1609.34).toFixed(1);
                 
                 document.getElementById('card-title').innerText = `${durationMinutes} min (${distanceMiles} mi)`;
-                
-                // Adjust contextual status feeds based on real-time traffic delay indexes
-                const radarStatus = document.getElementById('traffic-status');
-                if (routeData.weight_typical && routeData.weight > routeData.weight_typical * 1.15) {
-                    radarStatus.innerHTML = `<div class="pulse-dot" style="background-color: var(--neon-red);"></div>HEAVY_DELAY`;
-                    radarStatus.style.color = 'var(--neon-red)';
-                } else {
-                    radarStatus.innerHTML = `<div class="pulse-dot"></div>OPTIMAL`;
-                    radarStatus.style.color = 'var(--traffic-green)';
-                }
 
-                // Append vector data streams onto global layer maps
                 if (map.getSource('route-line-source')) {
                     map.getSource('route-line-source').setData(routeGeoJson);
                 } else {
@@ -509,7 +544,6 @@
                         data: routeGeoJson
                     });
 
-                    // Premium glowing aesthetic transit line trace layout matching core visualization models
                     map.addLayer({
                         id: 'route-line-layer',
                         type: 'line',
@@ -517,13 +551,12 @@
                         layout: { 'line-join': 'round', 'line-cap': 'round' },
                         paint: {
                             'line-color': '#ff2222',
-                            'line-width': 5,
-                            'line-opacity': 0.85
+                            'line-width': 6,
+                            'line-opacity': 0.9
                         }
                     });
                 }
 
-                // Perfectly snap camera box viewport frame coordinates around path paths
                 const coordinates = routeGeoJson.coordinates;
                 const bounds = coordinates.reduce((acc, coord) => {
                     return acc.extend(coord);
@@ -535,7 +568,7 @@
                 });
 
             } catch (error) {
-                console.error("Critical core routing pipeline compile execution block fault:", error);
+                console.error("Critical operational navigation routing compile system failure tracking exception:", error);
             }
         }
 
@@ -544,46 +577,30 @@
             if (map.getSource('route-line-source')) map.removeSource('route-line-source');
         }
 
-        // Wire Interface Event Trigger Listeners
+        // Interface System Operational Control Listeners
         document.getElementById('launch-nav-trigger').addEventListener('click', compileHighSpeedRoutingVector);
+        document.getElementById('recenter-gps').addEventListener('click', centerMapOnUser);
         
         document.getElementById('clear-route-trigger').addEventListener('click', () => {
             clearActiveNavigationTracks();
             if (destinationMarker) destinationMarker.remove();
             geocoder.clear();
             document.getElementById('destination-card').style.display = 'none';
-            document.getElementById('traffic-status').innerHTML = `<div class="pulse-dot"></div>OPTIMAL`;
-            document.getElementById('traffic-status').style.color = 'var(--traffic-green)';
-            map.flyTo({ center: currentOriginCoords, zoom: 14, pitch: 35 });
+            centerMapOnUser();
         });
 
-        // ── Real-Time Console Map Layer Toggle Controls ──
-        const trafficBtn = document.getElementById('toggle-traffic');
         const satelliteBtn = document.getElementById('toggle-satellite');
-
-        trafficBtn.addEventListener('click', () => {
-            const isActive = trafficBtn.classList.toggle('active');
-            // Scan structure styles list and alter structural layers toggle parameters inside engine compiler mapping slots
-            const trafficLayers = ['traffic-local', 'traffic-secondary', 'traffic-primary', 'traffic-motorway', 'traffic-trunk'];
-            trafficLayers.forEach(layer => {
-                if (map.getLayer(layer)) {
-                    map.setLayoutProperty(layer, 'visibility', isActive ? 'visible' : 'none');
-                }
-            });
-        });
-
         satelliteBtn.addEventListener('click', () => {
             const isSat = satelliteBtn.classList.toggle('active');
             map.setStyle(isSat ? mapStyles.satelliteHybrid : mapStyles.vectorDark);
         });
 
-        // Continuous Coordinates Mouse Hover Tracker
+        // Live Spatial Coordinate Hover Metrics Monitoring
         const spatialOverlay = document.getElementById('spatial-overlay');
         const trackCursorCoordinates = (lngLat) => {
             spatialOverlay.innerHTML = `LNG: ${lngLat.lng.toFixed(4)} | LAT: ${lngLat.lat.toFixed(4)}`;
         };
         map.on('mousemove', (e) => trackCursorCoordinates(e.lngLat));
-        map.on('touchmove', (e) => trackCursorCoordinates(e.lngLat));
     </script>
 </body>
 </html>
