@@ -2,30 +2,53 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>StudioOS Map Engine - 3D Lane Guidance</title>
+    <title>StudioOS Studio Map Engine</title>
     <!-- MapLibre GL CSS and JS -->
     <script src="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@4.5.0/dist/maplibre-gl.css" rel="stylesheet" />
     <style>
-        body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0a0a0a; color: #fff; overflow: hidden; }
-        #map { position: absolute; top: 0; bottom: 0; width: 100%; }
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            background: #0a0a0a; 
+            color: #fff; 
+            overflow: hidden; 
+        }
+        #map { 
+            position: absolute; 
+            top: 0; 
+            bottom: 0; 
+            width: 100%; 
+        }
         
-        /* High-fidelity Red/Black UI Panel overlay */
+        /* High-fidelity StudioOS Interface Panel Overlay */
         #nav-panel {
             position: absolute;
             top: 20px;
             left: 20px;
             z-index: 10;
             width: 320px;
-            background: rgba(15, 15, 15, 0.9);
+            background: rgba(15, 15, 15, 0.95);
             border: 1px solid #2a0808;
             border-radius: 8px;
             padding: 20px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.7);
             backdrop-filter: blur(8px);
         }
-        h3 { margin: 0 0 10px 0; font-size: 16px; text-transform: uppercase; letter-spacing: 1px; color: #ff3b30; }
-        p { font-size: 13px; color: #aaa; margin: 0 0 20px 0; line-height: 1.4; }
+        h3 { 
+            margin: 0 0 10px 0; 
+            font-size: 16px; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            color: #ff3b30; 
+        }
+        p { 
+            font-size: 13px; 
+            color: #aaa; 
+            margin: 0 0 20px 0; 
+            line-height: 1.4; 
+        }
         
         .btn {
             display: block;
@@ -50,23 +73,23 @@
 
 <div id="map"></div>
 
-<!-- Route & Control Interface Panel -->
+<!-- Route & Navigation Overlay Control Center -->
 <div id="nav-panel">
     <div id="route-summary">
         <h3>Route Calculated</h3>
-        <p>Localized trajectory ready. Optimized lane configurations loaded client-side.</p>
+        <p>Dynamic track vector optimized. Client-side mesh calculations complete.</p>
         <button class="btn" id="start-route-btn">Start Route</button>
     </div>
     <div id="navigation-active" class="hidden">
         <h3>3D Guidance Active</h3>
-        <p style="color: #fff; font-weight: 500;">Follow the highlighted red lane track ahead.</p>
-        <button class="btn" id="stop-route-btn" style="background: #222; border: 1px solid #444;">Exit Route</button>
+        <p style="color: #fff; font-weight: 500;">Following real-time local lane projection.</p>
+        <button class="btn" id="stop-route-btn" style="background: #1a1a1a; border: 1px solid #333;">Exit Route</button>
     </div>
 </div>
 
 <script>
-// --- SAMPLE GEOMETRY DATA ---
-// Mock coordinates to simulate a computed route path
+// --- CORE CONFIGURATION & SAMPLE DATA ---
+// Active path data string representing calculated travel coordinates
 const SAMPLE_ROUTE = [
     [-123.2078, 39.1502],
     [-123.2065, 39.1501],
@@ -79,31 +102,31 @@ const SAMPLE_ROUTE = [
 // --- INITIALIZE MAP CONTAINER ---
 const map = new maplibregl.Map({
     container: 'map',
-    style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', // Sleek dark baseline canvas
+    style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', // Deep dark baseline canvas
     center: [-123.2055, 39.1520],
     zoom: 14.5,
     pitch: 0,
     bearing: 0
 });
 
-// Add 3D building profiles when map baseline finishes loading
+// Map Engine Configuration Hooks
 map.on('load', () => {
-    // Add atmospheric mist/fog handling for smooth low-horizon perspective transitions
+    // Configure natural horizon fade parameters for low camera angles
     map.setFog({
         'range': [1, 8],
         'color': '#0a0a0a',
-        'horizon-blend': 0.3
+        'horizon-blend': 0.35
     });
 
-    // Fit view frame slightly around the route overview track initially
+    // Auto-frame initial canvas view to encompass route line boundaries
     const bounds = SAMPLE_ROUTE.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(SAMPLE_ROUTE[0], SAMPLE_ROUTE[0]));
     map.fitBounds(bounds, { padding: 60 });
 });
 
 
-// --- WEBGL CUSTOM 3D LANE LAYER CLASS ---
+// --- CLIENT-SIDE WEBGL 3D RIBBON LANE ENGINE ---
 class Custom3DLaneLayer {
-    constructor(id, coordinates, laneWidthMeters = 7.5) {
+    constructor(id, coordinates, laneWidthMeters = 8.0) {
         this.id = id;
         this.type = 'custom';
         this.renderingMode = '3d';
@@ -130,15 +153,16 @@ class Custom3DLaneLayer {
             precision mediump float;
             varying vec2 v_texcoord;
             void main() {
-                vec4 baseColor = vec4(0.5, 0.02, 0.02, 0.85); // Dark deep red track base
+                // Outer tracking margins and base track profile colors
+                vec4 baseColor = vec4(0.45, 0.02, 0.02, 0.85); // Subdued deep dark red base
                 float centerDist = abs(v_texcoord.x - 0.5);
                 
-                // Procedural neon center navigation lane track
+                // Procedural center guidance arrow dash tracker
                 if (centerDist < 0.04) {
-                    float dashPattern = step(0.4, fract(v_texcoord.y * 14.0));
-                    baseColor = mix(baseColor, vec4(1.0, 0.15, 0.15, 1.0), dashPattern);
+                    float dashPattern = step(0.4, fract(v_texcoord.y * 15.0));
+                    baseColor = mix(baseColor, vec4(1.0, 0.15, 0.15, 1.0), dashPattern); // Neon red active dash
                 }
-                // Glowing side boundaries
+                // Bright outer lane boundary guard lines
                 if (centerDist > 0.46) {
                     baseColor = vec4(1.0, 0.1, 0.1, 0.95);
                 }
@@ -167,6 +191,7 @@ class Custom3DLaneLayer {
         const totalPoints = this.coordinates.length;
         if (totalPoints < 2) return;
 
+        // Convert meter scale directly to Mercator coordinate projection space dimensions
         const meterScale = 1.0 / (40075016.686 / 360.0) / 111320.0;
         const offsetDist = this.width * meterScale;
 
@@ -190,9 +215,9 @@ class Custom3DLaneLayer {
 
             const progress = i / (totalPoints - 1);
 
-            // Left Vertex Node (Elevated 0.000005 to float seamlessly above road surfaces)
+            // Left Node coordinate array parameters (Elevated 0.000005 above terrain stack layers)
             vertices.push(leftX, leftY, 0.000005, 0.0, progress);
-            // Right Vertex Node
+            // Right Node coordinate array parameters
             vertices.push(rightX, rightY, 0.000005, 1.0, progress);
         }
 
@@ -222,32 +247,33 @@ class Custom3DLaneLayer {
 }
 
 
-// --- INTERACTION LIFE-CYCLE MANAGEMENT ---
+// --- INTERACTION & LIFECYCLE CONTROLLERS ---
 
 const startBtn = document.getElementById('start-route-btn');
 const stopBtn = document.getElementById('stop-route-btn');
 const routeSummary = document.getElementById('route-summary');
 const navActivePanel = document.getElementById('navigation-active');
 
-// Function: Compute target angle to face forward down the line segments
+// Calculate target angle tracking header
 function getBearing(p1, p2) {
     const dLng = p2[0] - p1[0];
     const dLat = p2[1] - p1[1];
     return (Math.atan2(dLng, dLat) * 180 / Math.PI + 360) % 360;
 }
 
-// Trigger: Action button clicked -> Plunge into 3D Guidance Mode
+// Handler: Initialize Immersive Navigation Experience
 startBtn.addEventListener('click', () => {
+    // UI state transitions
     routeSummary.classList.add('hidden');
     navActivePanel.classList.remove('hidden');
 
-    // 1. Inject custom 3D WebGL meshes directly into map registry layers
+    // 1. Inject custom client-side 3D WebGL Lane layer configuration
     if (!map.getLayer('custom-3d-lanes')) {
         const laneEngineInstance = new Custom3DLaneLayer('custom-3d-lanes', SAMPLE_ROUTE, 8.0);
         map.addLayer(laneEngineInstance);
     }
 
-    // 2. Animate camera to high-immersion driver perspective
+    // 2. Drive camera down into dynamic low-altitude angle perspective
     const initialBearing = getBearing(SAMPLE_ROUTE[0], SAMPLE_ROUTE[1]);
     map.flyTo({
         center: SAMPLE_ROUTE[0],
@@ -259,24 +285,28 @@ startBtn.addEventListener('click', () => {
     });
 });
 
-// Trigger: Terminate navigation view state
+// Handler: Terminate active navigation layout systems
 stopBtn.addEventListener('click', () => {
+    // UI panel view state cleanup
     navActivePanel.classList.add('hidden');
     routeSummary.classList.remove('hidden');
 
-    // Clean out custom WebGL lane asset layers safely
+    // Clear structural 3D custom layer engine components safely
     if (map.getLayer('custom-3d-lanes')) {
         map.removeLayer('custom-3d-lanes');
     }
 
-    // Return to default birds-eye map view geometry bounds
+    // Transition back smoothly to top-down flat birds-eye view configuration frame bounds
     const bounds = SAMPLE_ROUTE.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(SAMPLE_ROUTE[0], SAMPLE_ROUTE[0]));
     map.flyTo({
         pitch: 0,
         bearing: 0,
         duration: 1500
     });
-    setTimeout(() => { map.fitBounds(bounds, { padding: 60 }); }, 200);
+    
+    setTimeout(() => { 
+        map.fitBounds(bounds, { padding: 60 }); 
+    }, 200);
 });
 </script>
 </body>
