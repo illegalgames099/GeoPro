@@ -1,367 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GeoPro | Professional Spatial Workspace</title>
-
-    <!-- MapLibre GL JS Core -->
-    <script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
-    <link href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" rel="stylesheet" />
-
-    <style>
-        :root {
-            --bg-base: #0c0d12;
-            --bg-panel: rgba(15, 17, 26, 0.95);
-            --bg-surface: rgba(25, 29, 43, 0.7);
-            --bg-surface-hover: rgba(40, 46, 68, 0.9);
-            --action-red: #ff3333;
-            --action-red-glow: rgba(255, 51, 51, 0.4);
-            --border-subtle: rgba(255, 255, 255, 0.08);
-            --text-main: #f0f2f5;
-            --text-secondary: #a3a9b8;
-            --text-muted: #525a70;
-            --sidebar-width: 380px;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, monospace;
-            letter-spacing: -0.2px;
-        }
-
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: var(--bg-base);
-            color: var(--text-main);
-        }
-
-        #app-viewport {
-            position: relative;
-            width: 100%;
-            height: 100%;
-        }
-
-        #map {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-
-        button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; transition: all 0.2s ease; }
-        input { font: inherit; }
-
-        /* ── CONTROL PANEL DECK ── */
-        #control-panel-deck {
-            position: absolute;
-            bottom: 25px;
-            left: 25px;
-            width: var(--sidebar-width);
-            max-height: calc(100% - 50px);
-            z-index: 2000;
-            background: var(--bg-panel);
-            backdrop-filter: blur(35px) saturate(180%);
-            -webkit-backdrop-filter: blur(35px) saturate(180%);
-            border: 1px solid var(--border-subtle);
-            border-radius: 24px;
-            box-shadow: 0 30px 60px rgba(0,0,0,0.6);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            transform: translateY(0);
-            user-select: none;
-        }
-
-        #control-panel-deck.snapping {
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-
-        .drag-handle-bar {
-            width: 100%;
-            padding: 14px 0 8px 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            cursor: grab;
-            background: transparent;
-            z-index: 2010;
-        }
-        .drag-handle-bar:active { cursor: grabbing; }
-        .drag-handle-pill {
-            width: 40px;
-            height: 5px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 3px;
-        }
-        .drag-handle-bar:hover .drag-handle-pill { background: rgba(255, 255, 255, 0.4); }
-
-        .panel-scrollable-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 0 20px 20px 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 18px;
-        }
-
-        .panel-branding-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
-        .brand-logo { font-size: 1.3rem; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; color: #ffffff; }
-        .brand-logo span { color: var(--action-red); text-shadow: 0 0 12px var(--action-red-glow); }
-
-        /* Search Layout */
-        .search-field-container { position: relative; width: 100%; }
-        .search-input-wrapper {
-            display: flex;
-            background: var(--bg-surface);
-            border: 1px solid var(--border-subtle);
-            border-radius: 14px;
-            padding: 2px;
-            align-items: center;
-        }
-        .search-input-wrapper:focus-within {
-            border-color: var(--action-red);
-            background: var(--bg-surface-hover);
-            box-shadow: 0 0 10px rgba(255, 51, 51, 0.15);
-        }
-        .search-input-node {
-            flex: 1;
-            background: transparent;
-            border: none;
-            outline: none;
-            color: var(--text-main);
-            padding: 12px 14px;
-            font-size: 0.9rem;
-        }
-        .search-input-node::placeholder { color: var(--text-muted); }
-
-        .osm-dropdown-menu {
-            position: absolute;
-            top: 100%;
-            left: 0;
-            width: 100%;
-            background: #0d0f17;
-            border: 1px solid var(--border-subtle);
-            border-radius: 14px;
-            margin-top: 6px;
-            max-height: 220px;
-            overflow-y: auto;
-            z-index: 2500;
-            display: none;
-        }
-        .osm-suggest-item {
-            padding: 12px 16px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            color: var(--text-secondary);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .osm-suggest-item:hover { background: rgba(255, 51, 51, 0.08); color: var(--action-red); }
-
-        /* Workspace Card */
-        #context-destination-panel {
-            background: linear-gradient(135deg, var(--bg-surface), rgba(15,17,26,0.3));
-            border: 1px solid var(--border-subtle);
-            border-radius: 16px;
-            padding: 16px;
-            display: none;
-            flex-direction: column;
-            gap: 12px;
-        }
-        .panel-header-title { font-size: 1rem; font-weight: 700; border-left: 2px solid var(--action-red); padding-left: 8px; }
-        .panel-address-sub { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4; }
-         
-        #route-variants-dashboard {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-top: 4px;
-            border-top: 1px dashed rgba(255, 255, 255, 0.08);
-            padding-top: 10px;
-        }
-        .route-badge-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 12px;
-            background: rgba(255,255,255,0.02);
-            border: 1px solid var(--border-subtle);
-            border-radius: 8px;
-            font-size: 0.75rem;
-        }
-        .route-badge-row.active-variant {
-            border-color: rgba(255, 51, 51, 0.4);
-            background: rgba(255, 51, 51, 0.04);
-        }
-        .badge-tag-label { font-weight: bold; text-transform: uppercase; font-size: 0.65rem; }
-
-        .action-button-matrix { display: flex; gap: 8px; }
-        .primary-action-btn { flex: 1; background: var(--action-red); padding: 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; text-align: center; box-shadow: 0 6px 16px var(--action-red-glow); }
-        .primary-action-btn:hover { opacity: 0.9; }
-        .kill-action-btn { background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); width: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
-        .kill-action-btn:hover { border-color: var(--action-red); color: var(--action-red); }
-
-        .hardware-diagnostics-deck {
-            background: rgba(0,0,0,0.2);
-            border: 1px solid var(--border-subtle);
-            border-radius: 14px;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            font-family: monospace;
-            font-size: 0.7rem;
-        }
-        .diagnostic-row { display: flex; justify-content: space-between; align-items: center; }
-        .diagnostic-row span:first-child { color: var(--text-muted); text-transform: uppercase; }
-        .diagnostic-row span:last-child { color: var(--text-secondary); font-weight: bold; }
-        .diagnostic-row .brand-status { color: var(--action-red); text-shadow: 0 0 8px var(--action-red-glow); }
-
-        /* Floating Controls */
-        #right-floating-console-stack {
-            position: absolute; 
-            top: 25px; 
-            right: 25px; 
-            z-index: 2000; 
-            display: flex; 
-            flex-direction: column; 
-            gap: 8px;
-        }
-        .console-action-btn-node {
-            background: var(--bg-panel); 
-            backdrop-filter: blur(20px); 
-            border: 1px solid var(--border-subtle); 
-            width: 44px; 
-            height: 44px; 
-            border-radius: 12px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            font-size: 1.1rem;
-            color: var(--text-main);
-        }
-        .console-action-btn-node:hover { 
-            background: var(--bg-surface-hover); 
-            border-color: var(--action-red); 
-            box-shadow: 0 0 10px rgba(255, 51, 51, 0.2); 
-            color: var(--action-red);
-        }
-
-        #coordinate-overlay-tracker { 
-            position: absolute; 
-            bottom: 25px; 
-            right: 25px; 
-            background: var(--bg-panel); 
-            backdrop-filter: blur(10px); 
-            padding: 8px 12px; 
-            border-radius: 10px; 
-            border: 1px solid var(--border-subtle); 
-            font-family: monospace; 
-            font-size: 0.7rem; 
-            z-index: 2000; 
-            color: var(--text-secondary); 
-        }
-
-        .custom-spatial-marker {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            width: 24px;
-            height: 24px;
-            cursor: pointer;
-        }
-
-        .live-gps-beacon-node {
-            width: 18px;
-            height: 18px;
-            background: #007aff;
-            border: 3px solid #ffffff;
-            border-radius: 50%;
-            box-shadow: 0 0 0 8px rgba(0, 122, 255, 0.25), 0 2px 6px rgba(0,0,0,0.4);
-            animation: beaconPulse 2.5s infinite ease-in-out;
-        }
-
-        @keyframes beaconPulse {
-            0% { box-shadow: 0 0 0 0px rgba(0, 122, 255, 0.4), 0 2px 6px rgba(0,0,0,0.4); }
-            70% { box-shadow: 0 0 0 12px rgba(0, 122, 255, 0), 0 2px 6px rgba(0,0,0,0.4); }
-            100% { box-shadow: 0 0 0 0px rgba(0, 122, 255, 0), 0 2px 6px rgba(0,0,0,0.4); }
-        }
-
-        @media (max-width: 480px) {
-            #control-panel-deck {
-                width: calc(100% - 32px);
-                left: 16px;
-                bottom: 16px;
-            }
-            --sidebar-width: 100%;
-        }
-    </style>
-</head>
-<body>
-
-    <div id="app-viewport">
-        <div id="map"></div>
-
-        <div id="control-panel-deck">
-            <div class="drag-handle-bar" id="drag-handle">
-                <div class="drag-handle-pill"></div>
-            </div>
-             
-            <div class="panel-scrollable-body">
-                <div class="panel-branding-header">
-                    <div class="brand-logo">Geo<span>Pro</span></div>
-                    <div style="font-family: monospace; font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">AUTONOMOUS STACK</div>
-                </div>
-
-                <div class="search-field-container">
-                    <div class="search-input-wrapper">
-                        <input type="text" class="search-input-node" id="osm-engine-input" placeholder="Search local vectors...">
-                    </div>
-                    <div class="osm-dropdown-menu" id="osm-engine-dropdown"></div>
-                </div>
-
-                <div id="context-destination-panel">
-                    <div class="panel-header-title" id="node-panel-title">Target Vector</div>
-                    <div class="panel-address-sub" id="node-panel-address">Analyzing coordinates...</div>
-                     
-                    <div id="route-variants-dashboard" style="display: none;"></div>
-
-                    <div class="action-button-matrix">
-                        <button class="primary-action-btn" id="launch-routing-action">Calculate Route</button>
-                        <button class="kill-action-btn" id="flush-workspace-trigger">✖</button>
-                    </div>
-                </div>
-
-                <div class="hardware-diagnostics-deck">
-                    <div class="diagnostic-row"><span>Engine Source</span><span class="brand-status">MAPLIBRE V4</span></div>
-                    <div class="diagnostic-row"><span>Telemetry Status</span><span id="telemetry-status-node" style="color: #ff9500;">WAITING PERMISSION</span></div>
-                    <div class="diagnostic-row"><span>Routing Pipeline</span><span id="routing-engine-status">LOCAL SYSTEM HYBRID</span></div>
-                </div>
-            </div>
-        </div>
-
-        <div id="right-floating-console-stack">
-            <button class="console-action-btn-node" id="force-gps-recenter" title="Recenter Engine">🎯</button>
-            <button class="console-action-btn-node" id="toggle-satellite-view" title="Toggle Satellite Reality">🛰️</button>
-            <button class="console-action-btn-node" id="compass-orientation-lock" title="True North">🧭</button>
-        </div>
-
-        <div id="coordinate-overlay-tracker">X: -- | Y: --</div>
-    </div>
-
-    <script>
+<script>
         let defaultUserCoordinates = [-122.084, 37.422]; 
         let currentLiveGpsPosition = null; 
         let targetSelectedCoordinates = null;
@@ -371,6 +8,11 @@
         let userLocationBeaconMarker = null;
         let activeRouteDataStore = []; 
         let satelliteModeActive = false;
+
+        // Simulation tracking states
+        let isNavigating = false;
+        let navigationAnimationId = null;
+        let currentRouteStepIndex = 0;
 
         const REGULAR_MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
@@ -437,11 +79,23 @@
             }
         }
 
-        /* ── VOLUMETRIC ROUTING CORE (WITH AUTOMATIC CLIENT FALLBACK) ── */
-        async function runLocalSpatialRouteCalculation() {
-            if (!targetSelectedCoordinates) return;
-            
+        /* ── ACTION CONTROL LAYER ENGINE ── */
+        async function handleRoutingButtonClick() {
             const btn = document.getElementById('launch-routing-action');
+
+            // State A: Route calculated and ready -> Start Navigation
+            if (activeRouteDataStore.length > 0 && !isNavigating) {
+                startRouteSimulation();
+                return;
+            }
+
+            // State B: Actively navigating -> Stop Navigation
+            if (isNavigating) {
+                stopRouteSimulation();
+                return;
+            }
+
+            // State C: Base setup -> Run calculations
             btn.innerText = "COMPUTING...";
             btn.style.opacity = "0.6";
              
@@ -454,12 +108,11 @@
             const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&alternatives=true`;
              
             try {
-                // Initialize clean memory block before computing path vectors
                 clearActiveRouteLayers();
                 activeRouteDataStore = [];
 
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 3500); // 3.5s rapid fail trigger
+                const timeoutId = setTimeout(() => controller.abort(), 3500);
 
                 const stream = await fetch(routingQueryUrl, { signal: controller.signal });
                 clearTimeout(timeoutId);
@@ -467,7 +120,6 @@
                 const results = await stream.json();
                 
                 if (results.code === 'Ok' && results.routes && results.routes.length > 0) {
-                    // SERVER RESPONSE ROUTE SUCCESS
                     activeRouteDataStore = results.routes.map((route, idx) => ({
                         index: idx,
                         geometry: route.geometry,
@@ -476,26 +128,94 @@
                         isFallback: false
                     }));
                 } else {
-                    // SERVER RUNS WITH ERROR RESPONSE CODE -> RUN SYSTEM FALLBACK
                     generateLocalGridRouteFallback(originCoords, targetSelectedCoordinates);
                 }
-
             } catch (err) { 
                 console.warn("External API blocked or offline. Booting autonomous internal routing pipeline...");
                 generateLocalGridRouteFallback(originCoords, targetSelectedCoordinates);
             }
 
-            // Draw data to map display matrix
             redrawActiveRoutePipelines();
             renderRouteDashboardUI();
             
-            btn.innerText = "Calculate Route";
+            // Transform button layout to prime start capability
+            btn.innerText = "START SIMULATION";
+            btn.style.background = "#28a745"; // Shift color matrix to green
+            btn.style.boxShadow = "0 6px 16px rgba(40, 167, 69, 0.4)";
             btn.style.opacity = "1.0";
         }
 
-        // Generates an instant, highly responsive multi-point grid vector path entirely inside the client sandbox
+        /* ── ANIMATION FLIGHT CONTROLLER ── */
+        function startRouteSimulation() {
+            if (activeRouteDataStore.length === 0) return;
+            
+            const routeCoordinates = activeRouteDataStore[0].geometry.coordinates;
+            if (!routeCoordinates || routeCoordinates.length === 0) return;
+
+            isNavigating = true;
+            currentRouteStepIndex = 0;
+            
+            const btn = document.getElementById('launch-routing-action');
+            btn.innerText = "HALT SIMULATION";
+            btn.style.background = "#dc3545"; // Warning Red matrix alert
+            btn.style.boxShadow = "0 6px 16px rgba(220, 53, 69, 0.4)";
+
+            document.getElementById('telemetry-status-node').innerText = "NAVIGATING (SIM)";
+            document.getElementById('telemetry-status-node').style.color = "#28a745";
+
+            // If user location marker doesn't exist yet, generate it on the fly
+            if (!userLocationBeaconMarker) {
+                const beaconEl = document.createElement('div');
+                beaconEl.className = 'live-gps-beacon-node';
+                userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })
+                    .setLngLat(routeCoordinates[0])
+                    .addTo(map);
+            }
+
+            function frame() {
+                if (!isNavigating) return;
+
+                if (currentRouteStepIndex < routeCoordinates.length) {
+                    const currentPos = routeCoordinates[currentRouteStepIndex];
+                    
+                    // Snap blueprint beacon to current coordinate segment block
+                    userLocationBeaconMarker.setLngLat(currentPos);
+                    
+                    // Follow dot with camera view matrix smoothly
+                    map.easeTo({
+                        center: currentPos,
+                        zoom: 16,
+                        pitch: 55,
+                        bearing: map.getBearing() + 0.2 // subtle dynamic rotation flare
+                    });
+
+                    currentRouteStepIndex++;
+                    navigationAnimationId = requestAnimationFrame(frame);
+                } else {
+                    // Flight run complete
+                    stopRouteSimulation();
+                    document.getElementById('telemetry-status-node').innerText = "ARRIVED";
+                }
+            }
+
+            navigationAnimationId = requestAnimationFrame(frame);
+        }
+
+        function stopRouteSimulation() {
+            isNavigating = false;
+            if (navigationAnimationId) cancelAnimationFrame(navigationAnimationId);
+            
+            const btn = document.getElementById('launch-routing-action');
+            btn.innerText = "Calculate Route";
+            btn.style.background = "var(--action-red)";
+            btn.style.boxShadow = "0 6px 16px var(--action-red-glow)";
+
+            const diagnosticStatus = document.getElementById('telemetry-status-node');
+            diagnosticStatus.innerText = "ONLINE (LIVE)";
+            diagnosticStatus.style.color = "#007aff";
+        }
+
         function generateLocalGridRouteFallback(start, end) {
-            // Build pseudo-grid steps to mimic actual street path maneuvers instead of a straight line
             const midPoint1 = [end[0], start[1]]; 
             const midPoint2 = [start[0] + (end[0] - start[0]) * 0.5, start[1] + (end[1] - start[1]) * 0.5];
 
@@ -504,7 +224,6 @@
                 coordinates: [start, midPoint2, midPoint1, end]
             };
 
-            // Estimate basic distances and times mathematically
             const dLng = end[0] - start[0];
             const dLat = end[1] - start[1];
             const rawDistanceMeters = Math.sqrt(dLng * dLng + dLat * dLat) * 111000; 
@@ -513,7 +232,7 @@
                 {
                     index: 0,
                     geometry: mockGeometry,
-                    duration: (rawDistanceMeters / 13.4), // approx 30mph speed average
+                    duration: (rawDistanceMeters / 13.4), 
                     distance: rawDistanceMeters,
                     isFallback: true
                 }
@@ -592,7 +311,6 @@
         }
 
         function clearActiveRouteLayers() {
-            // Sweep all 20 possible historical route slots out of structural layout memory maps
             for (let idx = 0; idx < 20; idx++) {
                 const coreId = `route-core-lyr-${idx}`;
                 const shadowId = `route-shadow-lyr-${idx}`;
@@ -622,6 +340,7 @@
                 const toggleBtn = document.getElementById('toggle-satellite-view');
 
                 clearActiveRouteLayers(); 
+                stopRouteSimulation();
 
                 if (satelliteModeActive) {
                     toggleBtn.style.borderColor = 'var(--action-red)';
@@ -655,8 +374,11 @@
                 }
             });
 
-            document.getElementById('launch-routing-action').addEventListener('click', runLocalSpatialRouteCalculation);
+            // Point to the multi-state click handler instead of straight calculation
+            document.getElementById('launch-routing-action').addEventListener('click', handleRoutingButtonClick);
+            
             document.getElementById('flush-workspace-trigger').addEventListener('click', () => {
+                stopRouteSimulation();
                 clearActiveRouteLayers();
                 activeRouteDataStore = [];
                 if (activeMapMarker) { activeMapMarker.remove(); activeMapMarker = null; }
@@ -675,27 +397,33 @@
                     const lon = position.coords.longitude;
                     const lat = position.coords.latitude;
                     const initialLockAchieved = (currentLiveGpsPosition === null);
-                    currentLiveGpsPosition = [lon, lat];
-                    diagnosticStatus.innerText = "ONLINE (LIVE)";
-                    diagnosticStatus.style.color = "#007aff";
+                    
+                    // Only snap live location changes if the browser simulation isn't overriding spatial telemetry
+                    if (!isNavigating) {
+                        currentLiveGpsPosition = [lon, lat];
+                        diagnosticStatus.innerText = "ONLINE (LIVE)";
+                        diagnosticStatus.style.color = "#007aff";
 
-                    if (!userLocationBeaconMarker) {
-                        const beaconEl = document.createElement('div');
-                        beaconEl.className = 'live-gps-beacon-node';
-                        userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })
-                            .setLngLat(currentLiveGpsPosition)
-                            .addTo(map);
-                    } else {
-                        userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
-                    }
+                        if (!userLocationBeaconMarker) {
+                            const beaconEl = document.createElement('div');
+                            beaconEl.className = 'live-gps-beacon-node';
+                            userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })
+                                .setLngLat(currentLiveGpsPosition)
+                                .addTo(map);
+                        } else {
+                            userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
+                        }
 
-                    if (initialLockAchieved) {
-                        map.flyTo({ center: currentLiveGpsPosition, zoom: 14, essential: true });
+                        if (initialLockAchieved) {
+                            map.flyTo({ center: currentLiveGpsPosition, zoom: 14, essential: true });
+                        }
                     }
                 },
                 (error) => { 
-                    diagnosticStatus.style.color = "#ff9500"; 
-                    diagnosticStatus.innerText = "LOCAL EDGE LINK"; 
+                    if (!isNavigating) {
+                        diagnosticStatus.style.color = "#ff9500"; 
+                        diagnosticStatus.innerText = "LOCAL EDGE LINK"; 
+                    }
                 },
                 { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
             );
@@ -788,6 +516,7 @@
         }
 
         function triggerWorkspaceTargetDeck(coords, title, details) {
+            stopRouteSimulation();
             clearActiveRouteLayers();
             activeRouteDataStore = [];
             targetSelectedCoordinates = coords;
@@ -801,5 +530,3 @@
                 .addTo(map);
         }
     </script>
-</body>
-</html>
