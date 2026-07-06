@@ -18,8 +18,6 @@
             --hud-bg: rgba(10, 10, 12, 0.90);
             --card-surface: rgba(22, 22, 26, 0.75);
             --neon-red: #ff2222;
-            --neon-blue: #0071e3;
-            --neon-purple: #b46bff;
             --border-glow: rgba(255, 34, 34, 0.15);
             --border-line: rgba(255, 255, 255, 0.08);
             --text-primary: #ffffff;
@@ -240,7 +238,7 @@
         .dest-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); }
         .dest-address { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.3; }
 
-        .business-data-grid {
+        .spatial-data-grid {
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid var(--border-line);
             border-radius: 12px;
@@ -250,22 +248,22 @@
             gap: 8px;
             font-size: 0.8rem;
         }
-        .biz-row { display: flex; justify-content: space-between; align-items: center; }
-        .biz-label { color: var(--text-secondary); }
-        .biz-val { font-weight: 600; }
-        .biz-badge { background: rgba(0, 113, 227, 0.2); color: #409eff; padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
+        .space-row { display: flex; justify-content: space-between; align-items: center; }
+        .space-label { color: var(--text-secondary); }
+        .space-val { font-weight: 600; color: var(--text-primary); }
 
         .route-alt-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
         .route-alt-pill {
             flex-shrink: 0; background: rgba(255,255,255,0.05); border: 1px solid var(--border-line);
             color: var(--text-secondary); padding: 8px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; cursor: pointer;
         }
-        .route-alt-pill.selected { border-color: var(--neon-blue); color: var(--text-primary); background: rgba(0, 113, 227, 0.18); }
+        .route-alt-pill.selected { border-color: var(--neon-red); color: var(--text-primary); background: rgba(255, 34, 34, 0.18); }
 
         .nav-action-row { display: flex; gap: 10px; }
         .nav-btn {
-            flex: 1; background: var(--neon-blue); color: #fff; border: none; padding: 12px;
+            flex: 1; background: var(--neon-red); color: #fff; border: none; padding: 12px;
             border-radius: 12px; font-size: 0.88rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
+            box-shadow: 0 0 12px rgba(255, 34, 34, 0.3);
         }
         .clear-route-btn { background: rgba(255,255,255,0.08); border: 1px solid var(--border-line); color: var(--text-primary); width: 48px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
@@ -287,7 +285,7 @@
         #active-nav-hud {
             display: none; position: absolute; top: 20px; left: 20px; width: 380px; z-index: 15; flex-direction: column; gap: 10px;
         }
-        .nav-instruction-card { background: linear-gradient(160deg, rgba(0,113,227,0.35), rgba(10,10,12,0.92)); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.12); border-radius: 24px; padding: 22px; display: flex; align-items: center; gap: 18px; }
+        .nav-instruction-card { background: linear-gradient(160deg, rgba(255,34,34,0.25), rgba(10,10,12,0.92)); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.12); border-radius: 24px; padding: 22px; display: flex; align-items: center; gap: 18px; }
         .nav-instruction-body { flex: 1; }
         .nav-instruction-dist { font-size: 1.6rem; font-weight: 800; }
         .nav-instruction-text { font-size: 0.9rem; color: rgba(255,255,255,0.85); font-weight: 600; }
@@ -295,12 +293,13 @@
         .nav-bottom-stat { display: flex; flex-direction: column; }
         .nav-bottom-stat .val { font-size: 1.05rem; font-weight: 800; }
         .nav-bottom-stat .lbl { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; }
-        .nav-end-btn { background: var(--neon-red); color: #fff; border: none; padding: 10px 18px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+        .nav-end-btn { background: #3a3a44; color: #fff; border: 1px solid var(--border-line); padding: 10px 18px; border-radius: 12px; font-weight: 700; cursor: pointer; }
 
         #speed-chip {
-            display: none; position: absolute; bottom: 20px; left: 20px; z-index: 15; width: 74px; height: 74px; border-radius: 50%; background: #0c0c0e; border: 4px solid var(--text-primary); flex-direction: column; align-items: center; justify-content: center;
+            display: none; position: absolute; bottom: 20px; left: 20px; z-index: 15; width: 74px; height: 74px; border-radius: 50%; background: #0c0c0e; border: 4px solid var(--neon-red); flex-direction: column; align-items: center; justify-content: center;
+            box-shadow: 0 0 15px rgba(255, 34, 34, 0.2);
         }
-        #speed-chip .speed-val { font-size: 1.4rem; font-weight: 800; line-height: 1; }
+        #speed-chip .speed-val { font-size: 1.4rem; font-weight: 800; line-height: 1; color: var(--text-primary); }
         #speed-chip .speed-unit { font-size: 0.55rem; color: var(--text-secondary); font-weight: 700; }
 
         /* Right Control Stack */
@@ -311,12 +310,35 @@
             background: var(--hud-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-line); padding: 14px; border-radius: 16px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;
         }
         .glass-panel-btn:hover { background: rgba(255,255,255,0.08); }
-        .glass-panel-btn.active { border-color: var(--neon-red); color: var(--neon-red); }
+        .glass-panel-btn.active { border-color: var(--neon-red); color: var(--neon-red); box-shadow: 0 0 10px rgba(255, 34, 34, 0.2); }
 
         #spatial-overlay { position: absolute; bottom: 20px; right: 20px; background: var(--hud-bg); backdrop-filter: blur(10px); padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border-line); font-family: monospace; font-size: 0.75rem; z-index: 5; }
 
-        .custom-tracking-marker { width: 22px; height: 22px; background-color: var(--neon-blue); border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 0 18px var(--neon-blue); }
-        .custom-dest-marker { width: 18px; height: 18px; background-color: var(--neon-red); border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 0 18px var(--neon-red); }
+        /* Directional Dynamic Red Positioning Icon */
+        .custom-tracking-marker {
+            width: 24px;
+            height: 24px;
+            background-color: var(--neon-red);
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 20px var(--neon-red);
+            position: relative;
+            transition: transform 0.1s linear;
+        }
+        .custom-tracking-marker::after {
+            content: '';
+            position: absolute;
+            top: -11px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 11px solid var(--neon-red);
+        }
+
+        .custom-dest-marker { width: 18px; height: 18px; background-color: #ffffff; border: 4px solid var(--neon-red); border-radius: 50%; box-shadow: 0 0 18px var(--neon-red); }
 
         @media(max-width: 480px) {
             #command-deck, #active-nav-hud { width: 100%; left: 0; right: 0; }
@@ -369,16 +391,16 @@
 
             <!-- Category Fast Access Chips -->
             <div class="category-chips-row">
-                <button class="category-search-pill" data-query="Fast Food">🍔 Fast Food</button>
-                <button class="category-search-pill" data-query="Dinner">🍴 Dinner</button>
-                <button class="category-search-pill" data-query="Gas Station">⛽ Gas Stations</button>
+                <button class="category-search-pill" data-query="Food">🍔 Food</button>
+                <button class="category-search-pill" data-query="Coffee">☕ Coffee</button>
+                <button class="category-search-pill" data-query="Gas Station">⛽ Fuel</button>
             </div>
 
             <!-- Dynamic Context Destination Card -->
             <div id="destination-card">
-                <div class="dest-title" id="card-title">Destination Profile</div>
+                <div class="dest-title" id="card-title">Selected Node</div>
                 <div class="dest-address" id="card-address">Analyzing route vector traces...</div>
-                <div id="business-profile-box"></div>
+                <div id="spatial-profile-box"></div>
                 <div class="route-alt-row" id="route-alt-row"></div>
                 <div class="nav-action-row">
                     <button class="nav-btn" id="launch-nav-trigger">Start Navigation</button>
@@ -394,7 +416,7 @@
                 </div>
                 <div class="matrix-row">
                     <span>GPS STATUS</span>
-                    <span id="telemetry-feed" style="color: var(--neon-blue);">SEARCHING LOCK...</span>
+                    <span id="telemetry-feed" style="color: var(--neon-red);">SEARCHING LOCK...</span>
                 </div>
             </div>
         </div>
@@ -441,9 +463,8 @@
             satelliteHybrid: 'mapbox://styles/mapbox/satellite-streets-v12'
         };
 
-        const gltfModelUri = 'https://docs.mapbox.com/mapbox-gl-js/assets/wind_turbine_static.glb';
-
         let currentOriginCoords = [-123.2078, 39.1502]; 
+        let lastKnownCoords = null;
         let selectedDestinationCoords = null;
         let currentTravelMode = 'driving-traffic';
         let routeAlternatives = [];
@@ -464,25 +485,23 @@
             antialias: true
         });
 
+        // Instantiate Dynamic Red Arrow Marker Container
         const liveUserBeacon = document.createElement('div');
         liveUserBeacon.className = 'custom-tracking-marker';
-        const userGpsMarker = new mapboxgl.Marker(liveUserBeacon).setLngLat(currentOriginCoords).addTo(map);
+        const userGpsMarker = new mapboxgl.Marker({ element: liveUserBeacon, rotationAlignment: 'map' })
+            .setLngLat(currentOriginCoords)
+            .addTo(map);
 
         const destMarkerElement = document.createElement('div');
         destMarkerElement.className = 'custom-dest-marker';
         const globalDestinationMarker = new mapboxgl.Marker(destMarkerElement);
 
-        // Core Pipeline State Restoration Engine
+        // Mapbox Redraw State Retention Engine
         map.on('style.load', () => {
             registerGlobal3DTerrainEngine();
             register3DBuildingsArchitecturalLayer();
-            
             if (selectedDestinationCoords) {
                 renderVisualRouteLines();
-                // Re-inject custom 3D model structures if active destination is a business
-                if (document.getElementById('business-profile-box').dataset.isBusiness === 'true') {
-                    inject3DModelAtLocation(selectedDestinationCoords);
-                }
             }
         });
 
@@ -503,18 +522,68 @@
             navigator.geolocation.watchPosition(handleGPSMoveUpdate, handleGPSTrackingError, { enableHighAccuracy: true });
         }
 
+        // Standard Metrical Vector Distance Utility (Haversine Implementation for Rerouting)
+        function calculateMetricGap(coord1, coord2) {
+            const R = 6371000; 
+            const dLat = (coord2[1] - coord1[1]) * Math.PI / 180;
+            const dLon = (coord2[0] - coord1[0]) * Math.PI / 180;
+            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                      Math.cos(coord1[1] * Math.PI / 180) * Math.cos(coord2[1] * Math.PI / 180) *
+                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+        }
+
         function handleGPSMoveUpdate(position) {
             currentOriginCoords = [position.coords.longitude, position.coords.latitude];
             userGpsMarker.setLngLat(currentOriginCoords);
+            
             document.getElementById('telemetry-feed').innerText = "GPS LOCK [3D_FIX]";
             document.getElementById('telemetry-feed').style.color = "var(--traffic-green)";
             
+            // Core Directional Facing Resolution
+            let userHeading = position.coords.heading;
+            if ((userHeading === null || userHeading === undefined || isNaN(userHeading)) && lastKnownCoords) {
+                // Directional Fallback: Calculate displacement bearing relative to previous coordinate point
+                const dLon = (currentOriginCoords[0] - lastKnownCoords[0]) * Math.PI / 180;
+                const lat1 = lastKnownCoords[1] * Math.PI / 180;
+                const lat2 = currentOriginCoords[1] * Math.PI / 180;
+                const y = Math.sin(dLon) * Math.cos(lat2);
+                const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
+                userHeading = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+            }
+
+            if (userHeading !== null && userHeading !== undefined && !isNaN(userHeading)) {
+                userGpsMarker.setRotation(userHeading);
+                if (isNavigating) {
+                    map.easeTo({ bearing: userHeading, duration: 300 });
+                }
+            }
+
             updateSearchProximityBias();
+
+            // Automatic Rerouting Engine Check
+            if (isNavigating && routeAlternatives[selectedRouteIdx]) {
+                const traceSegments = routeAlternatives[selectedRouteIdx].geometry.coordinates;
+                let minimumDeviationMeters = Infinity;
+                
+                for (let i = 0; i < traceSegments.length; i++) {
+                    const deviation = calculateMetricGap(currentOriginCoords, traceSegments[i]);
+                    if (deviation < minimumDeviationMeters) minimumDeviationMeters = deviation;
+                }
+                
+                // Trigger dynamic network recalculation if the user is further than 40 meters off-route
+                if (minimumDeviationMeters > 40) {
+                    console.log(`Off-route discrepancy verified: ${minimumDeviationMeters.toFixed(1)}m. Dispatching automatic trace recalculation.`);
+                    calculateNavigationVectors();
+                }
+            }
 
             if (!mapCenteredOnLiveGPS) {
                 map.flyTo({ center: currentOriginCoords, zoom: 14, pitch: 20, essential: true });
                 mapCenteredOnLiveGPS = true;
             }
+
+            lastKnownCoords = [...currentOriginCoords];
         }
 
         function handleGPSTrackingError(err) {
@@ -525,7 +594,6 @@
 
         function registerGlobal3DTerrainEngine() {
             if (isSatelliteActive) {
-                // Inject real 3D high-fidelity topographical map terrain when on satellite layer
                 if (!map.getSource('mapbox-dem')) {
                     map.addSource('mapbox-dem', {
                         'type': 'raster-dem',
@@ -558,35 +626,6 @@
             });
         }
 
-        function inject3DModelAtLocation(coords) {
-            clearActiveBusinessModel();
-
-            map.addSource('active-business-3d-source', {
-                'type': 'model',
-                'models': { 'business-gltf': { 'uri': gltfModelUri } },
-                'features': [{
-                    'type': 'Feature',
-                    'properties': { 'model-id': 'business-gltf' },
-                    'geometry': { 'type': 'Point', 'coordinates': coords }
-                }]
-            });
-
-            map.addLayer({
-                'id': 'active-business-3d-layer',
-                'type': 'model',
-                'source': 'active-business-3d-source',
-                'paint': {
-                    'model-scale': [15, 15, 15],
-                    'model-rotation': [0, 0, 90]
-                }
-            });
-        }
-
-        function clearActiveBusinessModel() {
-            if (map.getLayer('active-business-3d-layer')) map.removeLayer('active-business-3d-layer');
-            if (map.getSource('active-business-3d-source')) map.removeSource('active-business-3d-source');
-        }
-
         function initializeProximitySearchEngine() {
             const script = document.getElementById('search-js');
             const initSearchBox = () => {
@@ -617,7 +656,7 @@
                         const name = feature.properties?.name || feature.text || "Target Destination";
                         const address = feature.properties?.full_address || feature.place_name || "";
                         map.flyTo({ center: coords, zoom: 15, essential: true });
-                        loadSpatialDestination(coords, name, address, feature);
+                        loadSpatialDestination(coords, name, address);
                     }
                 });
             };
@@ -650,58 +689,36 @@
         function setupInteractiveBuildingQueries() {
             map.on('click', (e) => {
                 const features = map.queryRenderedFeatures(e.point, { layers: ['3d-buildings', 'poi-label'] });
-                if (!features || features.length === 0) return;
-
-                const selectedFeature = features[0];
-                let name = selectedFeature.properties.name || "Architectural Entity Block";
-                let address = `LAT: ${e.lngLat.lat.toFixed(5)} | LNG: ${e.lngLat.lng.toFixed(5)}`;
                 const targetCoords = [e.lngLat.lng, e.lngLat.lat];
                 
+                let name = "Selected Map Coordinates";
+                let address = `LAT: ${e.lngLat.lat.toFixed(5)} | LNG: ${e.lngLat.lng.toFixed(5)}`;
+                
+                if (features && features.length > 0) {
+                    name = features[0].properties.name || "Structural Entity Asset";
+                }
+                
                 map.easeTo({ center: targetCoords, zoom: Math.max(map.getZoom(), 16) });
-                loadSpatialDestination(targetCoords, name, address, selectedFeature);
+                loadSpatialDestination(targetCoords, name, address);
             });
         }
 
-        function loadSpatialDestination(coords, title, address, layerFeature = null) {
+        function loadSpatialDestination(coords, title, address) {
             selectedDestinationCoords = coords;
             globalDestinationMarker.setLngLat(coords).addTo(map);
 
             document.getElementById('card-title').innerText = title;
             document.getElementById('card-address').innerText = address;
 
-            const profileContainer = document.getElementById('business-profile-box');
-            profileContainer.innerHTML = ''; 
-
-            // Strict Identification Framework
-            const categoryMatch = layerFeature?.properties?.category || layerFeature?.properties?.poi_category?.[0] || layerFeature?.properties?.category_en;
-            const isGenericBlock = title.includes("Architectural Entity Block");
-            
-            if (categoryMatch && !isGenericBlock) {
-                // Populate verified telemetry strictly from Mapbox Core Layers without creating artificial metrics
-                profileContainer.dataset.isBusiness = 'true';
-                profileContainer.innerHTML = `
-                    <div class="business-data-grid">
-                        <div class="biz-row">
-                            <span class="biz-badge">${categoryMatch}</span>
-                            <span class="biz-val" style="color: var(--neon-blue);">Verified Commercial Node</span>
-                        </div>
+            const profileContainer = document.getElementById('spatial-profile-box');
+            profileContainer.innerHTML = `
+                <div class="spatial-data-grid">
+                    <div class="space-row">
+                        <span class="space-label">Target Vector:</span>
+                        <span class="space-val">${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}</span>
                     </div>
-                `;
-                // Inject the actual 3D model asset over the commercial location
-                inject3DModelAtLocation(coords);
-            } else {
-                // Non-commercial or architectural baseline blocks
-                profileContainer.dataset.isBusiness = 'false';
-                profileContainer.innerHTML = `
-                    <div class="business-data-grid" style="border-color: rgba(255,255,255,0.04); background: transparent;">
-                        <div class="biz-row">
-                            <span class="biz-label" style="font-size: 0.75rem;">Structure Tracking:</span>
-                            <span class="biz-val" style="color: var(--text-secondary); font-size: 0.75rem;">Generic / Residential Asset</span>
-                        </div>
-                    </div>
-                `;
-                clearActiveBusinessModel();
-            }
+                </div>
+            `;
 
             document.getElementById('destination-card').style.display = 'flex';
             calculateNavigationVectors();
@@ -717,10 +734,18 @@
                 const payload = await request.json();
                 if (payload.code !== 'Ok') return;
                 routeAlternatives = payload.routes;
-                selectedRouteIdx = 0;
+                
+                if (selectedRouteIdx >= routeAlternatives.length) {
+                    selectedRouteIdx = 0;
+                }
 
                 renderVisualRouteLines();
                 populateAlternativeSelectors();
+                
+                // Dynamic instruction update during routing transitions
+                if (isNavigating) {
+                    updateActiveHUDLayout(routeAlternatives[selectedRouteIdx]);
+                }
             } catch (error) {
                 console.error("Critical routing calculation exception:", error);
             }
@@ -745,9 +770,9 @@
                     source: `route-source-${index}`,
                     layout: { 'line-join': 'round', 'line-cap': 'round' },
                     paint: {
-                        'line-color': isSelected ? '#0071e3' : '#3a3a44',
+                        'line-color': isSelected ? '#ff2222' : '#3a3a44',
                         'line-width': isSelected ? 6 : 4,
-                        'line-opacity': isSelected ? 0.95 : 0.4
+                        'line-opacity': isSelected ? 0.95 : 0.35
                     }
                 }, map.getLayer('3d-buildings') ? '3d-buildings' : undefined);
             });
@@ -769,6 +794,15 @@
                 });
                 row.appendChild(pill);
             });
+        }
+
+        function updateActiveHUDLayout(route) {
+            if (!route) return;
+            document.getElementById('nav-instruction-text').innerText = route.legs[0].steps[0]?.maneuver?.instruction || 'Continue down the path';
+            document.getElementById('nav-instruction-dist').innerText = `${Math.round(route.legs[0].steps[0]?.distance || 50)} m`;
+            document.getElementById('nav-eta-val').innerText = `${Math.round(route.duration / 60)}m`;
+            document.getElementById('nav-time-left').innerText = `${Math.round(route.duration / 60)} min`;
+            document.getElementById('nav-dist-left').innerText = `${(route.distance / 1609.34).toFixed(1)} mi`;
         }
 
         function hookInterfaceControls() {
@@ -812,9 +846,9 @@
             routeAlternatives = [];
             selectedDestinationCoords = null;
             globalDestinationMarker.remove();
-            clearActiveBusinessModel();
             document.getElementById('destination-card').style.display = 'none';
             if (geocoderInstance) geocoderInstance.value = '';
+            map.easeTo({ pitch: 20, bearing: 0 });
         }
 
         function toggleNavigationHUD() {
@@ -824,12 +858,8 @@
             document.getElementById('speed-chip').style.display = isNavigating ? 'flex' : 'none';
             
             if (isNavigating && routeAlternatives[selectedRouteIdx]) {
-                const route = routeAlternatives[selectedRouteIdx];
-                document.getElementById('nav-instruction-text').innerText = route.legs[0].steps[0]?.maneuver?.instruction || 'Drive straight';
-                document.getElementById('nav-instruction-dist').innerText = `${Math.round(route.legs[0].steps[0]?.distance || 100)} m`;
-                document.getElementById('nav-eta-val').innerText = `${Math.round(route.duration / 60)}m`;
-                document.getElementById('nav-time-left').innerText = `${Math.round(route.duration / 60)} min`;
-                document.getElementById('nav-dist-left').innerText = `${(route.distance / 1609.34).toFixed(1)} mi`;
+                map.easeTo({ zoom: 17, pitch: 50, duration: 800 });
+                updateActiveHUDLayout(routeAlternatives[selectedRouteIdx]);
             } else {
                 clearActiveRouteTrace();
             }
