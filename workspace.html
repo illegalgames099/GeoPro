@@ -481,7 +481,6 @@
     </div>
 
     <script>
-        // Project Context Configuration
         let defaultUserCoordinates = [-122.084, 37.422]; 
         let currentLiveGpsPosition = null; 
         let targetSelectedCoordinates = null;
@@ -493,7 +492,6 @@
         let satelliteModeActive = false;
         let cameraTrackingMode = true; 
         
-        // Advanced GPS Predictive Metrics
         let lastGpsTimestamp = null;
         let gpsVelocityVector = { lng: 0, lat: 0 };
         let currentVehicleHeading = 0;
@@ -556,10 +554,19 @@
                 if (overlay) overlay.innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
             });
 
-            map.on('dragstart', () => {
-                cameraTrackingMode = false;
-                document.getElementById('force-gps-recenter').classList.remove('active-state');
-            });
+            // FIXED: Explicit hooks on all forms of user manual map movement to sever tracking mode cleanly
+            const cancelTracking = () => {
+                if (cameraTrackingMode) {
+                    cameraTrackingMode = false;
+                    const recenterBtn = document.getElementById('force-gps-recenter');
+                    if (recenterBtn) recenterBtn.classList.remove('active-state');
+                }
+            };
+
+            map.on('dragstart', cancelTracking);
+            map.on('zoomstart', cancelTracking);
+            map.on('rotatestart', cancelTracking);
+            map.on('pitchstart', cancelTracking);
         });
 
         map.on('style.data', () => {
@@ -574,7 +581,6 @@
 
             if (!map.getSource(sourceKey)) return;
 
-            // 1. Base Roadbed Structure
             if (!map.getLayer('hw-3d-lanes-base-asphalt')) {
                 map.addLayer({
                     'id': 'hw-3d-lanes-base-asphalt',
@@ -590,7 +596,6 @@
                     }
                 });
 
-                // Solid white edge lines generated natively using line-gap-width offset spacing
                 map.addLayer({
                     'id': 'hw-3d-lanes-solid-edges',
                     'source': sourceKey,
@@ -606,7 +611,6 @@
                     }
                 });
 
-                // Dash configuration centered within lane corridors
                 map.addLayer({
                     'id': 'hw-3d-lanes-center-dash',
                     'source': sourceKey,
@@ -623,7 +627,6 @@
                 });
             }
 
-            // 2. Build Structural 3D Elements
             if (!map.getLayer('spatial-3d-buildings')) {
                 map.addLayer({
                     'id': 'spatial-3d-buildings',
@@ -654,7 +657,6 @@
                 originCoords = [mapCenter.lng, mapCenter.lat];
             }
              
-            // API-less strict routing path pulled via public geometric OSRM servers
             const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&steps=true`;
              
             try {
@@ -695,7 +697,7 @@
                     }];
                 }
             } catch (err) { 
-                console.error("OSRM interface fault. Falling back to direct coordinate vectors.", err);
+                console.error("OSRM route fault.", err);
             }
 
             redrawActiveRoutePipelines();
@@ -854,7 +856,6 @@
                     diagnosticStatus.innerText = "GPS TRACKING ACTIVE";
                     diagnosticStatus.style.color = "#007aff";
 
-                    // Predictive Speed Vector Tracking Engine (Dead Reckoning Support)
                     if (lastGpsTimestamp && currentLiveGpsPosition) {
                         const elapsedSecs = (now - lastGpsTimestamp) / 1000;
                         if (elapsedSecs > 0) {
@@ -872,18 +873,18 @@
                     currentLiveGpsPosition = incomingLoc;
                     lastGpsTimestamp = now;
 
+                    // Locate or update position node asset strictly matching geometry
                     if (!userLocationBeaconMarker) {
                         const beaconEl = document.createElement('div');
                         beaconEl.className = 'live-gps-beacon-node';
                         userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })
                             .setLngLat(currentLiveGpsPosition)
                             .addTo(map);
-                        
-                        map.flyTo({ center: currentLiveGpsPosition, zoom: 17.5, pitch: 70, bearing: currentVehicleHeading });
                     } else {
                         userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
                     }
 
+                    // FIXED: Only process active camera positioning events if tracking mode state remains true
                     if (cameraTrackingMode) {
                         map.easeTo({
                             center: currentLiveGpsPosition,
@@ -901,13 +902,12 @@
                 { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
             );
 
-            // Frame Loop for Position Interp
             function executePredictiveTrackingFrame() {
+                // FIXED: Tracking loops are fully blockaded if cameraTrackingMode has been broken by interaction
                 if (cameraTrackingMode && currentLiveGpsPosition && lastGpsTimestamp) {
                     const frameTime = performance.now();
                     const deltaSec = (frameTime - lastGpsTimestamp) / 1000;
                     
-                    // Apply smooth velocity damping to avoid jumping when signals stall
                     if (deltaSec > 0.3 && deltaSec < 3.0) {
                         const predictedLng = currentLiveGpsPosition[0] + (gpsVelocityVector.lng * 0.016);
                         const predictedLat = currentLiveGpsPosition[1] + (gpsVelocityVector.lat * 0.016);
@@ -926,16 +926,26 @@
         function initHardwareConsoleTriggers() {
             const compassBtn = document.getElementById('compass-orientation-lock');
             if (compassBtn) {
-                compassBtn.addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 65 }));
+                compassBtn.addEventListener('click', () => {
+                    // Reset to north safely without snapping active state
+                    map.easeTo({ bearing: 0 });
+                });
             }
              
             const recenterBtn = document.getElementById('force-gps-recenter');
             if (recenterBtn) {
                 recenterBtn.addEventListener('click', () => {
+                    // FIXED: Explicit manual snap command toggles control back to core telemetry values instantly
                     cameraTrackingMode = true; 
                     recenterBtn.classList.add('active-state');
                     if (currentLiveGpsPosition) {
-                        map.flyTo({ center: currentLiveGpsPosition, zoom: 17.5, pitch: 70, bearing: currentVehicleHeading, duration: 500 });
+                        map.flyTo({ 
+                            center: currentLiveGpsPosition, 
+                            zoom: 17.5, 
+                            pitch: 70, 
+                            bearing: currentVehicleHeading, 
+                            duration: 500 
+                        });
                     }
                 });
             }
@@ -950,7 +960,6 @@
                         satelliteBtn.style.borderColor = '#ff3333';
                         satelliteBtn.style.color = '#ff3333';
 
-                        // True 3D Satellite Stack using elevation data models mapped over imagery
                         map.setStyle({
                             'version': 8,
                             'sources': {
@@ -986,11 +995,7 @@
                     } else {
                         satelliteBtn.style.borderColor = '';
                         satelliteBtn.style.color = '';
-                        
-                        // Disable active terrain bindings when returning to map layer mode
-                        if (map.getTerrain()) {
-                            map.setTerrain(null);
-                        }
+                        if (map.getTerrain()) map.setTerrain(null);
                         map.setStyle(REGULAR_MAP_STYLE);
                     }
                 });
@@ -1105,7 +1110,12 @@
                                 const targetLoc = feature.geometry.coordinates;
                                 dropdown.style.display = 'none';
                                 input.value = labeledLocation;
-                                map.flyTo({ center: targetLoc, zoom: 17, pitch: 70 });
+                                
+                                // Disable tracking mode since user is exploring a search location
+                                cameraTrackingMode = false;
+                                document.getElementById('force-gps-recenter').classList.remove('active-state');
+
+                                map.flyTo({ center: targetLoc, zoom: 17, pitch: 65 });
                                 triggerWorkspaceTargetDeck(targetLoc, p.name || "Target Vector", labeledLocation);
                             });
                             dropdown.appendChild(segmentItem);
