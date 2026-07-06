@@ -3,27 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GeoPro Tactical Navigation System</title>
+    <title>GeoPro Open-Source Tactical Platform</title>
 
     <!-- Mapbox GL JS Core Engine -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
     <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
 
-    <!-- Modern Mapbox Search JS Web Component Engine Bundle -->
-    <script id="search-js" defer src="https://api.mapbox.com/search-js/v1.5.0/web.js"></script>
-
     <style>
         :root {
             --bg-pure: #050507;
-            --hud-bg: rgba(10, 10, 14, 0.85);
+            --hud-bg: rgba(10, 10, 14, 0.88);
             --card-surface: rgba(20, 20, 25, 0.65);
             --neon-red: #ff2222;
             --neon-glow: rgba(255, 34, 34, 0.25);
-            --border-line: rgba(255, 255, 255, 0.07);
+            --border-line: rgba(255, 255, 255, 0.08);
             --text-primary: #ffffff;
             --text-secondary: #9a9a12;
             --text-muted: #6e6e73;
             --traffic-green: #30d158;
+        }
+
+        .pure-cyber-dark {
+            --bg-pure: #000000;
+            --hud-bg: rgba(5, 5, 5, 0.95);
+            --card-surface: rgba(10, 10, 12, 0.8);
+            --border-line: rgba(255, 34, 34, 0.15);
         }
 
         * {
@@ -61,7 +65,7 @@
 
         button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
 
-        /* ── HUD COMMAND DECK (ADVANCED GLASSMORPHISM) ── */
+        /* ── HUD COMMAND DECK ── */
         #command-deck {
             position: absolute;
             top: 20px;
@@ -114,7 +118,23 @@
         }
         .brand-logo span { color: var(--neon-red); text-shadow: 0 0 15px rgba(255,34,34,0.6); }
 
-        /* Multi-Stop Routing Engine Hub */
+        .header-utility-tray {
+            display: flex;
+            gap: 6px;
+        }
+
+        .mini-tray-btn {
+            background: var(--card-surface);
+            border: 1px solid var(--border-line);
+            padding: 6px 10px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            transition: all 0.2s;
+        }
+        .mini-tray-btn:hover { border-color: var(--neon-red); }
+
+        /* Sequential Multi-Stop Queue Pipeline */
         .waypoint-manager {
             display: flex;
             flex-direction: column;
@@ -179,44 +199,59 @@
         }
         .mode-btn.active svg { stroke: var(--neon-red); }
 
-        /* Unified Search Web Component Engine */
+        /* ── FULLY FREE OPEN-SOURCE GEOPRO SEARCH ENGINE ── */
         .search-container-box { width: 100%; position: relative; }
-        #geocoder-mount { width: 100%; }
-        mapboxgl-search-box, mapboxsearch-search-box {
-            width: 100% !important;
-            --mapbox-search-box-background: var(--card-surface);
-            --mapbox-search-box-text: var(--text-primary);
-            --mapbox-search-box-placeholder-text: var(--text-muted);
-            --mapbox-search-box-border: 1px solid var(--border-line);
-            --mapbox-search-box-border-radius: 16px;
-            --mapbox-search-box-results-background: #0f0f14;
-            --mapbox-search-box-shadow: none;
-        }
-
-        /* Intelligent Category Pills Matrix */
-        .category-chips-row {
+        .osm-search-wrapper {
             display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            padding-bottom: 4px;
-            scrollbar-width: none;
-        }
-        .category-chips-row::-webkit-scrollbar { display: none; }
-        .category-search-pill {
             background: var(--card-surface);
             border: 1px solid var(--border-line);
-            padding: 10px 16px;
-            border-radius: 100px;
-            font-size: 0.8rem;
-            font-weight: 600;
+            border-radius: 16px;
+            padding: 4px;
+            align-items: center;
+        }
+        .osm-search-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            padding: 10px 14px;
+            font-size: 0.9rem;
+        }
+        .osm-search-input::placeholder { color: var(--text-muted); }
+        .osm-search-clear {
+            padding: 0 12px;
+            color: var(--text-muted);
+            font-weight: bold;
+            display: none;
+        }
+        
+        /* Free Local Dropdown Suggestions Menu */
+        .osm-results-panel {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            width: 100%;
+            background: #0f0f14;
+            border: 1px solid var(--border-line);
+            border-radius: 16px;
+            margin-top: 8px;
+            max-height: 240px;
+            overflow-y: auto;
+            z-index: 120;
+            display: none;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
+        }
+        .osm-result-row {
+            padding: 12px 16px;
+            font-size: 0.85rem;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            cursor: pointer;
             white-space: nowrap;
-            transition: all 0.2s;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
-        .category-search-pill:hover {
-            border-color: var(--neon-red);
-            background: rgba(255,34,34,0.05);
-            transform: translateY(-1px);
-        }
+        .osm-result-row:hover { background: rgba(255,255,255,0.06); color: var(--neon-red); }
 
         /* Context Processing Destination Card */
         #destination-card {
@@ -265,7 +300,7 @@
         .matrix-row { display: flex; justify-content: space-between; }
         .matrix-row span:first-child { color: var(--text-muted); }
 
-        /* ── NEXT-GEN REAL-TIME TACTICAL INSTRUMENTATION HUD ── */
+        /* Tactical Navigation Instrument HUD Overlay */
         #active-nav-hud {
             display: none; position: absolute; top: 20px; left: 20px; width: 400px; z-index: 15; flex-direction: column; gap: 12px;
         }
@@ -279,7 +314,7 @@
         .nav-bottom-stat .lbl { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-top: 2px; }
         .nav-end-btn { background: #2c2c35; border: 1px solid var(--border-line); padding: 12px 20px; border-radius: 14px; font-weight: 700; }
 
-        /* Flight-Deck Speedometer Module */
+        /* Speedometer Module */
         #speed-chip {
             display: none; position: absolute; bottom: 30px; left: 30px; z-index: 15; width: 90px; height: 90px; border-radius: 50%; background: #08080c; border: 4px solid var(--neon-red); flex-direction: column; align-items: center; justify-content: center;
             box-shadow: 0 0 25px var(--neon-glow);
@@ -287,12 +322,13 @@
         #speed-chip .speed-val { font-size: 1.8rem; font-weight: 900; line-height: 1; }
         #speed-chip .speed-unit { font-size: 0.6rem; color: var(--text-muted); font-weight: 800; margin-top: 2px; }
 
-        /* Flight-Deck Control Utilities Deck */
+        /* Control Utilities Deck Array */
         #right-console-stack {
             position: absolute; top: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 12px;
         }
         .glass-panel-btn {
             background: var(--hud-bg); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid var(--border-line); width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            font-size: 1.25rem;
         }
         .glass-panel-btn:hover { background: rgba(255,255,255,0.08); transform: scale(1.05); }
         .glass-panel-btn.active { border-color: var(--neon-red); color: var(--neon-red); box-shadow: 0 0 15px var(--neon-glow); }
@@ -314,7 +350,7 @@
         }
     </style>
 </head>
-<body>
+<body class="">
 
     <div id="app-viewport">
         <div id="map"></div>
@@ -325,7 +361,10 @@
             <div class="drag-handle-zone" id="drag-handle"><div class="drag-handle-bar"></div></div>
             <div class="deck-header">
                 <div class="brand-logo">Geo<span>Pro</span></div>
-                <button class="glass-panel-btn" id="radar-toggle" title="Radar Spatial Scan" style="width:36px; height:36px; border-radius:10px;">📡</button>
+                <div class="header-utility-tray">
+                    <button class="mini-tray-btn" id="toggle-night-mode" title="Toggle Pure Cyber Night Mode">🕶️</button>
+                    <button class="mini-tray-btn" id="export-telemetry" title="Save Telemetry Log Snapshot">💾</button>
+                </div>
             </div>
 
             <!-- Sequential Multi-Stop Queue Pipeline -->
@@ -347,16 +386,13 @@
                 </button>
             </div>
 
-            <!-- Unified Web Component Input Interface -->
+            <!-- 100% Free Open-Source Input Engine Panel -->
             <div class="search-container-box">
-                <div id="geocoder-mount"></div>
-            </div>
-
-            <!-- Smart Fast Access Matrix Pills -->
-            <div class="category-chips-row">
-                <button class="category-search-pill" data-query="Charging Station">⚡ Chargers</button>
-                <button class="category-search-pill" data-query="Food">🍕 Fuel Stops</button>
-                <button class="category-search-pill" data-query="Coffee">☕ Caffeine</button>
+                <div class="osm-search-wrapper">
+                    <input type="text" class="osm-search-input" id="osm-input-field" placeholder="Search coordinates, address, grid node...">
+                    <button class="osm-search-clear" id="osm-clear-btn">✖</button>
+                </div>
+                <div class="osm-results-panel" id="osm-results-dropdown"></div>
             </div>
 
             <!-- Dynamic Interactive Destination Processing Card -->
@@ -373,8 +409,8 @@
 
             <!-- Active Avionics System Logs -->
             <div class="telemetry-grid">
-                <div class="matrix-row"><span>SYSTEM STATE</span><span id="traffic-status" style="color: var(--traffic-green);">COMPILING LATEST</span></div>
-                <div class="matrix-row"><span>HARDWARE ENGINE</span><span id="telemetry-feed" style="color: var(--neon-red);">SYNCHRONIZING SECURE BEACON...</span></div>
+                <div class="matrix-row"><span>GEO SUBSYSTEM</span><span id="traffic-status" style="color: var(--traffic-green);">OSM NOMINATIM ENGINE</span></div>
+                <div class="matrix-row"><span>HARDWARE ENGINE</span><span id="telemetry-feed" style="color: var(--neon-red);">SYNCHRONIZING BEACON TRACKS...</span></div>
             </div>
         </div>
 
@@ -400,6 +436,8 @@
         <!-- Right Side Utility Console Array Stack -->
         <div id="right-console-stack">
             <button class="glass-panel-btn" id="recenter-gps" title="Force Beacon Re-Center">🎯</button>
+            <button class="glass-panel-btn" id="lock-true-north" title="Lock Bearing to True North ($0^\circ$)">🧭</button>
+            <button class="glass-panel-btn" id="radar-toggle" title="Radar Spatial Scan">📡</button>
             <button class="glass-panel-btn" id="toggle-satellite" title="Satellite Orbital Feed">🛰️</button>
             <button class="glass-panel-btn" id="toggle-3d" title="3D Volumetric Extrusions">🏙️</button>
         </div>
@@ -408,6 +446,7 @@
     </div>
 
     <script>
+        // Keep your base map tile rendering token intact
         mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
 
         const mapStyles = {
@@ -415,7 +454,6 @@
             satelliteHybrid: 'mapbox://styles/mapbox/satellite-streets-v12'
         };
 
-        // Telemetry State Core Coordinates
         let currentOriginCoords = [-123.2078, 39.1502]; 
         let lastKnownCoords = null;
         let selectedDestinationCoords = null;
@@ -423,7 +461,6 @@
         let routeAlternatives = [];
         let selectedRouteIdx = 0;
         
-        // Multi-Stop Route Sequencing Stack Array 
         let intermediateWaypoints = [];
         let waypointMarkersArray = [];
 
@@ -431,10 +468,10 @@
         let layers3DActive = false;
         let isSatelliteActive = false;
         let radarActive = false;
-        let geocoderInstance = null;
         let mapCenteredOnLiveGPS = false; 
         let userInterruptedTracking = false;
         let hardwareHeading = 0;
+        let searchDebounceTimeout = null;
 
         const map = new mapboxgl.Map({
             container: 'map',
@@ -446,7 +483,6 @@
             antialias: true
         });
 
-        // Frame-locked WebGL native source paint pipeline execution
         map.on('style.load', () => {
             initializeNativeTrackingLayers();
             registerGlobal3DTerrainEngine();
@@ -457,7 +493,7 @@
         });
 
         map.on('load', () => {
-            initializeProximitySearchEngine();
+            initializeFreeOSMSearchEngine();
             initializeDraggableConsoleSheet();
             setupInteractiveBuildingQueries();
             hookInterfaceControls();
@@ -468,7 +504,6 @@
             map.on('pitchstart', () => { userInterruptedTracking = true; });
         });
 
-        // GPU-Direct Painting Loop: Removes DOM Engine Overhead lag artifacts
         function initializeNativeTrackingLayers() {
             if (map.getSource('live-user-source')) return;
 
@@ -557,6 +592,84 @@
             console.warn(`Telemetry core exception drop: ${err.message}`);
         }
 
+        /* ── COMPLETELY FREE OPEN STREET MAP NOMINATIM EXECUTION LOOP ── */
+        function initializeFreeOSMSearchEngine() {
+            const inputField = document.getElementById('osm-input-field');
+            const clearBtn = document.getElementById('osm-clear-btn');
+            const dropdown = document.getElementById('osm-results-dropdown');
+
+            inputField.addEventListener('input', (e) => {
+                const searchString = e.target.value.trim();
+                clearBtn.style.display = searchString.length > 0 ? 'block' : 'none';
+                
+                clearTimeout(searchDebounceTimeout);
+                if (searchString.length < 3) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                // Debounce queries to prevent hitting lookup thresholds
+                searchDebounceTimeout = setTimeout(() => {
+                    executeOSMNominatimLookup(searchString);
+                }, 350);
+            });
+
+            clearBtn.addEventListener('click', () => {
+                inputField.value = '';
+                clearBtn.style.display = 'none';
+                dropdown.style.display = 'none';
+            });
+
+            // Close results container on outer click
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.search-container-box')) {
+                    dropdown.style.display = 'none';
+                }
+            });
+        }
+
+        async function executeOSMNominatimLookup(queryString) {
+            const dropdown = document.getElementById('osm-results-dropdown');
+            // Inject user proximity metrics directly into query vectors to bias regional node lookup results
+            const endpoint = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(queryString)}&viewbox=${currentOriginCoords[0]-0.5},${currentOriginCoords[1]+0.5},${currentOriginCoords[0]+0.5},${currentOriginCoords[1]-0.5}&bounded=0&limit=6`;
+
+            try {
+                const response = await fetch(endpoint, {
+                    headers: { 'User-Agent': 'GeoProTacticalNavigationEngine/1.0' }
+                });
+                const matches = await response.json();
+                
+                if (!matches || matches.length === 0) {
+                    dropdown.innerHTML = `<div class="osm-result-row" style="color:var(--text-muted); cursor:default;">No records matching trace vector</div>`;
+                    dropdown.style.display = 'block';
+                    return;
+                }
+
+                dropdown.innerHTML = '';
+                matches.forEach(item => {
+                    const row = document.createElement('div');
+                    row.className = 'osm-result-row';
+                    row.innerText = item.display_name;
+                    row.addEventListener('click', () => {
+                        const targetLon = parseFloat(item.lon);
+                        const targetLat = parseFloat(item.lat);
+                        const cleanName = item.name || "Target Vector Node";
+                        
+                        dropdown.style.display = 'none';
+                        document.getElementById('osm-input-field').value = item.display_name;
+                        userInterruptedTracking = true;
+                        
+                        map.flyTo({ center: [targetLon, targetLat], zoom: 15.5 });
+                        loadSpatialDestination([targetLon, targetLat], cleanName, item.display_name);
+                    });
+                    dropdown.appendChild(row);
+                });
+                dropdown.style.display = 'block';
+            } catch (err) {
+                console.error("OSM Spatial lookup framework exception:", err);
+            }
+        }
+
         function registerGlobal3DTerrainEngine() {
             if (isSatelliteActive) {
                 if (!map.getSource('mapbox-dem')) {
@@ -590,39 +703,6 @@
             });
         }
 
-        function initializeProximitySearchEngine() {
-            const script = document.getElementById('search-js');
-            const initSearchBox = () => {
-                if (typeof mapboxsearch === 'undefined' || !mapboxsearch.MapboxSearchBox) {
-                    setTimeout(initSearchBox, 50);
-                    return;
-                }
-                const container = document.getElementById('geocoder-mount');
-                if (!container) return;
-                container.innerHTML = ''; 
-                
-                geocoderInstance = new mapboxsearch.MapboxSearchBox();
-                geocoderInstance.accessToken = mapboxgl.accessToken;
-                geocoderInstance.options = { proximity: currentOriginCoords };
-                geocoderInstance.mapboxgl = mapboxgl;
-                geocoderInstance.marker = false; 
-                container.appendChild(geocoderInstance);
-                
-                geocoderInstance.addEventListener('retrieve', (e) => {
-                    let feature = e.detail?.features?.[0] || e.detail;
-                    if (feature?.geometry?.coordinates) {
-                        const coords = feature.geometry.coordinates;
-                        const name = feature.properties?.name || "Target Vector Destination";
-                        const address = feature.properties?.full_address || "";
-                        userInterruptedTracking = true; 
-                        map.flyTo({ center: coords, zoom: 15.5 });
-                        loadSpatialDestination(coords, name, address);
-                    }
-                });
-            };
-            if (script) { if (typeof mapboxsearch !== 'undefined') { initSearchBox(); } else { script.onload = initSearchBox; } }
-        }
-
         function setupInteractiveBuildingQueries() {
             map.on('click', (e) => {
                 const features = map.queryRenderedFeatures(e.point, { layers: ['3d-buildings'] });
@@ -642,7 +722,6 @@
             calculateNavigationVectors();
         }
 
-        // Advanced Multi-Stop Stack Handler Pipeline Logic
         function appendCurrentNodeToSequenceStack() {
             if (!selectedDestinationCoords) return;
             
@@ -652,7 +731,6 @@
                 label: nodeLabel
             });
 
-            // Create High-Performance Custom Target Stop Pin
             const markerEl = document.createElement('div');
             markerEl.style.width = '14px';
             markerEl.style.height = '14px';
@@ -670,7 +748,8 @@
             
             selectedDestinationCoords = null;
             document.getElementById('destination-card').style.display = 'none';
-            if (geocoderInstance) geocoderInstance.value = '';
+            document.getElementById('osm-input-field').value = '';
+            document.getElementById('osm-clear-btn').style.display = 'none';
             
             calculateNavigationVectors();
         }
@@ -703,7 +782,6 @@
             calculateNavigationVectors();
         };
 
-        // Engine Routing Architecture Compilation Optimization Loop
         async function calculateNavigationVectors() {
             let coordinateSequenceString = currentOriginCoords.join(',');
             
@@ -730,19 +808,18 @@
                 
                 if (isNavigating) updateActiveHUDLayout(routeAlternatives[selectedRouteIdx]);
             } catch (err) {
-                console.error("Critical core directions compile sequence fault:", err);
+                console.error("Critical directions sequence fault:", err);
             }
         }
 
         function renderVisualRouteLines() {
-            // Flush older pipelines completely
             for (let i = 0; i < 5; i++) {
                 if (map.getLayer(`route-line-${i}`)) map.removeLayer(`route-line-${i}`);
                 if (map.getSource(`route-source-${i}`)) map.removeSource(`route-source-${i}`);
             }
 
             routeAlternatives.forEach((route, index) => {
-                if (index > 2) return; // Cap fallback metrics calculation processing load
+                if (index > 2) return; 
                 const isSelected = (index === selectedRouteIdx);
                 map.addSource(`route-source-${index}`, {
                     type: 'geojson',
@@ -791,12 +868,25 @@
             document.getElementById('nav-dist-left').innerText = `${(route.distance / 1609.34).toFixed(1)} mi`;
         }
 
-        // Radar Real-Time Engine Projection Math
         function updateRadarScreenProjection() {
             const screenCoords = map.project(currentOriginCoords);
             const radar = document.getElementById('radar-glow');
             radar.style.left = `${screenCoords.x - 50}px`;
             radar.style.top = `${screenCoords.y - 50}px`;
+        }
+
+        function exportTelemetryMetricsSnapshot() {
+            const logsData = {
+                timestamp: new Date().toISOString(),
+                liveLocation: currentOriginCoords,
+                activeSequenceNodes: intermediateWaypoints,
+                computedRouteTracksCount: routeAlternatives.length
+            };
+            const dataBlob = new Blob([JSON.stringify(logsData, null, 2)], { type: 'application/json' });
+            const temporaryAnchorElement = document.createElement('a');
+            temporaryAnchorElement.href = URL.createObjectURL(dataBlob);
+            temporaryAnchorElement.download = `geopro_telemetry_snapshot_${Math.floor(Date.now()/1000)}.json`;
+            temporaryAnchorElement.click();
         }
 
         function hookInterfaceControls() {
@@ -809,6 +899,16 @@
                     currentTravelMode = e.currentTarget.getAttribute('data-mode');
                     calculateNavigationVectors();
                 });
+            });
+
+            document.getElementById('toggle-night-mode').addEventListener('click', () => {
+                document.body.classList.toggle('pure-cyber-dark');
+            });
+
+            document.getElementById('export-telemetry').addEventListener('click', exportTelemetryMetricsSnapshot);
+
+            document.getElementById('lock-true-north').addEventListener('click', () => {
+                map.easeTo({ bearing: 0, pitch: 30, duration: 500 });
             });
 
             document.getElementById('radar-toggle').addEventListener('click', (e) => {
@@ -855,7 +955,8 @@
             routeAlternatives = [];
             selectedDestinationCoords = null;
             document.getElementById('destination-card').style.display = 'none';
-            if (geocoderInstance) geocoderInstance.value = '';
+            document.getElementById('osm-input-field').value = '';
+            document.getElementById('osm-clear-btn').style.display = 'none';
             map.easeTo({ pitch: 30, bearing: 0 });
         }
 
@@ -874,7 +975,6 @@
             }
         }
 
-        // Custom High-Performance Touch UI Sheet Engine Interceptor
         function initializeDraggableConsoleSheet() {
             const deck = document.getElementById('command-deck');
             const handle = document.getElementById('drag-handle');
@@ -898,16 +998,6 @@
         map.on('move', () => { if (radarActive) updateRadarScreenProjection(); });
         map.on('mousemove', (e) => {
             document.getElementById('spatial-overlay').innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
-        });
-        
-        // Fast-click Injector Pipeline Overrides
-        document.querySelectorAll('.category-search-pill').forEach(p => {
-            p.addEventListener('click', () => {
-                if(geocoderInstance) {
-                    geocoderInstance.value = p.getAttribute('data-query');
-                    geocoderInstance.focus();
-                }
-            });
         });
     </script>
 </body>
