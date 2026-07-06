@@ -410,7 +410,6 @@
             });
         });
 
-        // Safe pipeline handler that listens to complete rendering style events before mounting routes
         map.on('style.data', () => {
             injectRealtime3DGeometry();
             redrawActiveRoutePipelines();
@@ -442,13 +441,24 @@
         async function runLocalSpatialRouteCalculation() {
             if (!targetSelectedCoordinates) return;
              
-            const originCoords = currentLiveGpsPosition ? currentLiveGpsPosition : [map.getCenter().lng, map.getCenter().lat];
+            // AUTONOMOUS FALLBACK ENGINE: If live GPS telemetry isn't authorized, 
+            // use the current center point of the user viewport layout instead.
+            let originCoords = currentLiveGpsPosition;
+            if (!originCoords) {
+                const mapCenter = map.getCenter();
+                originCoords = [mapCenter.lng, mapCenter.lat];
+                console.log("Telemetry missing. Deploying viewport workspace coordinates as route root origin:", originCoords);
+            }
+             
             const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&alternatives=true&steps=true`;
              
             try {
                 const stream = await fetch(routingQueryUrl);
                 const results = await stream.json();
-                if (results.code !== 'Ok' || !results.routes || results.routes.length === 0) return;
+                if (results.code !== 'Ok' || !results.routes || results.routes.length === 0) {
+                    alert("Could not compute a route between those coordinates. Try choosing a closer point inside a street grid.");
+                    return;
+                }
                  
                 clearActiveRouteLayers();
 
@@ -485,7 +495,6 @@
         function redrawActiveRoutePipelines() {
             if (!activeRouteDataStore || activeRouteDataStore.length === 0) return;
             
-            // Check map style readiness state before pushing data blocks
             if (!map.isStyleLoaded()) {
                 setTimeout(redrawActiveRoutePipelines, 50);
                 return;
@@ -502,7 +511,6 @@
                     map.addSource(srcId, { type: 'geojson', data: { type: 'Feature', geometry: r.geometry } });
                 }
 
-                // LAYER 1: Deep Drop Shadow to create spatial 3D separation from satellite/flat surfaces
                 if (!map.getLayer(shadowLyrId)) {
                     map.addLayer({
                         id: shadowLyrId, type: 'line', source: srcId,
@@ -517,7 +525,6 @@
                     });
                 }
 
-                // LAYER 2: Core Volumetric Pipeline Track
                 if (!map.getLayer(coreLyrId)) {
                     map.addLayer({
                         id: coreLyrId, type: 'line', source: srcId,
@@ -573,7 +580,7 @@
             });
         }
 
-        /* ── SYSTEM TIMING & CONTROL LAYER PLUMBING ── */
+        /* ── SYSTEM LAYER PLUMBING ── */
         function initHardwareConsoleTriggers() {
             document.getElementById('compass-orientation-lock').addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 45 }));
              
@@ -581,7 +588,7 @@
                 if (currentLiveGpsPosition) {
                     map.flyTo({ center: currentLiveGpsPosition, zoom: 15 });
                 } else {
-                    establishLiveHardwarePositioningStream();
+                    alert("Telemetry pending. Click a point directly on the map to set a route destination vector manually.");
                 }
             });
 
@@ -661,8 +668,11 @@
                         map.flyTo({ center: currentLiveGpsPosition, zoom: 14, essential: true });
                     }
                 },
-                (error) => { diagnosticStatus.style.color = "#ff3333"; diagnosticStatus.innerText = "SIGNAL TIMEOUT"; },
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                (error) => { 
+                    diagnosticStatus.style.color = "#ff9500"; 
+                    diagnosticStatus.innerText = "FALLBACK MAPPED"; 
+                },
+                { enableHighAccuracy: true, timeout: 8000, maximumAge: 0 }
             );
         }
 
