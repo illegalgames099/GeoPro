@@ -2,455 +2,397 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GeoPro | 3D Spatial Environment</title>
-
-    <!-- MapLibre GL JS Core -->
-    <script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
-    <link href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" rel="stylesheet" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GeoPro Workspace</title>
+    
+    <!-- MapLibre GL JS -->
+    <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
 
     <style>
         :root {
-            --bg-base: #060608;
-            --bg-panel: rgba(10, 10, 14, 0.85);
-            --bg-surface: rgba(255, 255, 255, 0.03);
-            --action-red: #ff2222;
-            --action-red-glow: rgba(255, 34, 34, 0.35);
-            --border-subtle: rgba(255, 255, 255, 0.06);
-            --text-main: #ffffff;
-            --text-secondary: #a1a1aa;
-            --text-muted: #52525b;
-            --sidebar-width: 380px;
-            --apple-easing: cubic-bezier(0.25, 1, 0.5, 1);
+            --bg-primary: #0a0a0a;
+            --bg-surface: #141414;
+            --accent-red: #ff2222;
+            --text-main: #f5f5f7;
+            --text-muted: #86868b;
+            --border-color: #2c2c2e;
+            --success-green: #30d158;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
             -webkit-font-smoothing: antialiased;
         }
 
-        body, html { width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-base); }
-        #app-viewport { position: relative; width: 100%; height: 100%; }
-        #map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-
-        /* INTERACTIVE INTERFACE PANEL */
-        #control-panel-deck {
-            position: absolute; bottom: 32px; left: 32px; width: var(--sidebar-width); max-height: calc(100% - 64px); z-index: 10;
-            background: var(--bg-panel); backdrop-filter: blur(50px) saturate(220%); -webkit-backdrop-filter: blur(50px) saturate(220%);
-            border: 1px solid var(--border-subtle); border-radius: 24px; box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
-            display: flex; flex-direction: column; overflow: hidden;
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
         }
 
-        .panel-scrollable-body { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
-        .brand-logo { font-size: 1.25rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-main); }
-        .brand-logo span { color: var(--action-red); text-shadow: 0 0 15px var(--action-red-glow); }
+        #app-container {
+            display: flex;
+            height: 100vh;
+            width: 100vw;
+            position: relative;
+        }
 
-        .search-field-container { position: relative; width: 100%; }
-        .search-input-wrapper { display: flex; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: 14px; align-items: center; }
-        .search-input-node { flex: 1; background: transparent; border: none; outline: none; color: var(--text-main); padding: 14px 16px; font-size: 0.95rem; }
-        .search-input-node::placeholder { color: var(--text-muted); }
+        #map {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: 1;
+        }
 
-        .osm-dropdown-menu { position: absolute; top: 100%; left: 0; width: 100%; background: #0c0c10; border: 1px solid var(--border-subtle); border-radius: 14px; margin-top: 8px; max-height: 200px; overflow-y: auto; z-index: 150; display: none; }
-        .osm-suggest-item { padding: 12px 18px; font-size: 0.9rem; cursor: pointer; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .osm-suggest-item:hover { background: rgba(255, 34, 34, 0.1); color: var(--text-main); }
+        /* Premium Dark UI Overlay HUD */
+        .hud-panel {
+            position: absolute;
+            z-index: 10;
+            background: rgba(20, 20, 20, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
 
-        #context-destination-panel { background: rgba(255, 255, 255, 0.01); border: 1px solid var(--border-subtle); border-radius: 18px; padding: 18px; display: none; flex-direction: column; gap: 16px; }
-        .panel-header-title { font-size: 1.05rem; font-weight: 600; color: var(--text-main); }
-        .panel-address-sub { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45; }
-        
-        .action-button-matrix { display: flex; gap: 10px; }
-        .primary-action-btn { flex: 1; background: var(--action-red); color: white; padding: 14px; border-radius: 12px; font-size: 0.9rem; font-weight: 600; border: none; cursor: pointer; box-shadow: 0 4px 12px var(--action-red-glow); transition: all 0.2s; }
-        .primary-action-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(255, 34, 34, 0.5); }
-        .kill-action-btn { background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle); width: 48px; border-radius: 12px; color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        #controls-panel {
+            top: 20px;
+            left: 20px;
+            width: 340px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
 
-        .hardware-diagnostics-deck { background: rgba(0, 0, 0, 0.2); border: 1px solid var(--border-subtle); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 8px; font-size: 0.75rem; }
-        .diagnostic-row { display: flex; justify-content: space-between; align-items: center; }
-        .diagnostic-row span:first-child { color: var(--text-muted); text-transform: uppercase; }
-        .diagnostic-row span:last-child { color: var(--text-secondary); font-family: monospace; }
+        #telemetry-panel {
+            bottom: 20px;
+            left: 20px;
+            width: 340px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
 
-        #right-floating-console-stack { position: absolute; top: 32px; right: 32px; z-index: 100; display: flex; flex-direction: column; gap: 10px; }
-        .console-action-btn-node { background: var(--bg-panel); border: 1px solid var(--border-subtle); width: 46px; height: 46px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; color: white; cursor: pointer; box-shadow: 0 10px 25px rgba(0,0,0,0.3); }
+        h2 {
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            text-transform: uppercase;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
 
-        /* TELEMETRY ANIMATION MARKER */
-        .telemetry-pulse-marker { width: 24px; height: 24px; position: relative; }
-        .telemetry-pulse-core { width: 16px; height: 16px; background: var(--action-red); border: 2px solid #ffffff; border-radius: 50%; position: absolute; top: 4px; left: 4px; z-index: 2; box-shadow: 0 0 10px var(--action-red); }
-        
-        /* BUSINESS BRAND POPUP OVERLAYS */
-        .business-label-card { background: rgba(10, 10, 14, 0.95); border: 1px solid var(--action-red); padding: 6px 12px; border-radius: 8px; color: #fff; font-size: 0.75rem; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: none; }
-        .business-label-card::after { content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); border-width: 5px 5px 0; border-style: solid; border-color: var(--action-red) transparent; display: block; width: 0; }
+        .search-box {
+            position: relative;
+            width: 100%;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            background: #2c2c2e;
+            border: 1px solid transparent;
+            border-radius: 10px;
+            padding: 12px 14px;
+            color: var(--text-main);
+            font-size: 14px;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent-red);
+            background: #1c1c1e;
+        }
+
+        .btn {
+            background: var(--accent-red);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s ease;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background: #2c2c2e;
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        .btn-secondary:hover {
+            background: #3a3a3c;
+        }
+
+        .telemetry-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 13px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 6px;
+        }
+
+        .telemetry-label {
+            color: var(--text-muted);
+        }
+
+        .telemetry-value {
+            font-family: monospace;
+            font-weight: 500;
+        }
+
+        #gps-status-label {
+            font-weight: 700;
+            color: var(--accent-red);
+        }
+
+        /* Custom Location Marker Style */
+        .user-position-marker {
+            width: 20px;
+            height: 20px;
+            background: var(--accent-red);
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255, 34, 34, 0.6);
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
 
-    <div id="app-viewport">
+    <div id-="app-container">
+        <!-- Interactive Map Frame -->
         <div id="map"></div>
 
-        <div id="control-panel-deck">
-            <div class="panel-scrollable-body">
-                <div class="brand-logo">Geo<span>Pro</span> 3D Workspace</div>
-
-                <div class="search-field-container">
-                    <div class="search-input-wrapper">
-                        <input type="text" class="search-input-node" id="osm-engine-input" placeholder="Enter target terminal...">
-                    </div>
-                    <div class="osm-dropdown-menu" id="osm-engine-dropdown"></div>
-                </div>
-
-                <div id="context-destination-panel">
-                    <div class="panel-header-title" id="node-panel-title">Target Vector</div>
-                    <div class="panel-address-sub" id="node-panel-address">Resolving 3D spatial data...</div>
-                    <div class="action-button-matrix">
-                        <button class="primary-action-btn" id="launch-routing-action">Start 3D Navigation</button>
-                        <button class="kill-action-btn" id="flush-workspace-trigger">✖</button>
-                    </div>
-                </div>
-
-                <div class="hardware-diagnostics-deck">
-                    <div class="diagnostic-row"><span>Navigation Link</span><span id="gps-status-label" style="color: #ff2222; font-weight: bold;">3D SIMULATOR ACTIVE</span></div>
-                    <div class="diagnostic-row"><span>Render Engine</span><span>Procedural 3D Matrix</span></div>
-                </div>
+        <!-- Upper Control Module -->
+        <div id="controls-panel" class="hud-panel">
+            <h2>Spatial Interface</h2>
+            <div class="search-box">
+                <input type="text" id="search-input" placeholder="Search coordinates or addresses..." />
             </div>
+            <button class="btn" id="trigger-gps-btn" onclick="attemptNativeWebGPS()">
+                Force GPS Sync Stream
+            </button>
         </div>
 
-        <div id="right-floating-console-stack">
-            <button class="console-action-btn-node" id="force-gps-recenter" title="Snap to Simulator Anchor">🎯</button>
+        <!-- Lower Telemetry Matrix -->
+        <div id="telemetry-panel" class="hud-panel">
+            <h2>Live Telemetry Pipeline</h2>
+            <div class="telemetry-row">
+                <span class="telemetry-label">Signal Status</span>
+                <span class="telemetry-value" id="gps-status-label">NOT INITIALIZED</span>
+            </div>
+            <div class="telemetry-row">
+                <span class="telemetry-label">Latitude</span>
+                <span class="telemetry-value" id="telemetry-lat">--.------</span>
+            </div>
+            <div class="telemetry-row">
+                <span class="telemetry-label">Longitude</span>
+                <span class="telemetry-value" id="telemetry-lng">--.------</span>
+            </div>
+            <div class="telemetry-row">
+                <span class="telemetry-label">Tracking Stream</span>
+                <span class="telemetry-value" id="telemetry-type">OFFLINE</span>
+            </div>
+            <button class="btn btn-secondary" style="margin-top: 4px; padding: 8px;" onclick="snapToUserLocation()">
+                Snap Map to Target
+            </button>
         </div>
     </div>
 
     <script>
-        // High-fidelity dark mapping layer config (non-satellite base)
-        const map = new maplibregl.Map({
-            container: 'map',
-            style: 'https://tiles.openfreemap.org/styles/dark', 
-            center: [-123.2078, 39.1502], 
-            zoom: 16,
-            pitch: 60,
-            bearing: -10,
-            antialias: true
-        });
-
-        let defaultUserCoordinates = [-123.2078, 39.1502];
-        let targetSelectedCoordinates = null;
-        let querySearchDebounceTimer = null;
+        // Global State Registry
+        let map;
+        let defaultUserCoordinates = [-123.2078, 39.1502]; // Fallback Default Viewport Anchor
         let livePositionTelemetryMarkerNode = null;
-        let animationFrameInstance = null;
+        let activeWatchId = null;
 
-        map.on('load', () => {
-            injectRealistic3DWorldLayers();
-            initTelemetryMarker();
-            initAutonomousSearchMatrix();
-            initDirectMapInputListeners();
-            initHardwareConsoleTriggers();
-            generateMockBusinessStructures();
-        });
-
-        // 1. INJECT HIGH-REALISM PROCEDURAL 3D STRUCTURING (Buildings, Multi-Lane Maps, Trees)
-        function injectRealistic3DWorldLayers() {
-            // Extrude structural buildings with clean modern dark aesthetic
-            map.addLayer({
-                'id': '3d-buildings-extrusion',
-                'source': 'openmaptiles',
-                'source-layer': 'building',
-                'type': 'fill-extrusion',
-                'minzoom': 13,
-                'paint': {
-                    'fill-extrusion-color': [
-                        'case',
-                        ['boolean', ['feature-state', 'hover'], false],
-                        '#ff3333',
-                        '#1b1c24'
-                    ],
-                    'fill-extrusion-height': ['preset', ['get', 'render_height'], ['get', 'height'], 15],
-                    'fill-extrusion-base': ['preset', ['get', 'render_min_height'], ['get', 'min_height'], 0],
-                    'fill-extrusion-opacity': 0.88
-                }
+        // Initialize Map Instance on DOM Load
+        document.addEventListener("DOMContentLoaded", () => {
+            map = new maplibregl.Map({
+                container: 'map',
+                style: 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json', // Premium Dark Engine
+                center: defaultUserCoordinates,
+                zoom: 12,
+                pitch: 45,
+                bearing: 0,
+                antialias: true
             });
-        }
 
-        // 2. PROCEDURALLY POPULATE LANDMARK BUILDINGS & SIGNAGE CARDS
-        function generateMockBusinessStructures() {
-            const anchorOffsets = [
-                { name: "Target Retail Space", coords: [-123.2065, 39.1515], color: "#cc0000" },
-                { name: "Starbucks Node", coords: [-123.2092, 39.1492], color: "#00704a" },
-                { name: "Costco Terminal", coords: [-123.2041, 39.1478], color: "#005ca9" },
-                { name: "Chevron Logistics", coords: [-123.2085, 39.1530], color: "#1a75ff" }
-            ];
-
-            anchorOffsets.forEach(biz => {
-                // Render 3D Label Card Popups over business zones
-                const el = document.createElement('div');
-                el.className = 'business-label-card';
-                el.innerText = biz.name;
-                el.style.border = `1px solid ${biz.color}`;
-
-                new maplibregl.Marker({ element: el, anchor: 'bottom' })
-                    .setLngLat(biz.coords)
-                    .addTo(map);
-
-                // Inject mock geometry structure to simulate customized footprints 
-                const sourceId = `footprint-src-${biz.name.replace(/\s+/g, '')}`;
-                map.addSource(sourceId, {
-                    'type': 'geojson',
-                    'data': {
-                        'type': 'Feature',
-                        'geometry': {
-                            'type': 'Polygon',
-                            'coordinates': [[
-                                [biz.coords[0] - 0.0006, biz.coords[1] - 0.0004],
-                                [biz.coords[0] + 0.0006, biz.coords[1] - 0.0004],
-                                [biz.coords[0] + 0.0006, biz.coords[1] + 0.0004],
-                                [biz.coords[0] - 0.0006, biz.coords[1] + 0.0004],
-                                [biz.coords[0] - 0.0006, biz.coords[1] - 0.0004]
-                            ]]
-                        }
+            map.on('load', () => {
+                console.log("Map engine successfully initialized.");
+                
+                // Add 3D Extrusion Layer for Architectural Geometry
+                const layers = map.getStyle().layers;
+                let labelLayerId;
+                for (let i = 0; i < layers.length; i++) {
+                    if (layers[i].type === 'symbol' && layers[i].layout['text-field']) {
+                        labelLayerId = layers[i].id;
+                        break;
                     }
-                });
+                }
 
                 map.addLayer({
-                    'id': `layer-extruded-${sourceId}`,
+                    'id': '3d-buildings',
+                    'source': 'openmaptiles',
+                    'source-layer': 'building',
                     'type': 'fill-extrusion',
-                    'source': sourceId,
+                    'minzoom': 13,
                     'paint': {
-                        'fill-extrusion-color': '#252733',
-                        'fill-extrusion-height': 38,
-                        'fill-extrusion-base': 0,
-                        'fill-extrusion-opacity': 0.95
+                        'fill-extrusion-color': '#1a1a1c',
+                        'fill-extrusion-height': ['get', 'render_height'],
+                        'fill-extrusion-base': ['get', 'render_min_height'],
+                        'fill-extrusion-opacity': 0.7
                     }
-                });
+                }, labelLayerId);
+
+                // Auto initialize coordinate tracking stream immediately on load
+                attemptNativeWebGPS();
             });
-        }
+        });
 
-        // 3. COPY MAPBOX’S ADVANCED 3D MULTI-LANE LAYOUT & HIGHWAY MARKING PATTERNS
-        function drawAdvanced3DLanes(geojsonGeo) {
-            clearSpatialLayers();
+        /**
+         * Bulletproof Geolocation Stream Script
+         * Resolves permission lockouts, secure context checks, and falls back gracefully to coarse streams
+         */
+        function attemptNativeWebGPS() {
+            const statusLabel = document.getElementById('gps-status-label');
+            const trackingType = document.getElementById('telemetry-type');
 
-            // Underlying Wide Road Bed Asphalt Layer
-            map.addSource('road-bed-asphalt-src', { type: 'geojson', data: geojsonGeo });
-            map.addLayer({
-                id: 'road-bed-asphalt', type: 'line', source: 'road-bed-asphalt-src',
-                layout: { 'line-cap': 'round', 'line-join': 'round' },
-                paint: { 'line-color': '#111216', 'line-width': 22, 'line-opacity': 1.0 }
-            });
-
-            // Bright Outer Guidance Boundaries
-            map.addLayer({
-                id: 'road-border-guidance', type: 'line', source: 'road-bed-asphalt-src',
-                layout: { 'line-cap': 'round', 'line-join': 'round' },
-                paint: { 'line-color': 'rgba(255,255,255,0.15)', 'line-width': 20, 'line-opacity': 1.0 }
-            });
-
-            // Interactive Multi-Lane Segmentation Layer (Emulates Mapbox 3D lanes)
-            map.addLayer({
-                id: 'lane-separation-dashed', type: 'line', source: 'road-bed-asphalt-src',
-                layout: { 'line-cap': 'butt', 'line-join': 'round' },
-                paint: {
-                    'line-color': '#1a1c23',
-                    'line-width': 2,
-                    'line-dasharray': [3, 4]
-                }
-            });
-
-            // Active Internal Navigation Primary Core Highlight Vector
-            map.addLayer({
-                id: 'active-nav-vector', type: 'line', source: 'road-bed-asphalt-src',
-                layout: { 'line-cap': 'round', 'line-join': 'round' },
-                paint: { 'line-color': varText('--action-red'), 'line-width': 6, 'line-opacity': 0.95 }
-            });
-
-            // 4. GENERATE HIGH-REALISM PROCEDURAL ROADSIDE TREES
-            generateProceduralRoadsideTrees(geojsonGeo.geometry.coordinates);
-        }
-
-        function generateProceduralRoadsideTrees(routeCoordinates) {
-            const treeGeojson = { type: 'FeatureCollection', features: [] };
-
-            // Walk along path steps and offset trees left/right along the route borders
-            for (let i = 0; i < routeCoordinates.length; i += 2) {
-                const pt = routeCoordinates[i];
-                if (!pt) continue;
-
-                // Left flank tree cluster node
-                treeGeojson.features.push({
-                    type: 'Feature',
-                    properties: { height: 14, base: 0 },
-                    geometry: { type: 'Point', coordinates: [pt[0] + 0.00015, pt[1] + 0.0001] }
-                });
-                // Right flank tree cluster node
-                treeGeojson.features.push({
-                    type: 'Feature',
-                    properties: { height: 12, base: 0 },
-                    geometry: { type: 'Point', coordinates: [pt[0] - 0.00015, pt[1] - 0.0001] }
-                });
+            // Clear any lingering stream watch processes to prevent concurrent thread locking
+            if (activeWatchId !== null) {
+                navigator.geolocation.clearWatch(activeWatchId);
+                activeWatchId = null;
             }
 
-            map.addSource('procedural-forest-src', { type: 'geojson', data: treeGeojson });
-            map.addLayer({
-                id: 'procedural-forest-3d',
-                type: 'fill-extrusion',
-                source: 'procedural-forest-src',
-                paint: {
-                    // Vibrant rich realistic forest green coloration matrix
-                    'fill-extrusion-color': '#1b7e43',
-                    'fill-extrusion-height': ['get', 'height'],
-                    'fill-extrusion-base': ['get', 'base'],
-                    'fill-extrusion-opacity': 0.9
-                }
-            });
-        }
-
-        // 5. CINEMATIC 3D FLIGHT/DRIVE ROUTE SIMULATOR (Solves GPS failures)
-        function initiate3DSimulationRun(coordinatesList) {
-            if (animationFrameInstance) cancelAnimationFrame(animationFrameInstance);
-            
-            let currentStepIndex = 0;
-            const totalStepsCount = coordinatesList.length;
-
-            function animateCameraTick() {
-                if (currentStepIndex >= totalStepsCount - 1) {
-                    document.getElementById('gps-status-label').innerText = "ARRIVED AT DESTINATION";
-                    document.getElementById('gps-status-label').style.color = "#30d158";
-                    return;
-                }
-
-                const currentPosition = coordinatesList[currentStepIndex];
-                const nextTargetPosition = coordinatesList[currentStepIndex + 1];
-
-                // Update position mark location pointer
-                defaultUserCoordinates = currentPosition;
-                livePositionTelemetryMarkerNode.setLngLat(currentPosition);
-
-                // Automatically calculate bearing direction relative to the upcoming coordinate curve
-                const dx = nextTargetPosition[0] - currentPosition[0];
-                const dy = nextTargetPosition[1] - currentPosition[1];
-                let bearingAngle = Math.atan2(dx, dy) * (180 / Math.PI);
-
-                map.easeTo({
-                    center: currentPosition,
-                    bearing: bearingAngle,
-                    pitch: 65,
-                    zoom: 17.5,
-                    duration: 0
-                });
-
-                currentStepIndex++;
-                animationFrameInstance = requestAnimationFrame(animateCameraTick);
+            // Security context check (Bypass allowed for localhost)
+            if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                console.error("GPS Error: Geolocation streams require HTTPS secure context environments.");
+                statusLabel.innerText = "REQUIRES HTTPS SSL";
+                statusLabel.style.color = "var(--accent-red)";
+                trackingType.innerText = "BLOCKED";
+                return;
             }
 
-            document.getElementById('gps-status-label').innerText = "DRIVING SIMULATION ACTIVE";
-            document.getElementById('gps-status-label').style.color = "#ffaa00";
-            animateCameraTick();
-        }
+            if (!("geolocation" in navigator)) {
+                statusLabel.innerText = "UNSUPPORTED HARDWARE";
+                trackingType.innerText = "HARDWARE ABSENT";
+                return;
+            }
 
-        async function triggerRoutingEngineExecution() {
-            if (!targetSelectedCoordinates) return;
-            const routeUrl = `https://router.project-osrm.org/route/v1/driving/${defaultUserCoordinates.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson`;
-            
-            try {
-                const stream = await fetch(routeUrl);
-                const results = await stream.json();
-                if (results.code !== 'Ok' || !results.routes[0]) return;
+            statusLabel.innerText = "REQUESTING ACCESS...";
+            statusLabel.style.color = "#ffcc00";
+
+            // Profiles for tracking execution
+            const preciseOptions = {
+                enableHighAccuracy: true,
+                timeout: 7000,          // Direct fail-fast window to drop down to cell/wifi if hardware GPS fails
+                maximumAge: 0
+            };
+
+            const coarseOptions = {
+                enableHighAccuracy: false,
+                timeout: 10000,
+                maximumAge: 30000
+            };
+
+            function successCallback(position) {
+                const lng = position.coords.longitude;
+                const lat = position.coords.latitude;
+                defaultUserCoordinates = [lng, lat];
                 
-                const pathFeature = { type: 'Feature', geometry: results.routes[0].geometry };
+                // Update text strings inside UI
+                document.getElementById('telemetry-lat').innerText = lat.toFixed(6);
+                document.getElementById('telemetry-lng').innerText = lng.toFixed(6);
                 
-                // Construct the 3D Lane Bed Mesh and Trees
-                drawAdvanced3DLanes(pathFeature);
-                
-                // Fire off cinematic simulation sequence down the nodes array
-                initiate3DSimulationRun(pathFeature.geometry.coordinates);
-            } catch (err) { console.error(err); }
-        }
+                statusLabel.innerText = "LIVE STREAM CONNECTED";
+                statusLabel.style.color = "var(--success-green)";
+                trackingType.innerText = position.coords.accuracy <= 30 ? "HIGH-PRECISION HARDWARE" : "COARSE NETWORK/WIFI";
 
-        function initTelemetryMarker() {
-            const container = document.createElement('div');
-            container.className = 'telemetry-pulse-marker';
-            const core = document.createElement('div'); core.className = 'telemetry-pulse-core';
-            container.appendChild(core);
+                // Initialize or move the customized tracking node element
+                if (!livePositionTelemetryMarkerNode) {
+                    const el = document.createElement('div');
+                    el.className = 'user-position-marker';
+                    
+                    livePositionTelemetryMarkerNode = new maplibregl.Marker({
+                        element: el,
+                        anchor: 'center'
+                    })
+                    .setLngLat(defaultUserCoordinates)
+                    .addTo(map);
+                } else {
+                    livePositionTelemetryMarkerNode.setLngLat(defaultUserCoordinates);
+                }
+            }
 
-            livePositionTelemetryMarkerNode = new maplibregl.Marker({ element: container })
-                .setLngLat(defaultUserCoordinates)
-                .addTo(map);
-        }
-
-        function initAutonomousSearchMatrix() {
-            const input = document.getElementById('osm-engine-input');
-            const dropdown = document.getElementById('osm-engine-dropdown');
-
-            input.addEventListener('input', (e) => {
-                const queryVal = e.target.value.trim();
-                clearTimeout(querySearchDebounceTimer);
-                if (queryVal.length < 3) { dropdown.style.display = 'none'; return; }
-                
-                querySearchDebounceTimer = setTimeout(async () => {
-                    try {
-                        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`);
-                        const payload = await res.json();
-                        if (!payload.features || payload.features.length === 0) { dropdown.style.display = 'none'; return; }
+            function errorCallback(error) {
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        console.warn("GPS Interface: Permission denied by client browser layout options.");
+                        statusLabel.innerText = "ERROR: ACCESS DENIED";
+                        statusLabel.style.color = "var(--accent-red)";
+                        trackingType.innerText = "RESET PERMISSIONS";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        console.warn("GPS Interface: Precision tracking down. Forking into coarse pipeline...");
+                        statusLabel.innerText = "ROUTING COARSE STREAM...";
+                        statusLabel.style.color = "#ffcc00";
                         
-                        dropdown.innerHTML = '';
-                        payload.features.forEach(feat => {
-                            const item = document.createElement('div');
-                            item.className = 'osm-suggest-item';
-                            const p = feat.properties;
-                            const label = [p.name, p.city, p.state].filter(Boolean).join(', ');
-                            item.innerText = label;
-                            
-                            item.addEventListener('click', () => {
-                                const targetLoc = feat.geometry.coordinates;
-                                dropdown.style.display = 'none'; input.value = label;
-                                map.flyTo({ center: targetLoc, zoom: 16, pitch: 60, duration: 1500 });
-                                toggleWorkspaceCard(targetLoc, p.name || "Target Terminal", label);
-                            });
-                            dropdown.appendChild(item);
-                        });
-                        dropdown.style.display = 'block';
-                    } catch (err) { console.error(err); }
-                }, 250);
-            });
+                        // Execute single-shot lower accuracy mesh fallback
+                        navigator.geolocation.getCurrentPosition(successCallback, (err) => {
+                            statusLabel.innerText = "HARDWARE UNREACHABLE";
+                            statusLabel.style.color = "var(--accent-red)";
+                            trackingType.innerText = "NO POSITION FOUND";
+                        }, coarseOptions);
+                        break;
+                    case error.TIMEOUT:
+                        console.warn("GPS Interface: Connection timeout waiting for satellite array.");
+                        statusLabel.innerText = "ERROR: STREAM TIMEOUT";
+                        statusLabel.style.color = "var(--accent-red)";
+                        trackingType.innerText = "HARDWARE HUNG";
+                        break;
+                }
+            }
+
+            // Start hardware streaming tracker pipeline
+            activeWatchId = navigator.geolocation.watchPosition(successCallback, errorCallback, preciseOptions);
         }
 
-        function initDirectMapInputListeners() {
-            map.on('click', async (e) => {
-                const pinpoint = [e.lngLat.lng, e.lngLat.lat];
-                toggleWorkspaceCard(pinpoint, "Selected Node Coordinate", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
-            });
-        }
-
-        function toggleWorkspaceCard(coords, title, subtext) {
-            targetSelectedCoordinates = coords;
-            document.getElementById('node-panel-title').innerText = title;
-            document.getElementById('node-panel-address').innerText = subtext;
-            document.getElementById('context-destination-panel').style.display = 'flex';
-        }
-
-        function clearSpatialLayers() {
-            if (animationFrameInstance) cancelAnimationFrame(animationFrameInstance);
-            ['active-nav-vector', 'lane-separation-dashed', 'road-border-guidance', 'road-bed-asphalt', 'procedural-forest-3d'].forEach(lyr => {
-                if (map.getLayer(lyr)) map.removeLayer(lyr);
-            });
-            ['road-bed-asphalt-src', 'procedural-forest-src'].forEach(src => {
-                if (map.getSource(src)) map.removeSource(src);
-            });
-        }
-
-        function initHardwareConsoleTriggers() {
-            document.getElementById('force-gps-recenter').addEventListener('click', () => {
-                map.flyTo({ center: defaultUserCoordinates, zoom: 16.5, pitch: 60, duration: 1000 });
-            });
-            document.getElementById('launch-routing-action').addEventListener('click', triggerRoutingEngineExecution);
-            document.getElementById('flush-workspace-trigger').addEventListener('click', () => {
-                clearSpatialLayers();
-                document.getElementById('context-destination-panel').style.display = 'none';
-                targetSelectedCoordinates = null;
-                document.getElementById('gps-status-label').innerText = "3D SIMULATOR ACTIVE";
-                document.getElementById('gps-status-label').style.color = "#ff2222";
-            });
-        }
-
-        function varText(varName) {
-            return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+        /**
+         * Re-centers the view matrix over current location coordinates
+         */
+        function snapToUserLocation() {
+            if (map && defaultUserCoordinates) {
+                map.flyTo({
+                    center: defaultUserCoordinates,
+                    zoom: 15,
+                    essential: true,
+                    pitch: 45,
+                    speed: 1.2
+                });
+            }
         }
     </script>
 </body>
