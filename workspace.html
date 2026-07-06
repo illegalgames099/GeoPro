@@ -3,838 +3,974 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GeoPro Quantum Navigation</title>
-
-    <!-- Mapbox GL JS Core Engine -->
-    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
-
-    <!-- Modern Mapbox Search JS Web Component Engine Bundle -->
+    <title>GeoPro</title>
+    
+    <!-- Mapbox GL JS v3 CSS & JS -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.js"></script>
+    
+    <!-- Mapbox Search JS Web Web Component Framework -->
     <script id="search-js" defer src="https://api.mapbox.com/search-js/v1.5.0/web.js"></script>
+
+    <!-- Google Fonts for Cyber Aesthetic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 
     <style>
         :root {
-            --bg-pure: #000000;
-            --hud-bg: rgba(10, 10, 12, 0.90);
-            --card-surface: rgba(22, 22, 26, 0.75);
-            --neon-red: #ff2222;
-            --neon-blue: #0071e3;
-            --neon-purple: #b46bff;
-            --border-glow: rgba(255, 34, 34, 0.15);
-            --border-line: rgba(255, 255, 255, 0.08);
-            --text-primary: #ffffff;
-            --text-secondary: #8e8e93;
-            --traffic-green: #30d158;
-            --traffic-yellow: #ffcc00;
-            --traffic-red: #ff453a;
+            --bg-dark: #0a0a0c;
+            --bg-surface: #121216;
+            --bg-surface-elevated: #1a1a22;
+            --accent-red: #ff2a2a;
+            --accent-red-hover: #ff5555;
+            --accent-red-dim: #5c0f0f;
+            --text-main: #f0f0f5;
+            --text-muted: #8a8a9e;
+            --border-color: #2a2a35;
+            --glow-red: 0 0 12px rgba(255, 42, 42, 0.4);
+            --font-display: 'Orbitron', sans-serif;
+            --font-mono: 'JetBrains Mono', monospace;
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
-            letter-spacing: -0.2px;
+            -webkit-tap-highlight-color: transparent;
         }
 
         body, html {
             width: 100%;
-            height: 100vh;
-            overflow: hidden;
-            background-color: var(--bg-pure);
-            color: var(--text-primary);
-        }
-
-        #app-viewport {
-            position: relative;
-            width: 100%;
-            height: 100vh;
-            display: flex;
-        }
-
-        #map {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
             height: 100%;
-            background-color: var(--bg-pure);
-            z-index: 1;
+            overflow: hidden;
+            background-color: var(--bg-dark);
+            font-family: var(--font-mono);
+            color: var(--text-main);
         }
 
-        button { font: inherit; }
-
-        /* ── HUD COMMAND DECK ── */
-        #command-deck {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 380px;
-            max-height: calc(100vh - 40px);
-            z-index: 10;
-            background: var(--hud-bg);
-            backdrop-filter: blur(30px) saturate(200%);
-            -webkit-backdrop-filter: blur(30px) saturate(200%);
-            border: 1px solid var(--border-line);
-            border-radius: 24px;
-            padding: 24px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 40px var(--border-glow);
+        /* App Layout Container */
+        .app-container {
             display: flex;
             flex-direction: column;
-            gap: 16px;
-            transform: translateY(0px);
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            overflow-y: auto;
-            touch-action: none;
-        }
-
-        .drag-handle-zone {
             width: 100%;
-            padding: 14px 0 8px;
-            margin: -14px 0 -8px;
-            display: flex;
-            justify-content: center;
-            cursor: grab;
-            touch-action: none;
-            user-select: none;
-        }
-        .drag-handle-zone:active { cursor: grabbing; }
-        .drag-handle-bar {
-            width: 36px;
-            height: 5px;
-            background: rgba(255, 255, 255, 0.25);
-            border-radius: 3px;
-            pointer-events: none;
+            height: 100%;
+            position: relative;
         }
 
-        #command-deck.is-dragging { transition: none !important; }
-
-        .deck-header {
+        /* Top Navigation Bar */
+        .top-navbar {
+            height: 60px;
+            background: var(--bg-surface);
+            border-bottom: 2px solid var(--accent-red);
             display: flex;
             align-items: center;
             justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1010;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+        }
+
+        .brand-section {
+            display: flex;
+            align-items: center;
+            gap: 15px;
         }
 
         .brand-logo {
-            font-size: 1.35rem;
-            font-weight: 800;
-            text-transform: uppercase;
+            font-family: var(--font-display);
+            font-weight: 900;
+            font-size: 1.3rem;
+            letter-spacing: 2px;
+            color: var(--text-main);
+            text-shadow: var(--glow-red);
+        }
+
+        .brand-logo span {
+            color: var(--accent-red);
+        }
+
+        .status-badge {
+            background: rgba(0, 230, 115, 0.1);
+            border: 1px solid #00e673;
+            color: #00e673;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: bold;
             letter-spacing: 1px;
-        }
-        .brand-logo span { color: var(--neon-red); text-shadow: 0 0 10px rgba(255,34,34,0.4); }
-
-        .sys-exit-btn {
-            background: var(--card-surface);
-            border: 1px solid var(--border-line);
-            color: var(--text-secondary);
-            padding: 6px 14px;
-            border-radius: 10px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        .sys-exit-btn:hover {
-            color: var(--text-primary);
-            border-color: rgba(255,255,255,0.2);
+            text-transform: uppercase;
+            animation: status-pulse 2s infinite alternate;
         }
 
-        /* Travel Mode Selector */
-        .mode-selector-row {
+        @keyframes status-pulse {
+            0% { box-shadow: 0 0 4px rgba(0,230,115,0.2); opacity: 0.8; }
+            100% { box-shadow: 0 0 10px rgba(0,230,115,0.5); opacity: 1; }
+        }
+
+        .system-metrics-top {
             display: flex;
-            gap: 8px;
-            background: rgba(0,0,0,0.3);
-            padding: 6px;
-            border-radius: 14px;
-            border: 1px solid var(--border-line);
+            align-items: center;
+            gap: 20px;
+            font-size: 0.85rem;
         }
-        .mode-btn {
+
+        .metric-item-top {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .metric-icon-battery {
+            width: 24px;
+            height: 12px;
+            border: 1px solid var(--text-muted);
+            border-radius: 2px;
+            padding: 1px;
+            position: relative;
+            display: inline-block;
+        }
+        .metric-icon-battery::after {
+            content: '';
+            position: absolute;
+            right: -3px;
+            top: 3px;
+            width: 2px;
+            height: 4px;
+            background: var(--text-muted);
+        }
+        .battery-level {
+            width: 88%;
+            height: 100%;
+            background: #00e673;
+        }
+
+        /* Map Window Viewport */
+        .map-viewport-container {
             flex: 1;
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            padding: 9px 6px;
-            border-radius: 10px;
-            cursor: pointer;
+            position: relative;
+            width: 100%;
+            background: #111;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Search Overlay Architecture */
+        .search-control-container {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 520px;
+            z-index: 1005;
             display: flex;
             flex-direction: column;
-            align-items: center;
-            gap: 3px;
-            font-size: 0.65rem;
-            font-weight: 600;
-            transition: all 0.2s ease;
+            gap: 10px;
         }
-        .mode-btn svg { stroke: var(--text-secondary); fill: none; }
-        .mode-btn.active {
-            background: rgba(255, 34, 34, 0.15);
-            color: var(--neon-red);
-        }
-        .mode-btn.active svg { stroke: var(--neon-red); }
 
-        /* ── MODERN SHADOW-DOM SEARCH BOX RULES ── */
-        .search-container-box {
-            width: 100%;
-            position: relative;
-        }
-        #geocoder-mount {
-            width: 100%;
-        }
-        mapboxsearch-search-box {
+        /* Mapbox Search Custom Element Overrides */
+        mapbox-search-box, .mapboxgl-ctrl-geocoder {
             width: 100% !important;
             max-width: 100% !important;
-            --mapbox-search-box-background: var(--card-surface);
-            --mapbox-search-box-text: var(--text-primary);
-            --mapbox-search-box-placeholder-text: var(--text-secondary);
-            --mapbox-search-box-border: 1px solid var(--border-line);
-            --mapbox-search-box-border-radius: 16px;
-            --mapbox-search-box-results-background: var(--hud-bg);
-            --mapbox-search-box-result-text: var(--text-primary);
-            --mapbox-search-box-result-hover-background: rgba(255, 255, 255, 0.08);
-            --mapbox-search-box-icon-fill: var(--text-secondary);
-            --mapbox-search-box-shadow: none;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.7) !important;
         }
 
-        /* Category Chips Styling */
-        .category-chips-row {
+        /* Category Fast Search Row */
+        .category-pill-container {
             display: flex;
             gap: 8px;
             overflow-x: auto;
-            padding: 2px 0 6px 0;
-            scrollbar-width: none;
+            padding: 4px 2px;
+            scrollbar-width: none; /* Hide standard scrollbar */
         }
-        .category-chips-row::-webkit-scrollbar { display: none; }
-        
+        .category-pill-container::-webkit-scrollbar {
+            display: none;
+        }
+
         .category-search-pill {
-            background: rgba(22, 22, 26, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: var(--text-primary);
-            padding: 10px 18px;
-            border-radius: 100px;
-            font-size: 0.88rem;
-            font-weight: 500;
+            background: rgba(18, 18, 22, 0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .category-search-pill:hover, .category-search-pill:active {
+            border-color: var(--accent-red);
+            background: var(--bg-surface-elevated);
+            box-shadow: var(--glow-red);
+            transform: translateY(-1px);
+        }
+
+        .category-search-pill::before {
+            content: '⌖';
+            color: var(--accent-red);
+            font-weight: bold;
+        }
+
+        /* Left Dashboard Control Overlay */
+        .left-control-dashboard {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 320px;
+            background: rgba(18, 18, 22, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--border-color);
+            border-left: 3px solid var(--accent-red);
+            border-radius: 6px;
+            z-index: 1002;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+            max-height: calc(100% - 160px);
+            overflow-y: auto;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .dashboard-section-title {
+            font-family: var(--font-display);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dashboard-section-title::after {
+            content: '●';
+            color: var(--accent-red);
+            font-size: 0.6rem;
+        }
+
+        /* Interactive Layer Radio Formats */
+        .layer-selector-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .layer-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid transparent;
+            font-size: 0.85rem;
+            transition: all 0.2s ease;
+        }
+
+        .layer-label:hover {
+            background: rgba(255,42,42,0.05);
+            border-color: rgba(255,42,42,0.2);
+        }
+
+        .layer-label input[type="radio"] {
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--text-muted);
+            border-radius: 50%;
+            outline: none;
+            display: grid;
+            place-content: center;
+            transition: border-color 0.2s ease;
+        }
+
+        .layer-label input[type="radio"]::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            transform: scale(0);
+            transition: 0.15s transform ease-in-out;
+            background-color: var(--accent-red);
+            box-shadow: var(--glow-red);
+        }
+
+        .layer-label input[type="radio"]:checked {
+            border-color: var(--accent-red);
+        }
+
+        .layer-label input[type="radio"]:checked::before {
+            transform: scale(1);
+        }
+
+        /* Action Panel Buttons */
+        .operation-actions-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .btn-core-action {
+            width: 100%;
+            background: var(--bg-surface-elevated);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 10px 14px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: left;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .category-search-pill:hover {
-            background: rgba(35, 35, 40, 1);
-            border-color: var(--neon-red);
-            transform: scale(1.02);
+            justify-content: space-between;
+            transition: all 0.2s ease;
         }
 
-        /* ── DESTINATION CARD DISPLAY ── */
-        #destination-card {
-            background: var(--card-surface);
-            border: 1px solid var(--border-line);
-            border-radius: 16px;
-            padding: 16px;
+        .btn-core-action:hover {
+            border-color: var(--accent-red);
+            background: rgba(255,42,42,0.1);
+            color: #fff;
+            box-shadow: var(--glow-red);
+        }
+
+        .btn-core-action::after {
+            content: '→';
+            color: var(--accent-red);
+            font-weight: bold;
+        }
+
+        /* Stats Grid System */
+        .telemetry-summary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .telemetry-card {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid var(--border-color);
+            padding: 10px;
+            border-radius: 4px;
+        }
+
+        .telemetry-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .telemetry-value {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: var(--text-main);
+        }
+
+        /* Bottom Drag & Scroll Panel Sheet Layout */
+        .console-panel {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 300px; /* Default Initial Desktop Height */
+            min-height: 140px;
+            max-height: 85vh;
+            background: var(--bg-surface);
+            border-top: 2px solid var(--accent-red);
+            z-index: 1020;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 -8px 32px rgba(0,0,0,0.8);
+        }
+
+        /* Tactile Sheet Drag Bar Panel Element */
+        .drag-handle {
+            width: 100%;
+            height: 24px;
+            background: var(--bg-dark);
+            cursor: ns-resize;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid var(--border-color);
+            touch-action: none; /* Crucial block for structural gesture intercept */
+        }
+
+        .handle-bar {
+            width: 44px;
+            height: 4px;
+            background: var(--border-color);
+            border-radius: 2px;
+            transition: background 0.2s ease;
+        }
+
+        .drag-handle:hover .handle-bar {
+            background: var(--accent-red);
+        }
+
+        /* Tabs Interface */
+        .console-tabs {
+            display: flex;
+            background: var(--bg-dark);
+            border-bottom: 1px solid var(--border-color);
+            overflow-x: auto;
+        }
+
+        .tab-trigger {
+            background: transparent;
+            border: none;
+            border-right: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 10px 20px;
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s ease;
+        }
+
+        .tab-trigger:hover {
+            color: var(--text-main);
+            background: rgba(255,255,255,0.02);
+        }
+
+        .tab-trigger.active {
+            background: var(--bg-surface);
+            color: var(--accent-red);
+            border-bottom: 2px solid var(--accent-red);
+            height: calc(100% + 1px);
+        }
+
+        /* Scrollable Sheet Content Window Area */
+        .console-body {
+            flex: 1;
+            overflow-y: auto; /* Active scrolling implementation */
+            -webkit-overflow-scrolling: touch; /* Momentum scrolling layout utility */
+            padding: 15px;
+            background: #0d0d11;
+        }
+
+        .tab-content {
             display: none;
-            flex-direction: column;
-            gap: 12px;
+            height: 100%;
         }
-        .dest-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); }
-        .dest-address { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.3; }
 
-        .business-data-grid {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border-line);
-            border-radius: 12px;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Log Output Formatting */
+        .log-entry {
             font-size: 0.8rem;
-        }
-        .biz-row { display: flex; justify-content: space-between; align-items: center; }
-        .biz-label { color: var(--text-secondary); }
-        .biz-val { font-weight: 600; }
-        .biz-badge { background: rgba(48, 209, 88, 0.15); color: var(--traffic-green); padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; }
-        .biz-rating { color: var(--traffic-yellow); font-weight: 700; }
-
-        .route-alt-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
-        .route-alt-pill {
-            flex-shrink: 0; background: rgba(255,255,255,0.05); border: 1px solid var(--border-line);
-            color: var(--text-secondary); padding: 8px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; cursor: pointer;
-        }
-        .route-alt-pill.selected { border-color: var(--neon-blue); color: var(--text-primary); background: rgba(0, 113, 227, 0.18); }
-
-        .nav-action-row { display: flex; gap: 10px; }
-        .nav-btn {
-            flex: 1; background: var(--neon-blue); color: #fff; border: none; padding: 12px;
-            border-radius: 12px; font-size: 0.88rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-        }
-        .clear-route-btn { background: rgba(255,255,255,0.08); border: 1px solid var(--border-line); color: var(--text-primary); width: 48px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-
-        /* Telemetry Feeds */
-        .telemetry-grid {
+            line-height: 1.5;
+            margin-bottom: 6px;
+            word-break: break-all;
             display: flex;
-            flex-direction: column;
-            gap: 8px;
-            background: rgba(0,0,0,0.3);
-            padding: 14px 16px;
-            border-radius: 16px;
-            border: 1px solid var(--border-line);
+            gap: 10px;
         }
-        .matrix-row { display: flex; justify-content: space-between; font-size: 0.8rem; }
-        .matrix-row span:first-child { color: var(--text-secondary); }
-        .matrix-row span:last-child { font-family: monospace; font-weight: 600; }
 
-        /* Active HUD Navigation Elements */
-        #active-nav-hud {
-            display: none; position: absolute; top: 20px; left: 20px; width: 380px; z-index: 15; flex-direction: column; gap: 10px;
+        .log-time {
+            color: var(--text-muted);
+            flex-shrink: 0;
         }
-        .nav-instruction-card { background: linear-gradient(160deg, rgba(0,113,227,0.35), rgba(10,10,12,0.92)); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.12); border-radius: 24px; padding: 22px; display: flex; align-items: center; gap: 18px; }
-        .nav-instruction-body { flex: 1; }
-        .nav-instruction-dist { font-size: 1.6rem; font-weight: 800; }
-        .nav-instruction-text { font-size: 0.9rem; color: rgba(255,255,255,0.85); font-weight: 600; }
-        .nav-bottom-bar { background: var(--hud-bg); backdrop-filter: blur(30px); border: 1px solid var(--border-line); border-radius: 20px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; }
-        .nav-bottom-stat { display: flex; flex-direction: column; }
-        .nav-bottom-stat .val { font-size: 1.05rem; font-weight: 800; }
-        .nav-bottom-stat .lbl { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; }
-        .nav-end-btn { background: var(--neon-red); color: #fff; border: none; padding: 10px 18px; border-radius: 12px; font-weight: 700; cursor: pointer; }
 
-        #speed-chip {
-            display: none; position: absolute; bottom: 20px; left: 20px; z-index: 15; width: 74px; height: 74px; border-radius: 50%; background: #0c0c0e; border: 4px solid var(--text-primary); flex-direction: column; align-items: center; justify-content: center;
+        .log-tag {
+            color: var(--accent-red);
+            font-weight: bold;
+            flex-shrink: 0;
         }
-        #speed-chip .speed-val { font-size: 1.4rem; font-weight: 800; line-height: 1; }
-        #speed-chip .speed-unit { font-size: 0.55rem; color: var(--text-secondary); font-weight: 700; }
 
-        /* Right Control Stack */
-        #right-console-stack {
-            position: absolute; top: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 12px;
+        .log-tag.system { color: #00b3ff; }
+        .log-tag.success { color: #00e673; }
+        .log-tag.action { color: #ffaa00; }
+
+        .node-list-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+            text-align: left;
         }
-        .glass-panel-btn {
-            background: var(--hud-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-line); padding: 14px; border-radius: 16px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+
+        .node-list-table th, .node-list-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--border-color);
         }
-        .glass-panel-btn:hover { background: rgba(255,255,255,0.08); }
-        .glass-panel-btn.active { border-color: var(--neon-red); color: var(--neon-red); }
 
-        #spatial-overlay { position: absolute; bottom: 20px; right: 20px; background: var(--hud-bg); backdrop-filter: blur(10px); padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border-line); font-family: monospace; font-size: 0.75rem; z-index: 5; }
+        .node-list-table th {
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+        }
 
-        .custom-tracking-marker { width: 22px; height: 22px; background-color: var(--neon-blue); border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 0 18px var(--neon-blue); }
-        .custom-dest-marker { width: 18px; height: 18px; background-color: var(--neon-red); border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 0 18px var(--neon-red); }
+        .status-dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        .status-dot.online { background: #00e673; box-shadow: 0 0 6px #00e673;}
+        .status-dot.maintenance { background: #ffaa00; box-shadow: 0 0 6px #ffaa00;}
 
-        @media(max-width: 480px) {
-            #command-deck, #active-nav-hud { width: calc(100% - 40px); left: 20px; }
-            #command-deck { bottom: 20px; top: auto; max-height: 75vh; }
+        /* Responsive Layout Overrides */
+        @media(max-width: 768px) {
+            .left-control-dashboard {
+                display: none; /* Hide wide desktop sidebar panels on tight viewports */
+            }
+            .search-control-container {
+                width: 94%;
+                top: 10px;
+            }
+            .top-navbar {
+                padding: 0 12px;
+            }
+            .system-metrics-top {
+                gap: 10px;
+            }
+            .metric-item-top span {
+                display: none; /* Conserve navbar room */
+            }
+            .console-panel {
+                height: 40vh; /* Start taller on mobile viewports for easier tap target layout */
+            }
         }
     </style>
 </head>
 <body>
 
-    <div id="app-viewport">
+<div class="app-container">
+    
+    <!-- Top Bar Control -->
+    <header class="top-navbar">
+        <div class="brand-section">
+            <h1 class="brand-logo">INTERCELL <span>OSD</span></h1>
+            <div class="status-badge">System Online</div>
+        </div>
+        <div class="system-metrics-top">
+            <div class="metric-item-top">
+                <span style="color: var(--text-muted);">LOC:</span> <span>39.1503° N, 123.2078° W</span>
+            </div>
+            <div class="metric-item-top">
+                <div class="metric-icon-battery"><div class="battery-level"></div></div>
+                <span>88% PWR</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Map View Area Container -->
+    <main class="map-viewport-container">
+        
+        <!-- Search Input Floating Stack Overlay -->
+        <div class="search-control-container">
+            <!-- Target element wrapper for custom MapboxSearchBox rendering -->
+            <div id="search-box-anchor"></div>
+            
+            <!-- Proximity Action Fast Filter Search Pills Row -->
+            <div class="category-pill-container">
+                <button class="category-search-pill" data-query="Fast Food">Fast Food</button>
+                <button class="category-search-pill" data-query="Dinner">Dinner</button>
+                <button class="category-search-pill" data-query="Gas Stations">Gas Stations</button>
+            </div>
+        </div>
+
+        <!-- System Operations Left Dashboard Overlay -->
+        <section class="left-control-dashboard" id="leftDashboard">
+            <div>
+                <h3 class="dashboard-section-title" style="margin-bottom: 12px;">Layer Configurations</h3>
+                <div class="layer-selector-group">
+                    <label class="layer-label">
+                        <input type="radio" name="map-layer" value="standard" checked>
+                        <span>Standard Topology</span>
+                    </label>
+                    <label class="layer-label">
+                        <input type="radio" name="map-layer" value="satellite">
+                        <span>Satellite Grid</span>
+                    </label>
+                    <label class="layer-label">
+                        <input type="radio" name="map-layer" value="heat">
+                        <span>RF Coverage Heatmap</span>
+                    </label>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="dashboard-section-title" style="margin-bottom: 12px;">System Operations</h3>
+                <div class="operation-actions-vertical">
+                    <button class="btn-core-action" id="btnDeployNodes">Deploy System Nodes</button>
+                    <button class="btn-core-action" id="btnPurgeLogs">Purge Offline Logs</button>
+                    <button class="btn-core-action" id="btnDownloadConfig">Download Configuration</button>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="dashboard-section-title" style="margin-bottom: 12px;">Telemetry Overview</h3>
+                <div class="telemetry-summary-grid">
+                    <div class="telemetry-card">
+                        <div class="telemetry-label">Total Nodes</div>
+                        <div class="telemetry-value">14</div>
+                    </div>
+                    <div class="telemetry-card">
+                        <div class="telemetry-label">Active CH</div>
+                        <div class="telemetry-value">42</div>
+                    </div>
+                    <div class="telemetry-card" style="grid-column: span 2;">
+                        <div class="telemetry-label">Aggregated Bandwidth</div>
+                        <div class="telemetry-value" style="color: var(--accent-red);">1.2 Gbps</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- The Mapbox Canvas Insertion Node Target -->
         <div id="map"></div>
+    </main>
 
-        <!-- Command Deck Interface Sheet -->
-        <div id="command-deck">
-            <div class="drag-handle-zone" id="drag-handle"><div class="drag-handle-bar"></div></div>
-            <div class="deck-header">
-                <div class="brand-logo">Geo<span>Pro</span></div>
-                <div class="header-actions">
-                    <button class="sys-exit-btn">Exit</button>
-                </div>
-            </div>
-
-            <!-- Travel Mode Elements Matrix -->
-            <div class="mode-selector-row" id="mode-selector">
-                <button class="mode-btn active" data-mode="driving-traffic">
-                    <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 17h14M5 17a2 2 0 1 0 4 0M15 17a2 2 0 1 0 4 0M5 17l1-6 2-3h8l2 3 1 6M6 11h12"/></svg>
-                    Drive
-                </button>
-                <button class="mode-btn" data-mode="cycling">
-                    <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-9h4l4 9"/></svg>
-                    Bike
-                </button>
-                <button class="mode-btn" data-mode="walking">
-                    <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="13" cy="4" r="1.6"/><path d="M10 22l2-7 2 2 3 5"/></svg>
-                    Walk
-                </button>
-            </div>
-
-            <!-- Modern Search Mount Workspace -->
-            <div class="search-container-box">
-                <div id="geocoder-mount"></div>
-            </div>
-
-            <!-- Category Fast Access Chips -->
-            <div class="category-chips-row">
-                <button class="category-search-pill" data-query="Fast Food">🍔 Fast Food</button>
-                <button class="category-search-pill" data-query="Dinner">🍴 Dinner</button>
-                <button class="category-search-pill" data-query="Gas Station">⛽ Gas Stations</button>
-            </div>
-
-            <!-- Dynamic Context Destination Card -->
-            <div id="destination-card">
-                <div class="dest-title" id="card-title">Destination Profile</div>
-                <div class="dest-address" id="card-address">Analyzing route vector traces...</div>
-                <div id="business-profile-box"></div>
-                <div class="route-alt-row" id="route-alt-row"></div>
-                <div class="nav-action-row">
-                    <button class="nav-btn" id="launch-nav-trigger">Start Navigation</button>
-                    <button class="clear-route-btn" id="clear-route-trigger">✖</button>
-                </div>
-            </div>
-
-            <!-- Global Hardware Monitor Readings -->
-            <div class="telemetry-grid">
-                <div class="matrix-row">
-                    <span>TRAFFIC NETWORK</span>
-                    <span id="traffic-status" style="color: var(--traffic-green);">OPTIMAL</span>
-                </div>
-                <div class="matrix-row">
-                    <span>GPS STATUS</span>
-                    <span id="telemetry-feed" style="color: var(--neon-blue);">SEARCHING LOCK...</span>
-                </div>
-            </div>
+    <!-- Bottom Context Drag/Scroll Console Sheet Panel Container -->
+    <footer class="console-panel" id="consolePanel">
+        <!-- Structural Top Bar Handle for drag updates -->
+        <div class="drag-handle" id="dragHandle">
+            <div class="handle-bar"></div>
+        </div>
+        
+        <!-- Interactive Panel Tabs -->
+        <div class="console-tabs">
+            <button class="tab-trigger active" data-tab="logStream">Log Stream</button>
+            <button class="tab-trigger" data-tab="activeNodes">Active Nodes</button>
+            <button class="tab-trigger" data-tab="hardwareStatus">Hardware Status</button>
         </div>
 
-        <!-- Active Tracking HUD -->
-        <div id="active-nav-hud">
-            <div class="nav-instruction-card">
-                <div class="nav-instruction-body">
-                    <div class="nav-instruction-dist" id="nav-instruction-dist">--</div>
-                    <div class="nav-instruction-text" id="nav-instruction-text">Preparing route…</div>
+        <!-- Scrollable Body Terminal Layer container box -->
+        <div class="console-body" id="consoleBody">
+            
+            <!-- Tab Element Content Panel Viewports -->
+            <div class="tab-content active" id="logStream">
+                <!-- Javascript fills live operational events layout -->
+            </div>
+
+            <div class="tab-content" id="activeNodes">
+                <table class="node-list-table">
+                    <thead>
+                        <tr>
+                            <th>Node ID</th>
+                            <th>Frequency</th>
+                            <th>Status</th>
+                            <th>Load</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>N-UKH-01 (Core Hub)</td>
+                            <td>5.8 GHz</td>
+                            <td><span class="status-dot online"></span>Active</td>
+                            <td>34%</td>
+                        </tr>
+                        <tr>
+                            <td>N-UKH-02 (North Relay)</td>
+                            <td>5.8 GHz</td>
+                            <td><span class="status-dot online"></span>Active</td>
+                            <td>12%</td>
+                        </tr>
+                        <tr>
+                            <td>N-UKH-03 (South Tower)</td>
+                            <td>2.4 GHz</td>
+                            <td><span class="status-dot maintenance"></span>Calibrating</td>
+                            <td>--</td>
+                        </tr>
+                        <tr>
+                            <td>N-UKH-04 (West Sector)</td>
+                            <td>6.0 GHz</td>
+                            <td><span class="status-dot online"></span>Active</td>
+                            <td>68%</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="tab-content" id="hardwareStatus">
+                <div style="font-size: 0.8rem; line-height: 1.6; color: var(--text-muted);">
+                    <p><strong style="color: var(--text-main);">RF Transmitter Array:</strong> Operational (Optimal Temperature 38°C)</p>
+                    <p><strong style="color: var(--text-main);">Solar Regulator Stage:</strong> Battery Array Floating at 13.6V</p>
+                    <p><strong style="color: var(--text-main);">LTE Backhaul Uplink:</strong> Connected via Secondary Carrier Protocol</p>
+                    <p><strong style="color: var(--text-main);">Local Host Kernel:</strong> v5.15.0-patched-realtime-x86_64</p>
                 </div>
             </div>
-            <div class="nav-bottom-bar">
-                <div class="nav-bottom-stat"><span class="val" id="nav-eta-val">--:--</span><span class="lbl">Arrival</span></div>
-                <div class="nav-bottom-stat"><span class="val" id="nav-time-left">--</span><span class="lbl">Remaining</span></div>
-                <div class="nav-bottom-stat"><span class="val" id="nav-dist-left">--</span><span class="lbl">Distance</span></div>
-                <button class="nav-end-btn" id="nav-end-trigger">End</button>
-            </div>
+
         </div>
+    </footer>
+</div>
 
-        <div id="speed-chip"><span class="speed-val" id="speed-val">0</span><span class="speed-unit">MPH</span></div>
+<script>
+    // System Configurations Default Access Tokens
+    // Replace with your real Mapbox token for fully rendering customized tile arrays
+    const MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoiaWxsZWdhbGdhbWVzIiwiYSI6ImNscWxpZTh4bzA1YTAydG1hbXh4M3I1N2IifQ.0X3gK_2w8A0V6W9j9O8-4A'; 
+    mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 
-        <!-- Right System Utility Column Structure -->
-        <div id="right-console-stack">
-            <button class="glass-panel-btn" id="recenter-gps" title="Recenter on Live Position">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-            <button class="glass-panel-btn" id="toggle-satellite" title="Toggle Satellite Map Layer">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-            </button>
-            <button class="glass-panel-btn" id="toggle-3d" title="Toggle 3D Buildings">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
-            </button>
-        </div>
+    let mapInstance = null;
+    let searchBoxInstance = null;
+    let currentMapCenter = [-123.2078, 39.1503]; // Default Map Initialization Target Local Point Coordinate Array
 
-        <div id="spatial-overlay">LNG: -- | LAT: --</div>
-    </div>
+    // Initialize Mapbox Engine
+    function initMapboxEngine() {
+        mapInstance = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/dark-v11', // Beautiful matching base vector setup out-of-the-box
+            center: currentMapCenter,
+            zoom: 13.5,
+            pitch: 30,
+            attributionControl: false
+        });
 
-    <script>
-        mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
+        mapInstance.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
-        const mapStyles = {
-            vectorDark: 'mapbox://styles/mapbox/dark-v11',
-            satelliteHybrid: 'mapbox://styles/mapbox/satellite-streets-v12'
+        // Track location center state updates dynamically to feed into search engine proximity queries
+        mapInstance.on('moveend', () => {
+            currentMapCenter = mapInstance.getCenter().toArray();
+            if (searchBoxInstance && searchBoxInstance.options) {
+                searchBoxInstance.options = {
+                    ...searchBoxInstance.options,
+                    proximity: currentMapCenter
+                };
+            }
+        });
+
+        mapInstance.on('load', () => {
+            appendConsoleLog('SYSTEM', 'Mapbox GL Engine v3 Core fully mounted.', 'success');
+            appendConsoleLog('SYSTEM', 'Grid coordinates targeted successfully.', 'system');
+        });
+    }
+
+    // Initialize Mapbox Search Component Engine
+    function initMapboxSearchEngine() {
+        const script = document.getElementById('search-js');
+        if (!script) return;
+
+        script.onload = function() {
+            searchBoxInstance = new mapboxsearch.MapboxSearchBox();
+            searchBoxInstance.accessToken = MAPBOX_ACCESS_TOKEN;
+            
+            // Set proximity context mapping configuration to ensure close category filtering results
+            searchBoxInstance.options = {
+                proximity: currentMapCenter,
+                language: 'en'
+            };
+
+            // Hook direct functional reference interaction to binding map updates natively
+            searchBoxInstance.mapboxgl = mapboxgl;
+            searchBoxInstance.bindMap(mapInstance);
+
+            // Append explicitly to localized interface node wrapper layout framework anchor
+            document.getElementById('search-box-anchor').appendChild(searchBoxInstance);
+            
+            appendConsoleLog('SEARCH', 'Mapbox Search Web Components bound to network map layer.', 'success');
+            setupFastSearchInteractions();
+        };
+    }
+
+    // Connect Proximity Fast Search Action Control Buttons
+    function setupFastSearchInteractions() {
+        document.querySelectorAll('.category-search-pill').forEach(pill => {
+            pill.addEventListener('click', (e) => {
+                const queryTarget = pill.getAttribute('data-query');
+                appendConsoleLog('OPERATOR', `Initiated fast search vector routing for query: "${queryTarget}"`, 'action');
+
+                if (searchBoxInstance) {
+                    // Update search box input display explicitly
+                    searchBoxInstance.value = queryTarget;
+                    searchBoxInstance.focus();
+
+                    // Programmatically enforce search execution across Mapbox API interfaces
+                    if (typeof searchBoxInstance.search === 'function') {
+                        searchBoxInstance.search();
+                    } else {
+                        // Resilient structural event dispatch fallback layer if programmatic method wrapping encounters variance
+                        const inputEvent = new Event('input', { bubbles: true, cancelable: true });
+                        const innerInputElement = searchBoxInstance.shadowRoot?.querySelector('input') || searchBoxInstance.querySelector('input');
+                        if (innerInputElement) {
+                            innerInputElement.dispatchEvent(inputEvent);
+                        } else {
+                            searchBoxInstance.dispatchEvent(inputEvent);
+                        }
+                    }
+                } else {
+                    appendConsoleLog('ERROR', 'Search engine layer not yet ready.', 'system');
+                }
+            });
+        });
+    }
+
+    // Advanced Draggable Sheet Console Implementation (Touch Responsive & Scrollable)
+    function initializeDraggableConsoleSheet() {
+        const consolePanel = document.getElementById('consolePanel');
+        const dragHandle = document.getElementById('dragHandle');
+        const consoleBody = document.getElementById('consoleBody');
+        
+        if (!consolePanel || !dragHandle) return;
+
+        let isDragging = false;
+        let startY = 0;
+        let startHeight = 0;
+
+        // Desktop Pointer Interface Events
+        dragHandle.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            startY = e.clientY;
+            startHeight = consolePanel.offsetHeight;
+            document.body.style.cursor = 'ns-resize';
+            document.body.style.userSelect = 'none';
+            consolePanel.style.transition = 'none'; // Terminate active CSS transitions during physics updates
+        });
+
+        // Mobile Native Touch Architecture Sheet Dragging Gestures
+        dragHandle.addEventListener('touchstart', (e) => {
+            isDragging = true;
+            startY = e.touches[0].clientY;
+            startHeight = consolePanel.offsetHeight;
+            consolePanel.style.transition = 'none';
+        }, { passive: true });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+            const deltaY = startY - e.clientY;
+            // Bound sheet height limits dynamically to safeguard viewport constraints
+            const newHeight = Math.max(140, Math.min(window.innerHeight * 0.85, startHeight + deltaY));
+            consolePanel.style.height = `${newHeight}px`;
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const deltaY = startY - e.touches[0].clientY;
+            const newHeight = Math.max(140, Math.min(window.innerHeight * 0.85, startHeight + deltaY));
+            consolePanel.style.height = `${newHeight}px`;
+        }, { passive: true });
+
+        const terminateDragGestureState = () => {
+            if (!isDragging) return;
+            isDragging = false;
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+            consolePanel.style.transition = 'height 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
         };
 
-        // Standard baseline configuration fallback coordinates
-        let currentOriginCoords = [-123.2078, 39.1502]; 
-        let selectedDestinationCoords = null;
-        let currentTravelMode = 'driving-traffic';
-        let routeAlternatives = [];
-        let selectedRouteIdx = 0;
-        let isNavigating = false;
-        let layers3DActive = false;
-        let geocoderInstance = null;
-        let mapCenteredOnLiveGPS = false; 
+        document.addEventListener('mouseup', terminateDragGestureState);
+        document.addEventListener('touchend', terminateDragGestureState);
+    }
 
-        const map = new mapboxgl.Map({
-            container: 'map',
-            style: mapStyles.vectorDark,
-            center: currentOriginCoords,
-            zoom: 14,
-            pitch: 20,
-            bearing: 0
-        });
+    // Modular Tab Selector Framework Controller
+    function setupConsoleTabs() {
+        const triggers = document.querySelectorAll('.tab-trigger');
+        triggers.forEach(trigger => {
+            trigger.addEventListener('click', () => {
+                const targetTabId = trigger.getAttribute('data-tab');
+                
+                // Toggle triggers
+                triggers.forEach(t => t.classList.remove('active'));
+                trigger.classList.add('active');
 
-        // Initialize User Tracking Node Markers
-        const liveUserBeacon = document.createElement('div');
-        liveUserBeacon.className = 'custom-tracking-marker';
-        const userGpsMarker = new mapboxgl.Marker(liveUserBeacon).setLngLat(currentOriginCoords).addTo(map);
-
-        const destMarkerElement = document.createElement('div');
-        destMarkerElement.className = 'custom-dest-marker';
-        const globalDestinationMarker = new mapboxgl.Marker(destMarkerElement);
-
-        map.on('style.load', () => {
-            register3DBuildingsArchitecturalLayer();
-            if (selectedDestinationCoords) {
-                renderVisualRouteLines();
-            }
-        });
-
-        map.on('load', () => {
-            initializeProximitySearchEngine();
-            initializeDraggableConsoleSheet();
-            setupInteractiveBuildingQueries();
-            hookInterfaceControls();
-            initializeLiveGPSHardware();
-        });
-
-        // ── GEOLOCATION INFRASTRUCTURE LOGIC ──
-        function initializeLiveGPSHardware() {
-            if (!navigator.geolocation) {
-                document.getElementById('telemetry-feed').innerText = "GPS NOT SUPPORTED";
-                return;
-            }
-
-            navigator.geolocation.getCurrentPosition(handleGPSMoveUpdate, handleGPSTrackingError, {
-                enableHighAccuracy: true
-            });
-
-            navigator.geolocation.watchPosition(handleGPSMoveUpdate, handleGPSTrackingError, {
-                enableHighAccuracy: true
-            });
-        }
-
-        function handleGPSMoveUpdate(position) {
-            currentOriginCoords = [position.coords.longitude, position.coords.latitude];
-            userGpsMarker.setLngLat(currentOriginCoords);
-            document.getElementById('telemetry-feed').innerText = "GPS LOCK [3D_FIX]";
-            document.getElementById('telemetry-feed').style.color = "var(--traffic-green)";
-            
-            updateSearchProximityBias();
-
-            // CAMERA CONSTRAINT: If the app hasn't acquired the user yet, jump away from fallback instantly
-            if (!mapCenteredOnLiveGPS) {
-                map.flyTo({
-                    center: currentOriginCoords,
-                    zoom: 14,
-                    pitch: 20,
-                    essential: true
+                // Toggle viewport displays
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.remove('active');
                 });
-                mapCenteredOnLiveGPS = true;
-            }
-        }
-
-        function handleGPSTrackingError(err) {
-            console.warn(`Hardware telemetry exception: ${err.message}`);
-            document.getElementById('telemetry-feed').innerText = "GPS TIMEOUT / DENIED";
-            document.getElementById('telemetry-feed').style.color = "var(--traffic-red)";
-        }
-
-        function register3DBuildingsArchitecturalLayer() {
-            if (map.getLayer('3d-buildings')) return;
-
-            map.addLayer({
-                id: '3d-buildings',
-                source: 'composite',
-                'source-layer': 'building',
-                filter: ['==', 'extrude', 'true'],
-                type: 'fill-extrusion',
-                minzoom: 13,
-                paint: {
-                    'fill-extrusion-color': '#2a2a30',
-                    'fill-extrusion-height': ['get', 'height'],
-                    'fill-extrusion-base': ['get', 'min_height'],
-                    'fill-extrusion-opacity': layers3DActive ? 0.85 : 0.0
-                }
+                document.getElementById(targetTabId).classList.add('active');
+                
+                appendConsoleLog('OSD', `Switched console terminal viewport context view to: [${targetTabId}]`, 'system');
             });
-        }
+        });
+    }
 
-        // ── MODERN MAPBOX SEARCH BOX INTEGRATION (v1.5.0) ──
-        function initializeProximitySearchEngine() {
-            const script = document.getElementById('search-js');
-            
-            const initSearchBox = () => {
-                if (typeof mapboxsearch === 'undefined' || !mapboxsearch.MapboxSearchBox) {
-                    setTimeout(initSearchBox, 50);
-                    return;
-                }
-                
-                const container = document.getElementById('geocoder-mount');
-                if (!container) return;
-                container.innerHTML = ''; 
-                
-                geocoderInstance = new mapboxsearch.MapboxSearchBox();
-                geocoderInstance.accessToken = mapboxgl.accessToken;
-                
-                geocoderInstance.options = {
-                    types: 'address,poi,neighborhood',
-                    proximity: currentOriginCoords
-                };
-                
-                geocoderInstance.mapboxgl = mapboxgl;
-                geocoderInstance.marker = false; 
-                
-                container.appendChild(geocoderInstance);
-                
-                // Track item retrieval events safely
-                geocoderInstance.addEventListener('retrieve', (e) => {
-                    let feature = null;
-                    if (e.detail && e.detail.features && e.detail.features.length > 0) {
-                        feature = e.detail.features[0];
-                    } else if (e.detail && e.detail.geometry) {
-                        feature = e.detail;
+    // Auxiliary Console Stream Formatting Logging Tool
+    function appendConsoleLog(tag, text, type = 'system') {
+        const logStream = document.getElementById('logStream');
+        if (!logStream) return;
+
+        const timeString = new Date().toISOString().split('T')[1].slice(0, 8);
+        
+        const logEntry = document.createElement('div');
+        logEntry.className = 'log-entry';
+        logEntry.innerHTML = `
+            <span class="log-time">[${timeString}]</span>
+            <span class="log-tag ${type}">[${tag}]</span>
+            <span class="log-msg">${text}</span>
+        `;
+        
+        logStream.appendChild(logEntry);
+        
+        // Auto scroll terminal log interface layer views automatically on update arrays
+        const consoleBody = document.getElementById('consoleBody');
+        if (consoleBody) {
+            consoleBody.scrollTop = consoleBody.scrollHeight;
+        }
+    }
+
+    // Setup Mock Functional Operations Triggers
+    function setupInteractiveOperations() {
+        document.getElementById('btnDeployNodes')?.addEventListener('click', () => {
+            appendConsoleLog('ACTION', 'Deploying supplementary remote cellular cluster arrays...', 'action');
+            setTimeout(() => {
+                appendConsoleLog('SUCCESS', '14 active deployment operational nodes synchronized.', 'success');
+            }, 1200);
+        });
+
+        document.getElementById('btnPurgeLogs')?.addEventListener('click', () => {
+            appendConsoleLog('ACTION', 'Purging cold offline crash reporting nodes logs data safely...', 'action');
+            setTimeout(() => {
+                appendConsoleLog('SYSTEM', 'Storage buffer cache purged successfully. Freed 412MB.', 'system');
+            }, 800);
+        });
+
+        document.getElementById('btnDownloadConfig')?.addEventListener('click', () => {
+            appendConsoleLog('ACTION', 'Packaging system core encryption configs array details...', 'action');
+            setTimeout(() => {
+                appendConsoleLog('SUCCESS', 'Manifest config secure binary generated. Package downloaded.', 'success');
+            }, 1000);
+        });
+
+        // Layer map toggle runtime integration hooks
+        document.querySelectorAll('input[name="map-layer"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const targetLayer = e.target.value;
+                appendConsoleLog('MAP', `Re-routing style array configurations mapping engine to: ${targetLayer}`, 'system');
+                if (mapInstance) {
+                    if (targetLayer === 'satellite') {
+                        mapInstance.setStyle('mapbox://styles/mapbox/satellite-streets-v12');
+                    } else {
+                        mapInstance.setStyle('mapbox://styles/mapbox/dark-v11');
                     }
-                    
-                    if (feature && feature.geometry && feature.geometry.coordinates) {
-                        const coords = feature.geometry.coordinates;
-                        const name = feature.properties?.name || feature.text || "Target Destination";
-                        const address = feature.properties?.full_address || feature.place_name || "";
-                        const category = feature.properties?.poi_category?.[0] || 'Point of Interest';
-                        
-                        const parsedBiz = generateStructuredBusinessData(name, category, address);
-                        loadSpatialDestination(coords, name, address, parsedBiz);
-                        
-                        map.flyTo({
-                            center: coords,
-                            zoom: 15,
-                            essential: true
-                        });
-                    }
-                });
-            };
-            
-            if (script) {
-                if (typeof mapboxsearch !== 'undefined') {
-                    initSearchBox();
-                } else {
-                    script.onload = initSearchBox;
-                }
-            } else {
-                initSearchBox();
-            }
-        }
-
-        function updateSearchProximityBias() {
-            if (geocoderInstance && geocoderInstance.options) {
-                geocoderInstance.options = {
-                    ...geocoderInstance.options,
-                    proximity: currentOriginCoords
-                };
-            }
-        }
-
-        // Hook interaction for category pills matching Search Box model
-        document.querySelectorAll('.category-search-pill').forEach(pill => {
-            pill.addEventListener('click', () => {
-                const queryTarget = pill.getAttribute('data-query');
-                if (geocoderInstance) {
-                    geocoderInstance.value = queryTarget;
-                    geocoderInstance.focus();
                 }
             });
         });
+    }
 
-        function generateStructuredBusinessData(name, category, rawAddress) {
-            return {
-                name: name,
-                category: category,
-                rating: ((Math.abs(name.charCodeAt(0) || 5) % 10) / 10 + 4.0).toFixed(1),
-                reviews: Math.floor(Math.random() * 400 + 45),
-                hours: '08:00 AM — 10:00 PM',
-                status: 'Open Now',
-                address: rawAddress
-            };
-        }
+    // Master Mount Initialization Bootstrapper Pipeline
+    window.addEventListener('DOMContentLoaded', () => {
+        initMapboxEngine();
+        initMapboxSearchEngine();
+        initializeDraggableConsoleSheet();
+        setupConsoleTabs();
+        setupInteractiveOperations();
 
-        function setupInteractiveBuildingQueries() {
-            map.on('click', (e) => {
-                const features = map.queryRenderedFeatures(e.point, { layers: ['3d-buildings', 'poi-label'] });
-                if (!features || features.length === 0) return;
-
-                const selectedFeature = features[0];
-                let name = selectedFeature.properties.name || `Architectural Entity Block`;
-                let category = selectedFeature.properties.category_en || 'Urban Structure';
-                
-                const targetCoords = [e.lngLat.lng, e.lngLat.lat];
-                const addr = `LAT: ${e.lngLat.lat.toFixed(5)}, LNG: ${e.lngLat.lng.toFixed(5)}`;
-                const profileData = generateStructuredBusinessData(name, category, addr);
-                
-                map.easeTo({ center: targetCoords, zoom: Math.max(map.getZoom(), 16) });
-                loadSpatialDestination(targetCoords, name, addr, profileData);
-            });
-        }
-
-        function loadSpatialDestination(coords, title, address, businessData = null) {
-            selectedDestinationCoords = coords;
-            globalDestinationMarker.setLngLat(coords).addTo(map);
-
-            document.getElementById('card-title').innerText = title;
-            document.getElementById('card-address').innerText = address;
-
-            const profileContainer = document.getElementById('business-profile-box');
-            profileContainer.innerHTML = ''; 
-
-            if (businessData) {
-                profileContainer.innerHTML = `
-                    <div class="business-data-grid">
-                        <div class="biz-row">
-                            <span class="biz-badge">${businessData.category}</span>
-                            <span class="biz-rating">★ ${businessData.rating} (${businessData.reviews})</span>
-                        </div>
-                        <div class="biz-row"><span class="biz-label">Status:</span><span class="biz-val" style="color:var(--traffic-green);">${businessData.status}</span></div>
-                        <div class="biz-row"><span class="biz-label">Hours:</span><span class="biz-val">${businessData.hours}</span></div>
-                    </div>
-                `;
-            }
-
-            document.getElementById('destination-card').style.display = 'flex';
-            calculateNavigationVectors();
-        }
-
-        async function calculateNavigationVectors() {
-            if (!selectedDestinationCoords) return;
-            const profileMode = currentTravelMode === 'driving-traffic' ? 'driving' : currentTravelMode;
-            const directionsEndpoint = `https://api.mapbox.com/directions/v5/mapbox/${profileMode}/${currentOriginCoords.join(',')};${selectedDestinationCoords.join(',')}?steps=true&geometries=geojson&alternatives=true&access_token=${mapboxgl.accessToken}`;
-
-            try {
-                const request = await fetch(directionsEndpoint);
-                const payload = await request.json();
-                if (payload.code !== 'Ok') return;
-                routeAlternatives = payload.routes;
-                selectedRouteIdx = 0;
-
-                renderVisualRouteLines();
-                populateAlternativeSelectors();
-            } catch (error) {
-                console.error("Critical routing calculation exception:", error);
-            }
-        }
-
-        function renderVisualRouteLines() {
-            routeAlternatives.forEach((_, index) => {
-                if (map.getLayer(`route-line-${index}`)) map.removeLayer(`route-line-${index}`);
-                if (map.getSource(`route-source-${index}`)) map.removeSource(`route-source-${index}`);
-            });
-
-            routeAlternatives.forEach((route, index) => {
-                const isSelected = (index === selectedRouteIdx);
-                map.addSource(`route-source-${index}`, {
-                    type: 'geojson',
-                    data: { type: 'Feature', geometry: route.geometry }
-                });
-
-                map.addLayer({
-                    id: `route-line-${index}`,
-                    type: 'line',
-                    source: `route-source-${index}`,
-                    layout: { 'line-join': 'round', 'line-cap': 'round' },
-                    paint: {
-                        'line-color': isSelected ? '#0071e3' : '#3a3a44',
-                        'line-width': isSelected ? 6 : 4,
-                        'line-opacity': isSelected ? 0.95 : 0.4
-                    }
-                }, map.getLayer('3d-buildings') ? '3d-buildings' : undefined);
-            });
-        }
-
-        function populateAlternativeSelectors() {
-            const row = document.getElementById('route-alt-row');
-            row.innerHTML = '';
-            routeAlternatives.forEach((route, index) => {
-                const minutes = Math.round(route.duration / 60);
-                const isSelected = (index === selectedRouteIdx);
-                const pill = document.createElement('button');
-                pill.className = `route-alt-pill ${isSelected ? 'selected' : ''}`;
-                pill.innerHTML = `${minutes} MIN`;
-                pill.addEventListener('click', () => {
-                    selectedRouteIdx = index;
-                    renderVisualRouteLines();
-                    populateAlternativeSelectors();
-                });
-                row.appendChild(pill);
-            });
-        }
-
-        function hookInterfaceControls() {
-            document.querySelectorAll('.mode-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-                    e.currentTarget.classList.add('active');
-                    currentTravelMode = e.currentTarget.getAttribute('data-mode');
-                    calculateNavigationVectors();
-                });
-            });
-
-            document.getElementById('toggle-3d').addEventListener('click', (e) => {
-                layers3DActive = !layers3DActive;
-                e.currentTarget.classList.toggle('active', layers3DActive);
-                if (map.getLayer('3d-buildings')) {
-                    map.setPaintProperty('3d-buildings', 'fill-extrusion-opacity', layers3DActive ? 0.85 : 0.0);
-                }
-            });
-
-            document.getElementById('toggle-satellite').addEventListener('click', (e) => {
-                const currentStyle = map.getStyle().styleJson || map.getStyle();
-                const isSat = currentStyle.sprite && currentStyle.sprite.includes('satellite');
-                e.currentTarget.classList.toggle('active', !isSat);
-                map.setStyle(isSat ? mapStyles.vectorDark : mapStyles.satelliteHybrid);
-            });
-
-            document.getElementById('recenter-gps').addEventListener('click', () => {
-                map.flyTo({ center: currentOriginCoords, zoom: 15, pitch: 30 });
-            });
-
-            document.getElementById('clear-route-trigger').addEventListener('click', clearActiveRouteTrace);
-            document.getElementById('launch-nav-trigger').addEventListener('click', toggleNavigationHUD);
-            document.getElementById('nav-end-trigger').addEventListener('click', toggleNavigationHUD);
-        }
-
-        function clearActiveRouteTrace() {
-            routeAlternatives.forEach((_, index) => {
-                if (map.getLayer(`route-line-${index}`)) map.removeLayer(`route-line-${index}`);
-                if (map.getSource(`route-source-${index}`)) map.removeSource(`route-source-${index}`);
-            });
-            routeAlternatives = [];
-            selectedDestinationCoords = null;
-            globalDestinationMarker.remove();
-            document.getElementById('destination-card').style.display = 'none';
-            if (geocoderInstance) geocoderInstance.value = '';
-        }
-
-        function toggleNavigationHUD() {
-            isNavigating = !isNavigating;
-            document.getElementById('command-deck').style.display = isNavigating ? 'none' : 'flex';
-            document.getElementById('active-nav-hud').style.display = isNavigating ? 'flex' : 'none';
-            document.getElementById('speed-chip').style.display = isNavigating ? 'flex' : 'none';
-            
-            if (isNavigating && routeAlternatives[selectedRouteIdx]) {
-                const route = routeAlternatives[selectedRouteIdx];
-                document.getElementById('nav-instruction-text').innerText = route.legs[0].steps[0]?.maneuver?.instruction || 'Drive straight';
-                document.getElementById('nav-instruction-dist').innerText = `${Math.round(route.legs[0].steps[0]?.distance || 100)} m`;
-                document.getElementById('nav-eta-val').innerText = `${Math.round(route.duration / 60)}m`;
-                document.getElementById('nav-time-left').innerText = `${Math.round(route.duration / 60)} min`;
-                document.getElementById('nav-dist-left').innerText = `${(route.distance / 1609.34).toFixed(1)} mi`;
-            } else {
-                clearActiveRouteTrace();
-            }
-        }
-
-        function initializeDraggableConsoleSheet() {
-            const deck = document.getElementById('command-deck');
-            const handle = document.getElementById('drag-handle');
-            let isDragging = false, startY = 0, initialTranslateY = 0;
-
-            handle.addEventListener('pointerdown', (e) => {
-                isDragging = true; startY = e.clientY;
-                deck.classList.add('is-dragging'); handle.setPointerCapture(e.pointerId);
-                const matrix = new WebKitCSSMatrix(window.getComputedStyle(deck).transform);
-                initialTranslateY = matrix.m42 || 0;
-            });
-            window.addEventListener('pointermove', (e) => {
-                if (!isDragging) return;
-                let targetY = initialTranslateY + (e.clientY - startY);
-                if (targetY < 0) targetY *= 0.2;
-                deck.style.transform = `translateY(${targetY}px)`;
-            });
-            window.addEventListener('pointerup', () => {
-                if (!isDragging) return; isDragging = false; deck.classList.remove('is-dragging');
-                deck.style.transform = `translateY(0px)`;
-            });
-        }
-
-        map.on('mousemove', (e) => {
-            document.getElementById('spatial-overlay').innerText = `LNG: ${e.lngLat.lng.toFixed(4)} | LAT: ${e.lngLat.lat.toFixed(4)}`;
-        });
-    </script>
+        // Feed standard initial startup welcome diagnostic telemetry messages
+        appendConsoleLog('BOOT', 'INTERCELL System Terminal OSD Initialization Core v2026.7 Mounted.', 'system');
+        appendConsoleLog('SECURITY', 'SSL Handshake complete. Remote node operator link authenticated.', 'success');
+    });
+</script>
 </body>
 </html>
