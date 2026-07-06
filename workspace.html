@@ -80,8 +80,6 @@
             display: flex;
             flex-direction: column;
             gap: 16px;
-            transform: translateY(0px);
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), height 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             overflow-y: auto;
         }
 
@@ -171,7 +169,7 @@
         }
         .mode-btn.active svg { stroke: var(--neon-red); }
 
-        /* ── MODERN SHADOW-DOM SEARCH BOX RULES ── */
+        /* ── MODERN SEARCH BOX RULES ── */
         .search-container-box {
             width: 100%;
             position: relative;
@@ -314,28 +312,41 @@
 
         #spatial-overlay { position: absolute; bottom: 20px; right: 20px; background: var(--hud-bg); backdrop-filter: blur(10px); padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border-line); font-family: monospace; font-size: 0.75rem; z-index: 5; }
 
-        /* Directional Dynamic Red Positioning Icon */
+        /* ── FIXED TRACKING MARKER ARCHITECTURE ── */
+        /* STABILITY FIX: Completely removed all CSS transitions on 'transform' from the root marker element. */
         .custom-tracking-marker {
-            width: 24px;
-            height: 24px;
+            width: 32px;
+            height: 32px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            will-change: transform;
+        }
+        
+        .marker-core-beacon {
+            width: 18px;
+            height: 18px;
             background-color: var(--neon-red);
             border: 3px solid #ffffff;
             border-radius: 50%;
-            box-shadow: 0 0 20px var(--neon-red);
-            position: relative;
-            transition: transform 0.1s linear;
+            box-shadow: 0 0 25px var(--neon-red), 0 0 10px rgba(0,0,0,0.5);
+            z-index: 2;
         }
-        .custom-tracking-marker::after {
-            content: '';
+
+        /* Split heading arrow into nested element to separate coordinate alignment from rotation tracking */
+        .marker-heading-vector {
             position: absolute;
-            top: -11px;
-            left: 50%;
-            transform: translateX(-50%);
+            top: -8px;
             width: 0;
             height: 0;
-            border-left: 6px solid transparent;
-            border-right: 6px solid transparent;
-            border-bottom: 11px solid var(--neon-red);
+            border-left: 7px solid transparent;
+            border-right: 7px solid transparent;
+            border-bottom: 12px solid var(--neon-red);
+            z-index: 1;
+            transform-origin: 7px 16px;
+            transition: transform 0.15s ease-out;
         }
 
         .custom-dest-marker { width: 18px; height: 18px; background-color: #ffffff; border: 4px solid var(--neon-red); border-radius: 50%; box-shadow: 0 0 18px var(--neon-red); }
@@ -473,7 +484,10 @@
         let layers3DActive = false;
         let isSatelliteActive = false;
         let geocoderInstance = null;
+        
+        // Advanced tracking states to prevent map wrestling
         let mapCenteredOnLiveGPS = false; 
+        let userInterruptedTracking = false;
 
         const map = new mapboxgl.Map({
             container: 'map',
@@ -485,12 +499,25 @@
             antialias: true
         });
 
-        // Instantiate Dynamic Red Arrow Marker Container
+        // Generate Stabilized Composite DOM elements for live beacon updates
         const liveUserBeacon = document.createElement('div');
         liveUserBeacon.className = 'custom-tracking-marker';
-        const userGpsMarker = new mapboxgl.Marker({ element: liveUserBeacon, rotationAlignment: 'map' })
-            .setLngLat(currentOriginCoords)
-            .addTo(map);
+        
+        const headingVectorElement = document.createElement('div');
+        headingVectorElement.className = 'marker-heading-vector';
+        
+        const coreBeaconElement = document.createElement('div');
+        coreBeaconElement.className = 'marker-core-beacon';
+        
+        liveUserBeacon.appendChild(headingVectorElement);
+        liveUserBeacon.appendChild(coreBeaconElement);
+
+        const userGpsMarker = new mapboxgl.Marker({ 
+            element: liveUserBeacon, 
+            anchor: 'center' 
+        })
+        .setLngLat(currentOriginCoords)
+        .addTo(map);
 
         const destMarkerElement = document.createElement('div');
         destMarkerElement.className = 'custom-dest-marker';
@@ -511,6 +538,11 @@
             setupInteractiveBuildingQueries();
             hookInterfaceControls();
             initializeLiveGPSHardware();
+
+            // Detect user interactions to avoid breaking your custom viewpoint focus shifts
+            map.on('dragstart', () => { userInterruptedTracking = true; });
+            map.on('zoomstart', () => { userInterruptedTracking = true; });
+            map.on('pitchstart', () => { userInterruptedTracking = true; });
         });
 
         function initializeLiveGPSHardware() {
@@ -519,21 +551,18 @@
                 return;
             }
 
-            // STAGE 1: Ultra-Fast Location Grab
-            // Uses zero-accuracy restrictions and heavily prioritizes cached coordinates to spin the viewport instantly.
+            // STAGE 1: Ultra-Fast Cache Request
             navigator.geolocation.getCurrentPosition(handleGPSMoveUpdate, null, {
                 enableHighAccuracy: false,
-                maximumAge: 120000, // Accepts locks up to 2 minutes old for absolute speed
-                timeout: 3000
+                maximumAge: 300000, 
+                timeout: 2000
             });
 
-            // STAGE 2: Precise High-Fidelity Pipeline Streams
-            // Hooks background tracking matrices for fine accuracy updates, speedometers, and arrow tracking vectors.
+            // STAGE 2: Precise Stream Engine
             navigator.geolocation.getCurrentPosition(handleGPSMoveUpdate, handleGPSTrackingError, { enableHighAccuracy: true });
             navigator.geolocation.watchPosition(handleGPSMoveUpdate, handleGPSTrackingError, { enableHighAccuracy: true });
         }
 
-        // Standard Metrical Vector Distance Utility (Haversine Implementation for Rerouting)
         function calculateMetricGap(coord1, coord2) {
             const R = 6371000; 
             const dLat = (coord2[1] - coord1[1]) * Math.PI / 180;
@@ -546,21 +575,21 @@
 
         function handleGPSMoveUpdate(position) {
             currentOriginCoords = [position.coords.longitude, position.coords.latitude];
+            
+            // Native Mapbox positioning update loop (Zero animation latency)
             userGpsMarker.setLngLat(currentOriginCoords);
             
             document.getElementById('telemetry-feed').innerText = "GPS LOCK [ACTIVE]";
             document.getElementById('telemetry-feed').style.color = "var(--traffic-green)";
             
-            // Speed telemetry configuration
             if (position.coords.speed !== null && position.coords.speed !== undefined && position.coords.speed >= 0) {
                 const mph = Math.round(position.coords.speed * 2.23694);
                 document.getElementById('speed-val').innerText = mph;
             }
 
-            // Core Directional Facing Resolution
+            // Handle direction vectors independently from marker layout coordinates
             let userHeading = position.coords.heading;
             if ((userHeading === null || userHeading === undefined || isNaN(userHeading)) && lastKnownCoords) {
-                // Directional Fallback: Calculate displacement bearing relative to previous coordinate point
                 const dLon = (currentOriginCoords[0] - lastKnownCoords[0]) * Math.PI / 180;
                 const lat1 = lastKnownCoords[1] * Math.PI / 180;
                 const lat2 = currentOriginCoords[1] * Math.PI / 180;
@@ -570,15 +599,18 @@
             }
 
             if (userHeading !== null && userHeading !== undefined && !isNaN(userHeading)) {
-                userGpsMarker.setRotation(userHeading);
-                if (isNavigating) {
+                headingVectorElement.style.transform = `rotate(${userHeading}deg)`;
+                headingVectorElement.style.display = 'block';
+                if (isNavigating && !userInterruptedTracking) {
                     map.easeTo({ bearing: userHeading, duration: 300 });
                 }
+            } else {
+                headingVectorElement.style.display = 'none';
             }
 
             updateSearchProximityBias();
 
-            // Automatic Rerouting Engine Check
+            // Dynamic Path Tracking Rerouter Engine Checks
             if (isNavigating && routeAlternatives[selectedRouteIdx]) {
                 const traceSegments = routeAlternatives[selectedRouteIdx].geometry.coordinates;
                 let minimumDeviationMeters = Infinity;
@@ -588,15 +620,14 @@
                     if (deviation < minimumDeviationMeters) minimumDeviationMeters = deviation;
                 }
                 
-                // Trigger dynamic network recalculation if the user is further than 40 meters off-route
-                if (minimumDeviationMeters > 40) {
-                    console.log(`Off-route discrepancy verified: ${minimumDeviationMeters.toFixed(1)}m. Dispatching automatic trace recalculation.`);
+                if (minimumDeviationMeters > 45) {
                     calculateNavigationVectors();
                 }
             }
 
-            if (!mapCenteredOnLiveGPS) {
-                map.flyTo({ center: currentOriginCoords, zoom: 14, pitch: 20, essential: true });
+            // Handle clean autofocus snapping behaviors without stealing camera controls unexpectedly
+            if (!mapCenteredOnLiveGPS || (isNavigating && !userInterruptedTracking)) {
+                map.flyTo({ center: currentOriginCoords, zoom: isNavigating ? 17 : 14, essential: true });
                 mapCenteredOnLiveGPS = true;
             }
 
@@ -605,7 +636,6 @@
 
         function handleGPSTrackingError(err) {
             console.warn(`Hardware telemetry exception: ${err.message}`);
-            // Don't kill telemetry displays for occasional fast timeouts if data fallback stream works
             if(!mapCenteredOnLiveGPS) {
                 document.getElementById('telemetry-feed').innerText = "GPS TIMEOUT / DENIED";
                 document.getElementById('telemetry-feed').style.color = "var(--traffic-red)";
@@ -675,6 +705,7 @@
                         const coords = feature.geometry.coordinates;
                         const name = feature.properties?.name || feature.text || "Target Destination";
                         const address = feature.properties?.full_address || feature.place_name || "";
+                        userInterruptedTracking = true; 
                         map.flyTo({ center: coords, zoom: 15, essential: true });
                         loadSpatialDestination(coords, name, address);
                     }
@@ -718,6 +749,7 @@
                     name = features[0].properties.name || "Structural Entity Asset";
                 }
                 
+                userInterruptedTracking = true;
                 map.easeTo({ center: targetCoords, zoom: Math.max(map.getZoom(), 16) });
                 loadSpatialDestination(targetCoords, name, address);
             });
@@ -849,7 +881,8 @@
             });
 
             document.getElementById('recenter-gps').addEventListener('click', () => {
-                map.flyTo({ center: currentOriginCoords, zoom: 15, pitch: 30 });
+                userInterruptedTracking = false; 
+                map.flyTo({ center: currentOriginCoords, zoom: isNavigating ? 17 : 15, pitch: isNavigating ? 50 : 30 });
             });
 
             document.getElementById('clear-route-trigger').addEventListener('click', clearActiveRouteTrace);
@@ -872,12 +905,13 @@
 
         function toggleNavigationHUD() {
             isNavigating = !isNavigating;
+            userInterruptedTracking = false; 
             document.getElementById('command-deck').style.display = isNavigating ? 'none' : 'flex';
             document.getElementById('active-nav-hud').style.display = isNavigating ? 'flex' : 'none';
             document.getElementById('speed-chip').style.display = isNavigating ? 'flex' : 'none';
             
             if (isNavigating && routeAlternatives[selectedRouteIdx]) {
-                map.easeTo({ zoom: 17, pitch: 50, duration: 800 });
+                map.easeTo({ center: currentOriginCoords, zoom: 17, pitch: 50, duration: 800 });
                 updateActiveHUDLayout(routeAlternatives[selectedRouteIdx]);
             } else {
                 clearActiveRouteTrace();
