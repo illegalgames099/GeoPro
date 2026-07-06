@@ -1,92 +1,575 @@
-function establishLiveHardwarePositioningStream() {
-            const diagnosticStatus = document.getElementById('telemetry-status-node');
-            if (!navigator.geolocation) { 
-                diagnosticStatus.innerText = "UNSUPPORTED SENSOR"; 
-                return; 
-            }
+<script>
+        // System Environment Geometry & Core State Coordinates
+        let defaultUserCoordinates = [-122.084, 37.422]; 
+        let currentLiveGpsPosition = null; 
+        let targetSelectedCoordinates = null;
+        let querySearchDebounceTimer = null;
+         
+        let activeMapMarker = null; 
+        let userLocationBeaconMarker = null;
+        let activeRouteDataStore = []; 
+        let satelliteModeActive = false;
 
-            let initialLockAchieved = false;
+        // Simulation tracking states
+        let isNavigating = false;
+        let navigationAnimationId = null;
+        let currentRouteStepIndex = 0;
 
-            // ── PASS 1: THE CELLULAR / CELL-TOWER FAST PASS ──
-            // Works instantly on phones via tower/Wi-Fi triangulation.
-            // Bypasses cold hardware GPS spin-up delays.
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    if (initialLockAchieved || isNavigating) return;
-                    
-                    const lon = position.coords.longitude;
-                    const lat = position.coords.latitude;
-                    
-                    currentLiveGpsPosition = [lon, lat];
-                    initialLockAchieved = true;
-                    
-                    diagnosticStatus.innerText = "ONLINE (CELL INSTANT)";
-                    diagnosticStatus.style.color = "#007aff";
-                    
-                    updateUserBeaconOnMap(currentLiveGpsPosition, true);
-                },
-                (error) => {
-                    console.log("Cellular fast-pass unavailable or blocked. Awaiting hardware GPS...");
-                },
-                { 
-                    enableHighAccuracy: false, // Disables satellite requirement for raw speed
-                    timeout: 1500,             // Hyper-aggressive drop threshold
-                    maximumAge: 30000          // Grab cached data up to 30 seconds old
-                }
-            );
+        const REGULAR_MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
-            // ── PASS 2: THE HIGH-ACCURACY GPS ENGINE ──
-            // Runs simultaneously. If on a laptop/tablet without cell service, 
-            // this commands the internal hardware to work at maximum throughput.
-            navigator.geolocation.watchPosition(
-                (position) => {
-                    const lon = position.coords.longitude;
-                    const lat = position.coords.latitude;
-                    
-                    if (!isNavigating) {
-                        currentLiveGpsPosition = [lon, lat];
-                        
-                        // Dynamically tag status based on accuracy radius (under 20m = True Satellites)
-                        if (position.coords.accuracy < 20) {
-                            diagnosticStatus.innerText = "ONLINE (HARDWARE GPS)";
-                            diagnosticStatus.style.color = "#28a745"; // Success green
-                        } else {
-                            diagnosticStatus.innerText = "ONLINE (LIVE)";
-                            diagnosticStatus.style.color = "#007aff";
-                        }
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: REGULAR_MAP_STYLE, 
+            center: defaultUserCoordinates, 
+            zoom: 2, 
+            pitch: 45, 
+            bearing: 0,
+            antialias: true
+        });
 
-                        // Update marker position, only fly camera if it's our first time locking coordinates
-                        updateUserBeaconOnMap(currentLiveGpsPosition, !initialLockAchieved);
-                        initialLockAchieved = true;
-                    }
-                },
-                (error) => { 
-                    if (!isNavigating && currentLiveGpsPosition === null) {
-                        diagnosticStatus.style.color = "#ff9500"; 
-                        diagnosticStatus.innerText = "LOCAL EDGE LINK"; 
-                    }
-                },
-                { 
-                    enableHighAccuracy: true,   // Forces true hardware GPS/GLONASS utilization
-                    timeout: 10000,             // Gives slower hardware chips time to find satellites
-                    maximumAge: 0               // Prevents stale data fallback loops
-                }
-            );
+        function createCustomMarkerElement() {
+            const el = document.createElement('div');
+            el.className = 'custom-spatial-marker';
+            el.innerHTML = `
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="8" fill="#ff3333" fill-opacity="0.3"/>
+                    <circle cx="12" cy="12" r="4" fill="#ff3333"/>
+                    <circle cx="12" cy="12" r="3.5" stroke="#ffffff" stroke-width="1"/>
+                </svg>
+            `;
+            return el;
         }
 
-        // Helper function to manage map marker placement and view snapping
-        function updateUserBeaconOnMap(coords, shouldPanCamera) {
+        map.on('load', () => {
+            initTacticalPanelDraggingPhysics();
+            initAutonomousSearchMatrix();
+            initDirectMapInputListeners();
+            initHardwareConsoleTriggers();
+            injectRealtime3DGeometry();
+            establishLiveHardwarePositioningStream();
+
+            map.on('mousemove', (e) => {
+                const overlay = document.getElementById('coordinate-overlay-tracker');
+                if (overlay) {
+                    overlay.innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
+                }
+            });
+        });
+
+        map.on('style.data', () => {
+            injectRealtime3DGeometry();
+            redrawActiveRoutePipelines();
+        });
+
+        function injectRealtime3DGeometry() {
+            const styleSources = map.getStyle().sources;
+            if (!styleSources) return;
+            const sourceKey = Object.keys(styleSources).find(key => styleSources[key].type === 'vector') || 'openfreemap';
+
+            if (map.getSource(sourceKey) && !map.getLayer('spatial-3d-buildings')) {
+                map.addLayer({
+                    'id': 'spatial-3d-buildings',
+                    'source': sourceKey,
+                    'source-layer': 'building',
+                    'type': 'fill-extrusion',
+                    'minzoom': 13,
+                    'paint': {
+                        'fill-extrusion-color': satelliteModeActive ? '#1c1c1f' : '#cbd2db',
+                        'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 15],
+                        'fill-extrusion-base': ['coalesce', ['get', 'min_height'], ['get', 'render_min_height'], 0],
+                        'fill-extrusion-opacity': satelliteModeActive ? 0.75 : 0.45
+                    }
+                });
+            }
+        }
+
+        /* ── ACTION CONTROL LAYER ENGINE ── */
+        async function handleRoutingButtonClick() {
+            const btn = document.getElementById('launch-routing-action');
+            if (!btn) return;
+
+            // State A: Route calculated and ready -> Start Navigation
+            if (activeRouteDataStore.length > 0 && !isNavigating) {
+                startRouteSimulation();
+                return;
+            }
+
+            // State B: Actively navigating -> Stop Navigation
+            if (isNavigating) {
+                stopRouteSimulation();
+                return;
+            }
+
+            // State C: Base setup -> Run calculations
+            btn.innerText = "COMPUTING...";
+            btn.style.opacity = "0.6";
+             
+            let originCoords = currentLiveGpsPosition;
+            if (!originCoords) {
+                const mapCenter = map.getCenter();
+                originCoords = [mapCenter.lng, mapCenter.lat];
+            }
+             
+            const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&alternatives=true`;
+             
+            try {
+                clearActiveRouteLayers();
+                activeRouteDataStore = [];
+
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 3500);
+
+                const stream = await fetch(routingQueryUrl, { signal: controller.signal });
+                clearTimeout(timeoutId);
+                
+                const results = await stream.json();
+                
+                if (results.code === 'Ok' && results.routes && results.routes.length > 0) {
+                    activeRouteDataStore = results.routes.map((route, idx) => ({
+                        index: idx,
+                        geometry: route.geometry,
+                        duration: route.duration,
+                        distance: route.distance,
+                        isFallback: false
+                    }));
+                } else {
+                    generateLocalGridRouteFallback(originCoords, targetSelectedCoordinates);
+                }
+            } catch (err) { 
+                console.warn("External API blocked or offline. Booting autonomous internal routing pipeline...");
+                generateLocalGridRouteFallback(originCoords, targetSelectedCoordinates);
+            }
+
+            redrawActiveRoutePipelines();
+            renderRouteDashboardUI();
+            
+            // Transform button layout to prime start capability
+            btn.innerText = "START SIMULATION";
+            btn.style.background = "#28a745"; // Shift color matrix to green
+            btn.style.boxShadow = "0 6px 16px rgba(40, 167, 69, 0.4)";
+            btn.style.opacity = "1.0";
+        }
+
+        /* ── ANIMATION FLIGHT CONTROLLER ── */
+        function startRouteSimulation() {
+            if (activeRouteDataStore.length === 0) return;
+            
+            const routeCoordinates = activeRouteDataStore[0].geometry.coordinates;
+            if (!routeCoordinates || routeCoordinates.length === 0) return;
+
+            isNavigating = true;
+            currentRouteStepIndex = 0;
+            
+            const btn = document.getElementById('launch-routing-action');
+            if (btn) {
+                btn.innerText = "HALT SIMULATION";
+                btn.style.background = "#dc3545"; // Warning Red matrix alert
+                btn.style.boxShadow = "0 6px 16px rgba(220, 53, 69, 0.4)";
+            }
+
+            const statusNode = document.getElementById('telemetry-status-node');
+            if (statusNode) {
+                statusNode.innerText = "NAVIGATING (SIM)";
+                statusNode.style.color = "#28a745";
+            }
+
+            // If user location marker doesn't exist yet, generate it on the fly
             if (!userLocationBeaconMarker) {
                 const beaconEl = document.createElement('div');
                 beaconEl.className = 'live-gps-beacon-node';
                 userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })
-                    .setLngLat(coords)
+                    .setLngLat(routeCoordinates[0])
                     .addTo(map);
-            } else {
-                userLocationBeaconMarker.setLngLat(coords);
             }
 
-            if (shouldPanCamera) {
-                map.flyTo({ center: coords, zoom: 14, essential: true });
+            function frame() {
+                if (!isNavigating) return;
+
+                if (currentRouteStepIndex < routeCoordinates.length) {
+                    const currentPos = routeCoordinates[currentRouteStepIndex];
+                    
+                    // Snap blueprint beacon to current coordinate segment block
+                    userLocationBeaconMarker.setLngLat(currentPos);
+                    
+                    // Follow dot with camera view matrix smoothly
+                    map.easeTo({
+                        center: currentPos,
+                        zoom: 16,
+                        pitch: 55,
+                        bearing: map.getBearing() + 0.2 // subtle dynamic rotation flare
+                    });
+
+                    currentRouteStepIndex++;
+                    navigationAnimationId = requestAnimationFrame(frame);
+                } else {
+                    // Flight run complete
+                    stopRouteSimulation();
+                    const finalStatus = document.getElementById('telemetry-status-node');
+                    if (finalStatus) finalStatus.innerText = "ARRIVED";
+                }
+            }
+
+            navigationAnimationId = requestAnimationFrame(frame);
+        }
+
+        function stopRouteSimulation() {
+            isNavigating = false;
+            if (navigationAnimationId) cancelAnimationFrame(navigationAnimationId);
+            
+            const btn = document.getElementById('launch-routing-action');
+            if (btn) {
+                btn.innerText = "Calculate Route";
+                btn.style.background = "var(--action-red, #ff3333)";
+                btn.style.boxShadow = "0 6px 16px var(--action-red-glow, rgba(255, 51, 51, 0.4))";
+            }
+
+            const diagnosticStatus = document.getElementById('telemetry-status-node');
+            if (diagnosticStatus) {
+                diagnosticStatus.innerText = "ONLINE (LIVE)";
+                diagnosticStatus.style.color = "#007aff";
             }
         }
+
+        function generateLocalGridRouteFallback(start, end) {
+            const midPoint1 = [end[0], start[1]]; 
+            const midPoint2 = [start[0] + (end[0] - start[0]) * 0.5, start[1] + (end[1] - start[1]) * 0.5];
+
+            const mockGeometry = {
+                type: "LineString",
+                coordinates: [start, midPoint2, midPoint1, end]
+            };
+
+            const dLng = end[0] - start[0];
+            const dLat = end[1] - start[1];
+            const rawDistanceMeters = Math.sqrt(dLng * dLng + dLat * dLat) * 111000; 
+
+            activeRouteDataStore = [
+                {
+                    index: 0,
+                    geometry: mockGeometry,
+                    duration: (rawDistanceMeters / 13.4), 
+                    distance: rawDistanceMeters,
+                    isFallback: true
+                }
+            ];
+        }
+
+        function redrawActiveRoutePipelines() {
+            if (!activeRouteDataStore || activeRouteDataStore.length === 0) return;
+            
+            if (!map.isStyleLoaded()) {
+                setTimeout(redrawActiveRoutePipelines, 50);
+                return;
+            }
+
+            activeRouteDataStore.forEach((r) => {
+                const srcId = `route-src-${r.index}`;
+                const shadowLyrId = `route-shadow-lyr-${r.index}`;
+                const coreLyrId = `route-core-lyr-${r.index}`;
+
+                if (!map.getSource(srcId)) {
+                    map.addSource(srcId, { type: 'geojson', data: { type: 'Feature', geometry: r.geometry } });
+                }
+
+                if (!map.getLayer(shadowLyrId)) {
+                    map.addLayer({
+                        id: shadowLyrId, type: 'line', source: srcId,
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: {
+                            'line-color': '#000000',
+                            'line-width': 7,
+                            'line-opacity': satelliteModeActive ? 0.8 : 0.4,
+                            'line-offset': 2, 
+                            'line-blur': 4
+                        }
+                    });
+                }
+
+                if (!map.getLayer(coreLyrId)) {
+                    map.addLayer({
+                        id: coreLyrId, type: 'line', source: srcId,
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: {
+                            'line-color': '#ff3333', // Tactical Red Route Fill
+                            'line-width': 4.5,
+                            'line-opacity': 1.0
+                        }
+                    });
+                }
+            });
+        }
+
+        function renderRouteDashboardUI() {
+            const dashboard = document.getElementById('route-variants-dashboard');
+            if (!dashboard) return;
+            dashboard.innerHTML = '';
+            dashboard.style.display = 'flex';
+
+            activeRouteDataStore.forEach((r) => {
+                const mins = Math.max(1, Math.round(r.duration / 60));
+                const miles = (r.distance / 1609.34).toFixed(1);
+                 
+                const row = document.createElement('div');
+                row.className = 'route-badge-row active-variant';
+                row.innerHTML = `
+                    <div>
+                        <span class="badge-tag-label" style="color: #ff3333; font-weight: bold;">
+                            ${r.isFallback ? '⚡ LOCAL AUTONOMOUS PATH' : '★ OPTIMAL STREET ROUTE'}
+                        </span>
+                        <div style="color: var(--text-secondary, #cccccc); margin-top: 2px;">${mins} mins | ${miles} mi</div>
+                    </div>
+                    <div style="font-family: monospace; color: var(--text-muted, #888888); font-size: 0.65rem;">
+                        STATUS: READY
+                    </div>
+                `;
+                dashboard.appendChild(row);
+            });
+        }
+
+        function clearActiveRouteLayers() {
+            for (let idx = 0; idx < 20; idx++) {
+                const coreId = `route-core-lyr-${idx}`;
+                const shadowId = `route-shadow-lyr-${idx}`;
+                const srcId = `route-src-${idx}`;
+
+                if (map.getLayer(coreId)) map.removeLayer(coreId);
+                if (map.getLayer(shadowId)) map.removeLayer(shadowId);
+                if (map.getSource(srcId)) map.removeSource(srcId);
+            }
+        }
+
+        /* ── SYSTEM ENVIRONMENT PLUMBING ── */
+        function initHardwareConsoleTriggers() {
+            const compassBtn = document.getElementById('compass-orientation-lock');
+            if (compassBtn) {
+                compassBtn.addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 45 }));
+            }
+             
+            const recenterBtn = document.getElementById('force-gps-recenter');
+            if (recenterBtn) {
+                recenterBtn.addEventListener('click', () => {
+                    if (currentLiveGpsPosition) {
+                        map.flyTo({ center: currentLiveGpsPosition, zoom: 15 });
+                    } else {
+                        const mapCenter = map.getCenter();
+                        map.flyTo({ center: [mapCenter.lng, mapCenter.lat], zoom: 13 });
+                    }
+                });
+            }
+
+            const satelliteBtn = document.getElementById('toggle-satellite-view');
+            if (satelliteBtn) {
+                satelliteBtn.addEventListener('click', () => {
+                    satelliteModeActive = !satelliteModeActive;
+
+                    clearActiveRouteLayers(); 
+                    stopRouteSimulation();
+
+                    if (satelliteModeActive) {
+                        satelliteBtn.style.borderColor = '#ff3333';
+                        satelliteBtn.style.color = '#ff3333';
+                        satelliteBtn.style.boxShadow = '0 0 10px rgba(255, 51, 51, 0.2)';
+
+                        map.setStyle({
+                            'version': 8,
+                            'sources': {
+                                'esri-satellite-imagery': {
+                                    'type': 'raster',
+                                    'tiles': ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+                                    'tileSize': 256,
+                                    'attribution': 'Esri'
+                                }
+                            },
+                            'layers': [
+                                {
+                                    'id': 'satellite-reality-layer',
+                                    'type': 'raster',
+                                    'source': 'esri-satellite-imagery',
+                                    'paint': { 'raster-opacity': 0.95 }
+                                }
+                            ]
+                        });
+                    } else {
+                        satelliteBtn.style.borderColor = '';
+                        satelliteBtn.style.color = '';
+                        satelliteBtn.style.boxShadow = '';
+                        map.setStyle(REGULAR_MAP_STYLE);
+                    }
+                });
+            }
+
+            const routingBtn = document.getElementById('launch-routing-action');
+            if (routingBtn) {
+                routingBtn.addEventListener('click', handleRoutingButtonClick);
+            }
+            
+            const flushBtn = document.getElementById('flush-workspace-trigger');
+            if (flushBtn) {
+                flushBtn.addEventListener('click', () => {
+                    stopRouteSimulation();
+                    clearActiveRouteLayers();
+                    activeRouteDataStore = [];
+                    if (activeMapMarker) { activeMapMarker.remove(); activeMapMarker = null; }
+                    
+                    const destPanel = document.getElementById('context-destination-panel');
+                    if (destPanel) destPanel.style.display = 'none';
+                    
+                    const engineInput = document.getElementById('osm-engine-input');
+                    if (engineInput) engineInput.value = '';
+                    
+                    targetSelectedCoordinates = null;
+                });
+            }
+        }
+
+        function establishLiveHardwarePositioningStream() {
+            const diagnosticStatus = document.getElementById('telemetry-status-node');
+            if (!diagnosticStatus) return;
+            if (!navigator.geolocation) { diagnosticStatus.innerText = "UNSUPPORTED SENSOR"; return; }
+
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    const lon = position.coords.longitude;
+                    const lat = position.coords.latitude;
+                    const initialLockAchieved = (currentLiveGpsPosition === null);
+                    
+                    // Only snap live location changes if the browser simulation isn't overriding spatial telemetry
+                    if (!isNavigating) {
+                        currentLiveGpsPosition = [lon, lat];
+                        diagnosticStatus.innerText = "ONLINE (LIVE)";
+                        diagnosticStatus.style.color = "#007aff";
+
+                        if (!userLocationBeaconMarker) {
+                            const beaconEl = document.createElement('div');
+                            beaconEl.className = 'live-gps-beacon-node';
+                            userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })
+                                .setLngLat(currentLiveGpsPosition)
+                                .addTo(map);
+                        } else {
+                            userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
+                        }
+
+                        if (initialLockAchieved) {
+                            map.flyTo({ center: currentLiveGpsPosition, zoom: 14, essential: true });
+                        }
+                    }
+                },
+                (error) => { 
+                    if (!isNavigating) {
+                        diagnosticStatus.style.color = "#ff9500"; 
+                        diagnosticStatus.innerText = "LOCAL EDGE LINK"; 
+                    }
+                },
+                { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+            );
+        }
+
+        function initTacticalPanelDraggingPhysics() {
+            const panel = document.getElementById('control-panel-deck');
+            const handle = document.getElementById('drag-handle');
+            if (!panel || !handle) return;
+            
+            let isDragging = false, startY = 0, currentTranslateY = 0, lastTranslateY = 0;
+
+            handle.addEventListener('mousedown', startDrag);
+            window.addEventListener('mousemove', processDrag);
+            window.addEventListener('mouseup', endDrag);
+            handle.addEventListener('touchstart', (e) => startDrag(e.touches[0]), { passive: true });
+            window.addEventListener('touchmove', (e) => processDrag(e.touches[0]), { passive: false });
+            window.addEventListener('touchend', endDrag);
+
+            function startDrag(e) { isDragging = true; startY = e.clientY; panel.classList.remove('snapping'); }
+            function processDrag(e) {
+                if (!isDragging) return;
+                let nextY = lastTranslateY + (e.clientY - startY);
+                if (nextY < -150) nextY = -150; if (nextY > 400) nextY = 400;
+                currentTranslateY = nextY;
+                panel.style.transform = `translateY(${currentTranslateY}px)`;
+            }
+            function endDrag() {
+                if (!isDragging) return; isDragging = false; panel.classList.add('snapping');
+                if (currentTranslateY > 150) currentTranslateY = 320;
+                else if (currentTranslateY < -50) currentTranslateY = -80;
+                else currentTranslateY = 0;
+                panel.style.transform = `translateY(${currentTranslateY}px)`;
+                lastTranslateY = currentTranslateY;
+            }
+        }
+
+        function initAutonomousSearchMatrix() {
+            const input = document.getElementById('osm-engine-input');
+            const dropdown = document.getElementById('osm-engine-dropdown');
+            if (!input || !dropdown) return;
+
+            input.addEventListener('input', (e) => {
+                const queryVal = e.target.value.trim();
+                clearTimeout(querySearchDebounceTimer);
+                if (queryVal.length < 3) { dropdown.style.display = 'none'; return; }
+                 
+                querySearchDebounceTimer = setTimeout(async () => {
+                    try {
+                        let searchApiUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`;
+                        if (currentLiveGpsPosition) searchApiUrl += `&lon=${currentLiveGpsPosition[0]}&lat=${currentLiveGpsPosition[1]}`;
+                        const response = await fetch(searchApiUrl);
+                        const payload = await response.json();
+                        if (!payload.features || payload.features.length === 0) { dropdown.style.display = 'none'; return; }
+                         
+                        dropdown.innerHTML = '';
+                        payload.features.forEach(feature => {
+                            const segmentItem = document.createElement('div');
+                            segmentItem.className = 'osm-suggest-item';
+                            const p = feature.properties;
+                            const labeledLocation = [p.name, p.city, p.state].filter(Boolean).join(', ');
+                            segmentItem.innerText = labeledLocation;
+                             
+                            segmentItem.addEventListener('click', () => {
+                                const targetLoc = feature.geometry.coordinates;
+                                dropdown.style.display = 'none';
+                                input.value = labeledLocation;
+                                map.flyTo({ center: targetLoc, zoom: 15 });
+                                triggerWorkspaceTargetDeck(targetLoc, p.name || "Target Vector", labeledLocation);
+                            });
+                            dropdown.appendChild(segmentItem);
+                        });
+                        dropdown.style.display = 'block';
+                    } catch (err) { console.error("Search pipeline fault:", err); }
+                }, 250);
+            });
+        }
+
+        function initDirectMapInputListeners() {
+            map.on('click', async (e) => {
+                const pinpoint = [e.lngLat.lng, e.lngLat.lat];
+                triggerWorkspaceTargetDeck(pinpoint, "Selected Matrix Node", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
+                try {
+                    const lookup = await fetch(`https://photon.komoot.io/api/?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
+                    const details = await lookup.json();
+                    if (details.features && details.features.length > 0) {
+                        const p = details.features[0].properties;
+                        const addressString = [p.name, p.street, p.postcode].filter(Boolean).join(', ');
+                        triggerWorkspaceTargetDeck(pinpoint, p.name || "Discovered Feature Context", addressString || "Raw Geographic Geometry Data");
+                    }
+                } catch(error){}
+            });
+        }
+
+        function triggerWorkspaceTargetDeck(coords, title, details) {
+            stopRouteSimulation();
+            clearActiveRouteLayers();
+            activeRouteDataStore = [];
+            targetSelectedCoordinates = coords;
+            
+            const titleNode = document.getElementById('node-panel-title');
+            const addressNode = document.getElementById('node-panel-address');
+            const destPanel = document.getElementById('context-destination-panel');
+            
+            if (titleNode) titleNode.innerText = title;
+            if (addressNode) addressNode.innerText = details;
+            if (destPanel) destPanel.style.display = 'flex';
+
+            if (activeMapMarker) activeMapMarker.remove();
+            activeMapMarker = new maplibregl.Marker({ element: createCustomMarkerElement() })
+                .setLngLat(coords)
+                .addTo(map);
+        }
+</script>
