@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en)
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -256,7 +256,7 @@
         .biz-row { display: flex; justify-content: space-between; align-items: center; }
         .biz-label { color: var(--text-secondary); }
         .biz-val { font-weight: 600; }
-        .biz-badge { background: rgba(48, 209, 88, 0.15); color: var(--traffic-green); padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; }
+        .biz-badge { background: rgba(48, 209, 88, 0.15); color: var(--traffic-green); padding: 2px 8px; border-radius: 6px; font-size: 0.7 turnaround; font-weight: 700; }
         .biz-rating { color: var(--traffic-yellow); font-weight: 700; }
 
         .route-alt-row { display: flex; gap: 8px; overflow-x: auto; }
@@ -438,7 +438,7 @@
             satelliteHybrid: 'mapbox://styles/mapbox/satellite-streets-v12'
         };
 
-        // Standard baseline origin framework coordinates
+        // Standard baseline origin framework fallback coordinates
         let currentOriginCoords = [-123.2078, 39.1502]; 
         let selectedDestinationCoords = null;
         let currentTravelMode = 'driving-traffic';
@@ -447,6 +447,7 @@
         let isNavigating = false;
         let layers3DActive = false;
         let geocoderInstance = null;
+        let mapCenteredOnLiveGPS = false; // Camera-lock tracking constraint
 
         const map = new mapboxgl.Map({
             container: 'map',
@@ -466,7 +467,7 @@
         destMarkerElement.className = 'custom-dest-marker';
         const globalDestinationMarker = new mapboxgl.Marker(destMarkerElement);
 
-        // Core Fix: Bind architectural building initialization directly to style configurations
+        // Bind architectural building initialization directly to style configurations
         map.on('style.load', () => {
             register3DBuildingsArchitecturalLayer();
             if (selectedDestinationCoords) {
@@ -482,7 +483,7 @@
             initializeLiveGPSHardware();
         });
 
-        // ── FIX 1: LIVE GEOLOCATION HARDWARE INTEGRATION ──
+        // ── LIVE GEOLOCATION HARDWARE INTEGRATION (WITH AUTOMATIC RECENTERING) ──
         function initializeLiveGPSHardware() {
             if (!navigator.geolocation) {
                 document.getElementById('telemetry-feed').innerText = "GPS NOT SUPPORTED";
@@ -506,6 +507,17 @@
             document.getElementById('telemetry-feed').innerText = "GPS LOCK [3D_FIX]";
             document.getElementById('telemetry-feed').style.color = "var(--traffic-green)";
             
+            // CAMERA CORRECTION RULE: Jump camera to real coordinates immediately on the initial lock
+            if (!mapCenteredOnLiveGPS) {
+                map.flyTo({
+                    center: currentOriginCoords,
+                    zoom: 14,
+                    pitch: 20,
+                    essential: true
+                });
+                mapCenteredOnLiveGPS = true;
+            }
+
             if (geocoderInstance) {
                 geocoderInstance.setProximity({
                     longitude: currentOriginCoords[0],
@@ -520,7 +532,7 @@
             document.getElementById('telemetry-feed').style.color = "var(--traffic-red)";
         }
 
-        // ── FIX 2: REPERSIST 3D EXTRUSION LAYERS ACROSS MAP LICYCLES ──
+        // REPERSIST 3D EXTRUSION LAYERS ACROSS MAP LIFECYCLES
         function register3DBuildingsArchitecturalLayer() {
             if (map.getLayer('3d-buildings')) return;
 
@@ -564,7 +576,7 @@
             });
         }
 
-        // ── PICTURE IMPLEMENTATION (IMG_4603.jpeg Integration Hooks) ──
+        // PICTURE IMPLEMENTATION (IMG_4603.jpeg Integration Hooks)
         document.querySelectorAll('.category-search-pill').forEach(pill => {
             pill.addEventListener('click', () => {
                 const queryTarget = pill.getAttribute('data-query');
