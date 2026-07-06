@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GeoPro Quantum Navigation</title>
+    <title>GeoPro Tactical Navigation System</title>
 
     <!-- Mapbox GL JS Core Engine -->
     <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
@@ -14,17 +14,16 @@
 
     <style>
         :root {
-            --bg-pure: #000000;
-            --hud-bg: rgba(10, 10, 12, 0.90);
-            --card-surface: rgba(22, 22, 26, 0.75);
+            --bg-pure: #050507;
+            --hud-bg: rgba(10, 10, 14, 0.85);
+            --card-surface: rgba(20, 20, 25, 0.65);
             --neon-red: #ff2222;
-            --border-glow: rgba(255, 34, 34, 0.15);
-            --border-line: rgba(255, 255, 255, 0.08);
+            --neon-glow: rgba(255, 34, 34, 0.25);
+            --border-line: rgba(255, 255, 255, 0.07);
             --text-primary: #ffffff;
-            --text-secondary: #8e8e93;
+            --text-secondary: #9a9a12;
+            --text-muted: #6e6e73;
             --traffic-green: #30d158;
-            --traffic-yellow: #ffcc00;
-            --traffic-red: #ff453a;
         }
 
         * {
@@ -32,7 +31,7 @@
             margin: 0;
             padding: 0;
             font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
-            letter-spacing: -0.2px;
+            letter-spacing: -0.3px;
         }
 
         body, html {
@@ -60,50 +59,45 @@
             z-index: 1;
         }
 
-        button { font: inherit; }
+        button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; }
 
-        /* ── HUD COMMAND DECK ── */
+        /* ── HUD COMMAND DECK (ADVANCED GLASSMORPHISM) ── */
         #command-deck {
             position: absolute;
             top: 20px;
             left: 20px;
-            width: 380px;
+            width: 400px;
             max-height: calc(100vh - 40px);
             z-index: 10;
             background: var(--hud-bg);
-            backdrop-filter: blur(30px) saturate(200%);
-            -webkit-backdrop-filter: blur(30px) saturate(200%);
+            backdrop-filter: blur(35px) saturate(220%);
+            -webkit-backdrop-filter: blur(35px) saturate(220%);
             border: 1px solid var(--border-line);
-            border-radius: 24px;
+            border-radius: 28px;
             padding: 24px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 40px var(--border-glow);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 50px var(--neon-glow);
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 18px;
             overflow-y: auto;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
         }
 
         .drag-handle-zone {
             width: 100%;
-            padding: 10px 0;
-            margin-top: -10px;
+            padding: 6px 0;
+            margin-top: -12px;
             display: flex;
             justify-content: center;
             cursor: grab;
             touch-action: none;
-            user-select: none;
         }
         .drag-handle-zone:active { cursor: grabbing; }
         .drag-handle-bar {
-            width: 44px;
-            height: 5px;
-            background: rgba(255, 255, 255, 0.3);
-            border-radius: 3px;
-            pointer-events: none;
-        }
-
-        #command-deck.is-dragging { 
-            transition: none !important; 
+            width: 48px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
         }
 
         .deck-header {
@@ -113,218 +107,210 @@
         }
 
         .brand-logo {
-            font-size: 1.35rem;
-            font-weight: 800;
+            font-size: 1.5rem;
+            font-weight: 900;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
         }
-        .brand-logo span { color: var(--neon-red); text-shadow: 0 0 10px rgba(255,34,34,0.4); }
+        .brand-logo span { color: var(--neon-red); text-shadow: 0 0 15px rgba(255,34,34,0.6); }
 
-        .sys-exit-btn {
-            background: var(--card-surface);
+        /* Multi-Stop Routing Engine Hub */
+        .waypoint-manager {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: rgba(0,0,0,0.25);
+            padding: 12px;
+            border-radius: 16px;
             border: 1px solid var(--border-line);
-            color: var(--text-secondary);
-            padding: 6px 14px;
-            border-radius: 10px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-decoration: none;
-            cursor: pointer;
-            transition: all 0.2s ease;
         }
-        .sys-exit-btn:hover {
-            color: var(--text-primary);
-            border-color: rgba(255,255,255,0.2);
+        .waypoint-node {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: var(--card-surface);
+            padding: 10px 14px;
+            border-radius: 12px;
+            border: 1px solid var(--border-line);
+            font-size: 0.85rem;
         }
+        .waypoint-badge {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: var(--neon-red);
+            font-size: 0.7rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .waypoint-text { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .waypoint-remove { color: var(--text-muted); font-weight: bold; }
+        .waypoint-remove:hover { color: var(--neon-red); }
 
-        /* Travel Mode Selector */
+        /* Travel Mode Selector Matrix */
         .mode-selector-row {
             display: flex;
-            gap: 8px;
-            background: rgba(0,0,0,0.3);
-            padding: 6px;
-            border-radius: 14px;
+            gap: 6px;
+            background: rgba(0,0,0,0.4);
+            padding: 4px;
+            border-radius: 16px;
             border: 1px solid var(--border-line);
         }
         .mode-btn {
             flex: 1;
-            background: transparent;
-            border: none;
-            color: var(--text-secondary);
-            padding: 9px 6px;
-            border-radius: 10px;
-            cursor: pointer;
+            padding: 12px 6px;
+            border-radius: 12px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 3px;
-            font-size: 0.65rem;
-            font-weight: 600;
-            transition: all 0.2s ease;
+            gap: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: var(--text-muted);
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .mode-btn svg { stroke: var(--text-secondary); fill: none; }
+        .mode-btn svg { stroke: var(--text-muted); fill: none; transition: stroke 0.25s; }
         .mode-btn.active {
             background: rgba(255, 34, 34, 0.15);
             color: var(--neon-red);
+            box-shadow: inset 0 0 8px rgba(255,34,34,0.1);
         }
         .mode-btn.active svg { stroke: var(--neon-red); }
 
-        /* Search Interface Box */
-        .search-container-box {
-            width: 100%;
-            position: relative;
-        }
-        #geocoder-mount {
-            width: 100%;
-        }
+        /* Unified Search Web Component Engine */
+        .search-container-box { width: 100%; position: relative; }
+        #geocoder-mount { width: 100%; }
         mapboxgl-search-box, mapboxsearch-search-box {
             width: 100% !important;
-            max-width: 100% !important;
             --mapbox-search-box-background: var(--card-surface);
             --mapbox-search-box-text: var(--text-primary);
-            --mapbox-search-box-placeholder-text: var(--text-secondary);
+            --mapbox-search-box-placeholder-text: var(--text-muted);
             --mapbox-search-box-border: 1px solid var(--border-line);
             --mapbox-search-box-border-radius: 16px;
-            --mapbox-search-box-results-background: var(--hud-bg);
-            --mapbox-search-box-result-text: var(--text-primary);
-            --mapbox-search-box-result-hover-background: rgba(255, 255, 255, 0.08);
-            --mapbox-search-box-icon-fill: var(--text-secondary);
+            --mapbox-search-box-results-background: #0f0f14;
             --mapbox-search-box-shadow: none;
         }
 
-        /* Category Chips Styling */
+        /* Intelligent Category Pills Matrix */
         .category-chips-row {
             display: flex;
             gap: 8px;
             overflow-x: auto;
-            padding: 2px 0 6px 0;
+            padding-bottom: 4px;
             scrollbar-width: none;
         }
         .category-chips-row::-webkit-scrollbar { display: none; }
-        
         .category-search-pill {
-            background: rgba(22, 22, 26, 0.95);
-            border: 1px solid rgba(255, 255, 255, 0.15);
-            color: var(--text-primary);
-            padding: 10px 18px;
-            border-radius: 100px;
-            font-size: 0.88rem;
-            font-weight: 500;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .category-search-pill:hover {
-            background: rgba(35, 35, 40, 1);
-            border-color: var(--neon-red);
-            transform: scale(1.02);
-        }
-
-        /* Destination Display Panel */
-        #destination-card {
             background: var(--card-surface);
             border: 1px solid var(--border-line);
-            border-radius: 16px;
-            padding: 16px;
+            padding: 10px 16px;
+            border-radius: 100px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .category-search-pill:hover {
+            border-color: var(--neon-red);
+            background: rgba(255,34,34,0.05);
+            transform: translateY(-1px);
+        }
+
+        /* Context Processing Destination Card */
+        #destination-card {
+            background: linear-gradient(145deg, var(--card-surface), rgba(15,15,20,0.4));
+            border: 1px solid var(--border-line);
+            border-radius: 20px;
+            padding: 20px;
             display: none;
             flex-direction: column;
-            gap: 12px;
+            gap: 14px;
         }
-        .dest-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); }
-        .dest-address { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.3; }
+        .dest-title { font-size: 1.15rem; font-weight: 800; }
+        .dest-address { font-size: 0.85rem; color: var(--text-muted); line-height: 1.4; }
 
-        .spatial-data-grid {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid var(--border-line);
-            border-radius: 12px;
-            padding: 12px;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            font-size: 0.8rem;
-        }
-        .space-row { display: flex; justify-content: space-between; align-items: center; }
-        .space-label { color: var(--text-secondary); }
-        .space-val { font-weight: 600; color: var(--text-primary); }
-
-        .route-alt-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+        .route-alt-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
         .route-alt-pill {
-            flex-shrink: 0; background: rgba(255,255,255,0.05); border: 1px solid var(--border-line);
-            color: var(--text-secondary); padding: 8px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; cursor: pointer;
+            flex-shrink: 0; background: rgba(255,255,255,0.04); border: 1px solid var(--border-line);
+            padding: 10px 14px; border-radius: 12px; font-size: 0.75rem; font-weight: 700;
         }
-        .route-alt-pill.selected { border-color: var(--neon-red); color: var(--text-primary); background: rgba(255, 34, 34, 0.18); }
+        .route-alt-pill.selected { border-color: var(--neon-red); color: var(--neon-red); background: rgba(255, 34, 34, 0.12); }
 
         .nav-action-row { display: flex; gap: 10px; }
         .nav-btn {
-            flex: 1; background: var(--neon-red); color: #fff; border: none; padding: 12px;
-            border-radius: 12px; font-size: 0.88rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-            box-shadow: 0 0 12px rgba(255, 34, 34, 0.3);
+            flex: 1; background: var(--neon-red); padding: 14px;
+            border-radius: 14px; font-size: 0.9rem; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px;
+            box-shadow: 0 8px 24px rgba(255, 34, 34, 0.35);
         }
-        .clear-route-btn { background: rgba(255,255,255,0.08); border: 1px solid var(--border-line); color: var(--text-primary); width: 48px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .add-stop-btn {
+            background: rgba(255,255,255,0.06); border: 1px solid var(--border-line); padding: 14px; border-radius: 14px; font-size: 0.85rem; font-weight: 600;
+        }
+        .add-stop-btn:hover { background: rgba(255,255,255,0.1); }
+        .clear-route-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border-line); width: 52px; border-radius: 14px; display: flex; align-items: center; justify-content: center; }
 
-        /* Telemetry Feeds */
+        /* Hardware Matrix Logs */
         .telemetry-grid {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 6px;
             background: rgba(0,0,0,0.3);
-            padding: 14px 16px;
-            border-radius: 16px;
+            padding: 14px;
+            border-radius: 18px;
             border: 1px solid var(--border-line);
+            font-family: monospace;
+            font-size: 0.75rem;
         }
-        .matrix-row { display: flex; justify-content: space-between; font-size: 0.8rem; }
-        .matrix-row span:first-child { color: var(--text-secondary); }
-        .matrix-row span:last-child { font-family: monospace; font-weight: 600; }
+        .matrix-row { display: flex; justify-content: space-between; }
+        .matrix-row span:first-child { color: var(--text-muted); }
 
-        /* Navigation Overlay Details */
+        /* ── NEXT-GEN REAL-TIME TACTICAL INSTRUMENTATION HUD ── */
         #active-nav-hud {
-            display: none; position: absolute; top: 20px; left: 20px; width: 380px; z-index: 15; flex-direction: column; gap: 10px;
+            display: none; position: absolute; top: 20px; left: 20px; width: 400px; z-index: 15; flex-direction: column; gap: 12px;
         }
-        .nav-instruction-card { background: linear-gradient(160deg, rgba(255,34,34,0.25), rgba(10,10,12,0.92)); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.12); border-radius: 24px; padding: 22px; display: flex; align-items: center; gap: 18px; }
+        .nav-instruction-card { background: linear-gradient(165deg, rgba(255,34,34,0.22), rgba(10,10,14,0.95)); backdrop-filter: blur(40px); border: 1px solid rgba(255,255,255,0.12); border-radius: 24px; padding: 24px; display: flex; align-items: center; gap: 20px; box-shadow: 0 20px 50px rgba(0,0,0,0.6); }
         .nav-instruction-body { flex: 1; }
-        .nav-instruction-dist { font-size: 1.6rem; font-weight: 800; }
-        .nav-instruction-text { font-size: 0.9rem; color: rgba(255,255,255,0.85); font-weight: 600; }
-        .nav-bottom-bar { background: var(--hud-bg); backdrop-filter: blur(30px); border: 1px solid var(--border-line); border-radius: 20px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; }
+        .nav-instruction-dist { font-size: 1.8rem; font-weight: 900; letter-spacing: -0.5px; }
+        .nav-instruction-text { font-size: 0.95rem; rgba(255,255,255,0.9); font-weight: 600; margin-top: 2px; }
+        .nav-bottom-bar { background: var(--hud-bg); backdrop-filter: blur(40px); border: 1px solid var(--border-line); border-radius: 22px; padding: 18px 20px; display: flex; align-items: center; justify-content: space-between; }
         .nav-bottom-stat { display: flex; flex-direction: column; }
-        .nav-bottom-stat .val { font-size: 1.05rem; font-weight: 800; }
-        .nav-bottom-stat .lbl { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; }
-        .nav-end-btn { background: #3a3a44; color: #fff; border: 1px solid var(--border-line); padding: 10px 18px; border-radius: 12px; font-weight: 700; cursor: pointer; }
+        .nav-bottom-stat .val { font-size: 1.2rem; font-weight: 900; }
+        .nav-bottom-stat .lbl { font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-top: 2px; }
+        .nav-end-btn { background: #2c2c35; border: 1px solid var(--border-line); padding: 12px 20px; border-radius: 14px; font-weight: 700; }
 
+        /* Flight-Deck Speedometer Module */
         #speed-chip {
-            display: none; position: absolute; bottom: 20px; left: 20px; z-index: 15; width: 74px; height: 74px; border-radius: 50%; background: #0c0c0e; border: 4px solid var(--neon-red); flex-direction: column; align-items: center; justify-content: center;
-            box-shadow: 0 0 15px rgba(255, 34, 34, 0.2);
+            display: none; position: absolute; bottom: 30px; left: 30px; z-index: 15; width: 90px; height: 90px; border-radius: 50%; background: #08080c; border: 4px solid var(--neon-red); flex-direction: column; align-items: center; justify-content: center;
+            box-shadow: 0 0 25px var(--neon-glow);
         }
-        #speed-chip .speed-val { font-size: 1.4rem; font-weight: 800; line-height: 1; color: var(--text-primary); }
-        #speed-chip .speed-unit { font-size: 0.55rem; color: var(--text-secondary); font-weight: 700; }
+        #speed-chip .speed-val { font-size: 1.8rem; font-weight: 900; line-height: 1; }
+        #speed-chip .speed-unit { font-size: 0.6rem; color: var(--text-muted); font-weight: 800; margin-top: 2px; }
 
-        /* Right System Stack Controls */
+        /* Flight-Deck Control Utilities Deck */
         #right-console-stack {
             position: absolute; top: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 12px;
         }
         .glass-panel-btn {
-            background: var(--hud-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-line); padding: 14px; border-radius: 16px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+            background: var(--hud-bg); backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid var(--border-line); width: 50px; height: 50px; border-radius: 16px; display: flex; align-items: center; justify-content: center; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .glass-panel-btn:hover { background: rgba(255,255,255,0.08); }
-        .glass-panel-btn.active { border-color: var(--neon-red); color: var(--neon-red); box-shadow: 0 0 10px rgba(255, 34, 34, 0.2); }
+        .glass-panel-btn:hover { background: rgba(255,255,255,0.08); transform: scale(1.05); }
+        .glass-panel-btn.active { border-color: var(--neon-red); color: var(--neon-red); box-shadow: 0 0 15px var(--neon-glow); }
 
-        #spatial-overlay { position: absolute; bottom: 20px; right: 20px; background: var(--hud-bg); backdrop-filter: blur(10px); padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border-line); font-family: monospace; font-size: 0.75rem; z-index: 5; }
+        #spatial-overlay { position: absolute; bottom: 25px; right: 25px; background: var(--hud-bg); backdrop-filter: blur(15px); padding: 10px 16px; border-radius: 12px; border: 1px solid var(--border-line); font-family: monospace; font-size: 0.75rem; z-index: 5; }
 
-        /* Destination Point Custom UI Overrides (Safe to remain HTML as it's static) */
-        .custom-dest-marker { width: 18px; height: 18px; background-color: #ffffff; border: 4px solid var(--neon-red); border-radius: 50%; box-shadow: 0 0 18px var(--neon-red); }
+        /* Dynamic Visual Radar Ring */
+        @keyframes radarPulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            100% { transform: scale(3.5); opacity: 0; }
+        }
+        .radar-pulse-ring {
+            position: absolute; width: 100px; height: 100px; border: 2px solid var(--neon-red); border-radius: 50%; pointer-events: none; z-index: 2; display: none; transform-origin: center; animation: radarPulse 1.8s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
+        }
 
         @media(max-width: 480px) {
-            #command-deck, #active-nav-hud { width: 100%; left: 0; right: 0; }
-            #command-deck { 
-                bottom: 0; 
-                top: auto; 
-                height: 45vh;
-                max-height: 85vh; 
-                border-radius: 24px 24px 0 0;
-                box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
-            }
+            #command-deck, #active-nav-hud { width: calc(100% - 30px); left: 15px; right: 15px; }
+            #command-deck { bottom: 15px; top: auto; height: 50vh; max-height: 85vh; border-radius: 28px; }
         }
     </style>
 </head>
@@ -332,18 +318,20 @@
 
     <div id="app-viewport">
         <div id="map"></div>
+        <div id="radar-glow" class="radar-pulse-ring"></div>
 
-        <!-- Command Deck Interface Sheet -->
+        <!-- System Architecture Command Deck -->
         <div id="command-deck">
             <div class="drag-handle-zone" id="drag-handle"><div class="drag-handle-bar"></div></div>
             <div class="deck-header">
                 <div class="brand-logo">Geo<span>Pro</span></div>
-                <div class="header-actions">
-                    <button class="sys-exit-btn">Exit</button>
-                </div>
+                <button class="glass-panel-btn" id="radar-toggle" title="Radar Spatial Scan" style="width:36px; height:36px; border-radius:10px;">📡</button>
             </div>
 
-            <!-- Travel Mode Elements Matrix -->
+            <!-- Sequential Multi-Stop Queue Pipeline -->
+            <div class="waypoint-manager" id="waypoint-box" style="display: none;"></div>
+
+            <!-- Engineering Travel Selection Matrix -->
             <div class="mode-selector-row" id="mode-selector">
                 <button class="mode-btn active" data-mode="driving-traffic">
                     <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 17h14M5 17a2 2 0 1 0 4 0M15 17a2 2 0 1 0 4 0M5 17l1-6 2-3h8l2 3 1 6M6 11h12"/></svg>
@@ -359,75 +347,64 @@
                 </button>
             </div>
 
-            <!-- Search Field Web Component Mount -->
+            <!-- Unified Web Component Input Interface -->
             <div class="search-container-box">
                 <div id="geocoder-mount"></div>
             </div>
 
-            <!-- Category Fast Access Chips -->
+            <!-- Smart Fast Access Matrix Pills -->
             <div class="category-chips-row">
-                <button class="category-search-pill" data-query="Food">🍔 Food</button>
-                <button class="category-search-pill" data-query="Coffee">☕ Coffee</button>
-                <button class="category-search-pill" data-query="Gas Station">⛽ Fuel</button>
+                <button class="category-search-pill" data-query="Charging Station">⚡ Chargers</button>
+                <button class="category-search-pill" data-query="Food">🍕 Fuel Stops</button>
+                <button class="category-search-pill" data-query="Coffee">☕ Caffeine</button>
             </div>
 
-            <!-- Dynamic Context Destination Card -->
+            <!-- Dynamic Interactive Destination Processing Card -->
             <div id="destination-card">
-                <div class="dest-title" id="card-title">Selected Node</div>
-                <div class="dest-address" id="card-address">Analyzing route vector traces...</div>
-                <div id="spatial-profile-box"></div>
+                <div class="dest-title" id="card-title">Node Selected</div>
+                <div class="dest-address" id="card-address">Awaiting sequence instruction...</div>
                 <div class="route-alt-row" id="route-alt-row"></div>
                 <div class="nav-action-row">
-                    <button class="nav-btn" id="launch-nav-trigger">Start Navigation</button>
+                    <button class="nav-btn" id="launch-nav-trigger">Launch System Nav</button>
+                    <button class="add-stop-btn" id="add-waypoint-trigger">+ Add Stop</button>
                     <button class="clear-route-btn" id="clear-route-trigger">✖</button>
                 </div>
             </div>
 
-            <!-- Global Hardware Monitor Readings -->
+            <!-- Active Avionics System Logs -->
             <div class="telemetry-grid">
-                <div class="matrix-row">
-                    <span>TRAFFIC NETWORK</span>
-                    <span id="traffic-status" style="color: var(--traffic-green);">OPTIMAL</span>
-                </div>
-                <div class="matrix-row">
-                    <span>GPS STATUS</span>
-                    <span id="telemetry-feed" style="color: var(--neon-red);">SEARCHING LOCK...</span>
-                </div>
+                <div class="matrix-row"><span>SYSTEM STATE</span><span id="traffic-status" style="color: var(--traffic-green);">COMPILING LATEST</span></div>
+                <div class="matrix-row"><span>HARDWARE ENGINE</span><span id="telemetry-feed" style="color: var(--neon-red);">SYNCHRONIZING SECURE BEACON...</span></div>
             </div>
         </div>
 
-        <!-- Active Tracking HUD -->
+        <!-- Full Tactical Navigation Instrument HUD Overlay -->
         <div id="active-nav-hud">
             <div class="nav-instruction-card">
                 <div class="nav-instruction-body">
                     <div class="nav-instruction-dist" id="nav-instruction-dist">--</div>
-                    <div class="nav-instruction-text" id="nav-instruction-text">Preparing route…</div>
+                    <div class="nav-instruction-text" id="nav-instruction-text">Routing trajectory trace...</div>
                 </div>
             </div>
             <div class="nav-bottom-bar">
-                <div class="nav-bottom-stat"><span class="val" id="nav-eta-val">--:--</span><span class="lbl">Arrival</span></div>
-                <div class="nav-bottom-stat"><span class="val" id="nav-time-left">--</span><span class="lbl">Remaining</span></div>
-                <div class="nav-bottom-stat"><span class="val" id="nav-dist-left">--</span><span class="lbl">Distance</span></div>
-                <button class="nav-end-btn" id="nav-end-trigger">End</button>
+                <div class="nav-bottom-stat"><span class="val" id="nav-eta-val">--:--</span><span class="lbl">ETA</span></div>
+                <div class="nav-bottom-stat"><span class="val" id="nav-time-left">--</span><span class="lbl">Time</span></div>
+                <div class="nav-bottom-stat"><span class="val" id="nav-dist-left">--</span><span class="lbl">Dist</span></div>
+                <button class="nav-end-btn" id="nav-end-trigger">Kill Session</button>
             </div>
         </div>
 
+        <!-- Telemetry Data Chips -->
         <div id="speed-chip"><span class="speed-val" id="speed-val">0</span><span class="speed-unit">MPH</span></div>
 
-        <!-- Right System Utility Column Structure -->
+        <!-- Right Side Utility Console Array Stack -->
         <div id="right-console-stack">
-            <button class="glass-panel-btn" id="recenter-gps" title="Recenter on Live Position">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
-            </button>
-            <button class="glass-panel-btn" id="toggle-satellite" title="Toggle Satellite Map Layer">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-            </button>
-            <button class="glass-panel-btn" id="toggle-3d" title="Toggle 3D Buildings">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
-            </button>
+            <button class="glass-panel-btn" id="recenter-gps" title="Force Beacon Re-Center">🎯</button>
+            <button class="glass-panel-btn" id="toggle-satellite" title="Satellite Orbital Feed">🛰️</button>
+            <button class="glass-panel-btn" id="toggle-3d" title="3D Volumetric Extrusions">🏙️</button>
         </div>
 
-        <div id="spatial-overlay">LNG: -- | LAT: --</div>
+        <div id="spatial-overlay">X: -- | Y: --</div>
     </div>
 
     <script>
@@ -438,17 +415,23 @@
             satelliteHybrid: 'mapbox://styles/mapbox/satellite-streets-v12'
         };
 
+        // Telemetry State Core Coordinates
         let currentOriginCoords = [-123.2078, 39.1502]; 
         let lastKnownCoords = null;
         let selectedDestinationCoords = null;
         let currentTravelMode = 'driving-traffic';
         let routeAlternatives = [];
         let selectedRouteIdx = 0;
+        
+        // Multi-Stop Route Sequencing Stack Array 
+        let intermediateWaypoints = [];
+        let waypointMarkersArray = [];
+
         let isNavigating = false;
         let layers3DActive = false;
         let isSatelliteActive = false;
+        let radarActive = false;
         let geocoderInstance = null;
-        
         let mapCenteredOnLiveGPS = false; 
         let userInterruptedTracking = false;
         let hardwareHeading = 0;
@@ -458,23 +441,18 @@
             style: mapStyles.vectorDark,
             center: currentOriginCoords,
             zoom: 14,
-            pitch: 20,
+            pitch: 30,
             bearing: 0,
             antialias: true
         });
 
-        // Safe static HTML fallback only used for selected destinations
-        const destMarkerElement = document.createElement('div');
-        destMarkerElement.className = 'custom-dest-marker';
-        const globalDestinationMarker = new mapboxgl.Marker(destMarkerElement);
-
-        // Core compilation for live native hardware tracking injection
+        // Frame-locked WebGL native source paint pipeline execution
         map.on('style.load', () => {
             initializeNativeTrackingLayers();
             registerGlobal3DTerrainEngine();
             register3DBuildingsArchitecturalLayer();
-            if (selectedDestinationCoords) {
-                renderVisualRouteLines();
+            if (selectedDestinationCoords || intermediateWaypoints.length > 0) {
+                calculateNavigationVectors();
             }
         });
 
@@ -490,7 +468,7 @@
             map.on('pitchstart', () => { userInterruptedTracking = true; });
         });
 
-        // PERFORMANCE RADICAL FIX: Inject tracking layer directly into WebGL canvas context memory
+        // GPU-Direct Painting Loop: Removes DOM Engine Overhead lag artifacts
         function initializeNativeTrackingLayers() {
             if (map.getSource('live-user-source')) return;
 
@@ -503,49 +481,34 @@
                 }
             });
 
-            // Layer 1: Core Beacon Glow Pinned Layer
             map.addLayer({
                 id: 'user-beacon-glow',
                 type: 'circle',
                 source: 'live-user-source',
                 paint: {
-                    'circle-radius': [
-                        'interpolate', ['linear'], ['zoom'],
-                        10, 14,
-                        18, 26
-                    ],
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 16, 18, 32],
                     'circle-color': '#ff2222',
-                    'circle-opacity': 0.25,
-                    'circle-blur': 0.6
+                    'circle-opacity': 0.3,
+                    'circle-blur': 0.7
                 }
             });
 
-            // Layer 2: White Border Ring Accent Layer
             map.addLayer({
                 id: 'user-beacon-stroke',
                 type: 'circle',
                 source: 'live-user-source',
                 paint: {
-                    'circle-radius': [
-                        'interpolate', ['linear'], ['zoom'],
-                        10, 7,
-                        18, 11
-                    ],
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 8, 18, 14],
                     'circle-color': '#ffffff'
                 }
             });
 
-            // Layer 3: Solid Beacon Center Core Layer
             map.addLayer({
                 id: 'user-beacon-core',
                 type: 'circle',
                 source: 'live-user-source',
                 paint: {
-                    'circle-radius': [
-                        'interpolate', ['linear'], ['zoom'],
-                        10, 5,
-                        18, 8
-                    ],
+                    'circle-radius': ['interpolate', ['linear'], ['zoom'], 10, 5, 18, 10],
                     'circle-color': '#ff2222'
                 }
             });
@@ -560,96 +523,38 @@
                     geometry: { type: 'Point', coordinates: currentOriginCoords }
                 });
             }
+            if (radarActive) updateRadarScreenProjection();
         }
 
         function initializeLiveGPSHardware() {
             if (!navigator.geolocation) {
-                document.getElementById('telemetry-feed').innerText = "GPS NOT SUPPORTED";
+                document.getElementById('telemetry-feed').innerText = "HARDWARE FAULT: NO GPS UNIT";
                 return;
             }
-
-            navigator.geolocation.getCurrentPosition(handleGPSMoveUpdate, null, {
-                enableHighAccuracy: false,
-                maximumAge: 300000, 
-                timeout: 2000
-            });
-
             navigator.geolocation.getCurrentPosition(handleGPSMoveUpdate, handleGPSTrackingError, { enableHighAccuracy: true });
             navigator.geolocation.watchPosition(handleGPSMoveUpdate, handleGPSTrackingError, { enableHighAccuracy: true });
         }
 
-        function calculateMetricGap(coord1, coord2) {
-            const R = 6371000; 
-            const dLat = (coord2[1] - coord1[1]) * Math.PI / 180;
-            const dLon = (coord2[0] - coord1[0]) * Math.PI / 180;
-            const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                      Math.cos(coord1[1] * Math.PI / 180) * Math.cos(coord2[1] * Math.PI / 180) *
-                      Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
-        }
-
         function handleGPSMoveUpdate(position) {
             currentOriginCoords = [position.coords.longitude, position.coords.latitude];
-            
-            // Instantly sync the changes inside the WebGL dataset
             syncWebGLTrackingTelemetry();
             
-            document.getElementById('telemetry-feed').innerText = "GPS LOCK [ACTIVE]";
+            document.getElementById('telemetry-feed').innerText = "SECURE TELEMETRY LOCK LINK [OK]";
             document.getElementById('telemetry-feed').style.color = "var(--traffic-green)";
             
-            if (position.coords.speed !== null && position.coords.speed !== undefined && position.coords.speed >= 0) {
-                const mph = Math.round(position.coords.speed * 2.23694);
-                document.getElementById('speed-val').innerText = mph;
-            }
-
-            let userHeading = position.coords.heading;
-            if ((userHeading === null || userHeading === undefined || isNaN(userHeading)) && lastKnownCoords) {
-                const dLon = (currentOriginCoords[0] - lastKnownCoords[0]) * Math.PI / 180;
-                const lat1 = lastKnownCoords[1] * Math.PI / 180;
-                const lat2 = currentOriginCoords[1] * Math.PI / 180;
-                const y = Math.sin(dLon) * Math.cos(lat2);
-                const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
-                userHeading = (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-            }
-
-            if (userHeading !== null && userHeading !== undefined && !isNaN(userHeading)) {
-                hardwareHeading = userHeading;
-                syncWebGLTrackingTelemetry();
-                if (isNavigating && !userInterruptedTracking) {
-                    map.easeTo({ bearing: userHeading, duration: 300 });
-                }
-            }
-
-            updateSearchProximityBias();
-
-            if (isNavigating && routeAlternatives[selectedRouteIdx]) {
-                const traceSegments = routeAlternatives[selectedRouteIdx].geometry.coordinates;
-                let minimumDeviationMeters = Infinity;
-                
-                for (let i = 0; i < traceSegments.length; i++) {
-                    const deviation = calculateMetricGap(currentOriginCoords, traceSegments[i]);
-                    if (deviation < minimumDeviationMeters) minimumDeviationMeters = deviation;
-                }
-                
-                if (minimumDeviationMeters > 45) {
-                    calculateNavigationVectors();
-                }
+            if (position.coords.speed !== null && position.coords.speed >= 0) {
+                document.getElementById('speed-val').innerText = Math.round(position.coords.speed * 2.23694);
             }
 
             if (!mapCenteredOnLiveGPS || (isNavigating && !userInterruptedTracking)) {
-                map.flyTo({ center: currentOriginCoords, zoom: isNavigating ? 17 : 14, essential: true });
+                map.flyTo({ center: currentOriginCoords, zoom: isNavigating ? 17.5 : 14.5, essential: true });
                 mapCenteredOnLiveGPS = true;
             }
-
             lastKnownCoords = [...currentOriginCoords];
         }
 
         function handleGPSTrackingError(err) {
-            console.warn(`Hardware telemetry exception: ${err.message}`);
-            if(!mapCenteredOnLiveGPS) {
-                document.getElementById('telemetry-feed').innerText = "GPS TIMEOUT / DENIED";
-                document.getElementById('telemetry-feed').style.color = "var(--traffic-red)";
-            }
+            console.warn(`Telemetry core exception drop: ${err.message}`);
         }
 
         function registerGlobal3DTerrainEngine() {
@@ -661,7 +566,7 @@
                         'tileSize': 512
                     });
                 }
-                map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.4 });
+                map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.3 });
             } else {
                 map.setTerrain(null);
             }
@@ -669,7 +574,6 @@
 
         function register3DBuildingsArchitecturalLayer() {
             if (map.getLayer('3d-buildings')) return;
-
             map.addLayer({
                 id: '3d-buildings',
                 source: 'composite',
@@ -678,10 +582,10 @@
                 type: 'fill-extrusion',
                 minzoom: 13,
                 paint: {
-                    'fill-extrusion-color': isSatelliteActive ? '#ffffff' : '#2a2a30',
+                    'fill-extrusion-color': isSatelliteActive ? '#ffffff' : '#1e1e24',
                     'fill-extrusion-height': ['get', 'height'],
                     'fill-extrusion-base': ['get', 'min_height'],
-                    'fill-extrusion-opacity': layers3DActive ? (isSatelliteActive ? 0.55 : 0.85) : 0.0
+                    'fill-extrusion-opacity': layers3DActive ? 0.85 : 0.0
                 }
             });
         }
@@ -699,126 +603,146 @@
                 
                 geocoderInstance = new mapboxsearch.MapboxSearchBox();
                 geocoderInstance.accessToken = mapboxgl.accessToken;
-                geocoderInstance.options = { types: 'address,poi,neighborhood', proximity: currentOriginCoords };
+                geocoderInstance.options = { proximity: currentOriginCoords };
                 geocoderInstance.mapboxgl = mapboxgl;
                 geocoderInstance.marker = false; 
                 container.appendChild(geocoderInstance);
                 
                 geocoderInstance.addEventListener('retrieve', (e) => {
-                    let feature = null;
-                    if (e.detail && e.detail.features && e.detail.features.length > 0) {
-                        feature = e.detail.features[0];
-                    } else if (e.detail && e.detail.geometry) {
-                        feature = e.detail;
-                    }
-                    if (feature && feature.geometry && feature.geometry.coordinates) {
+                    let feature = e.detail?.features?.[0] || e.detail;
+                    if (feature?.geometry?.coordinates) {
                         const coords = feature.geometry.coordinates;
-                        const name = feature.properties?.name || feature.text || "Target Destination";
-                        const address = feature.properties?.full_address || feature.place_name || "";
+                        const name = feature.properties?.name || "Target Vector Destination";
+                        const address = feature.properties?.full_address || "";
                         userInterruptedTracking = true; 
-                        map.flyTo({ center: coords, zoom: 15, essential: true });
+                        map.flyTo({ center: coords, zoom: 15.5 });
                         loadSpatialDestination(coords, name, address);
                     }
                 });
             };
-            if (script) { if (typeof mapboxsearch !== 'undefined') { initSearchBox(); } else { script.onload = initSearchBox; } } else { initSearchBox(); }
+            if (script) { if (typeof mapboxsearch !== 'undefined') { initSearchBox(); } else { script.onload = initSearchBox; } }
         }
-
-        function updateSearchProximityBias() {
-            if (geocoderInstance && geocoderInstance.options) {
-                geocoderInstance.options = { ...geocoderInstance.options, proximity: currentOriginCoords };
-            }
-        }
-
-        document.querySelectorAll('.category-search-pill').forEach(pill => {
-            pill.addEventListener('click', () => {
-                const queryTarget = pill.getAttribute('data-query');
-                if (geocoderInstance) {
-                    geocoderInstance.value = queryTarget;
-                    geocoderInstance.focus();
-                    if (typeof geocoderInstance.search === 'function') {
-                        geocoderInstance.search();
-                    } else {
-                        const inputEvent = new Event('input', { bubbles: true });
-                        const innerInput = geocoderInstance.shadowRoot?.querySelector('input') || geocoderInstance.querySelector('input');
-                        if (innerInput) innerInput.dispatchEvent(inputEvent);
-                    }
-                }
-            });
-        });
 
         function setupInteractiveBuildingQueries() {
             map.on('click', (e) => {
-                const features = map.queryRenderedFeatures(e.point, { layers: ['3d-buildings', 'poi-label'] });
+                const features = map.queryRenderedFeatures(e.point, { layers: ['3d-buildings'] });
                 const targetCoords = [e.lngLat.lng, e.lngLat.lat];
-                
-                let name = "Selected Map Coordinates";
+                let name = features.length > 0 ? "Target Structural Entity" : "Selected Grid Coordinates";
                 let address = `LAT: ${e.lngLat.lat.toFixed(5)} | LNG: ${e.lngLat.lng.toFixed(5)}`;
-                
-                if (features && features.length > 0) {
-                    name = features[0].properties.name || "Structural Entity Asset";
-                }
-                
                 userInterruptedTracking = true;
-                map.easeTo({ center: targetCoords, zoom: Math.max(map.getZoom(), 16) });
                 loadSpatialDestination(targetCoords, name, address);
             });
         }
 
         function loadSpatialDestination(coords, title, address) {
             selectedDestinationCoords = coords;
-            globalDestinationMarker.setLngLat(coords).addTo(map);
-
             document.getElementById('card-title').innerText = title;
             document.getElementById('card-address').innerText = address;
-
-            const profileContainer = document.getElementById('spatial-profile-box');
-            profileContainer.innerHTML = `
-                <div class="spatial-data-grid">
-                    <div class="space-row">
-                        <span class="space-label">Target Vector:</span>
-                        <span class="space-val">${coords[0].toFixed(4)}, ${coords[1].toFixed(4)}</span>
-                    </div>
-                </div>
-            `;
-
             document.getElementById('destination-card').style.display = 'flex';
             calculateNavigationVectors();
         }
 
-        async function calculateNavigationVectors() {
+        // Advanced Multi-Stop Stack Handler Pipeline Logic
+        function appendCurrentNodeToSequenceStack() {
             if (!selectedDestinationCoords) return;
+            
+            const nodeLabel = document.getElementById('card-title').innerText;
+            intermediateWaypoints.push({
+                coords: [...selectedDestinationCoords],
+                label: nodeLabel
+            });
+
+            // Create High-Performance Custom Target Stop Pin
+            const markerEl = document.createElement('div');
+            markerEl.style.width = '14px';
+            markerEl.style.height = '14px';
+            markerEl.style.backgroundColor = '#ffffff';
+            markerEl.style.border = '3px solid #ff2222';
+            markerEl.style.borderRadius = '50%';
+            markerEl.style.boxShadow = '0 0 12px var(--neon-red)';
+            
+            const marker = new mapboxgl.Marker(markerEl)
+                .setLngLat(selectedDestinationCoords)
+                .addTo(map);
+                
+            waypointMarkersArray.push(marker);
+            updateWaypointQueueUI();
+            
+            selectedDestinationCoords = null;
+            document.getElementById('destination-card').style.display = 'none';
+            if (geocoderInstance) geocoderInstance.value = '';
+            
+            calculateNavigationVectors();
+        }
+
+        function updateWaypointQueueUI() {
+            const box = document.getElementById('waypoint-box');
+            if (intermediateWaypoints.length === 0) {
+                box.style.display = 'none';
+                return;
+            }
+            box.style.display = 'flex';
+            box.innerHTML = '';
+            intermediateWaypoints.forEach((wp, idx) => {
+                const item = document.createElement('div');
+                item.className = 'waypoint-node';
+                item.innerHTML = `
+                    <div class="waypoint-badge">${idx + 1}</div>
+                    <div class="waypoint-text">${wp.label}</div>
+                    <button class="waypoint-remove" onclick="event.stopPropagation(); removeSequenceNodeIndex(${idx})">✖</button>
+                `;
+                box.appendChild(item);
+            });
+        }
+
+        window.removeSequenceNodeIndex = function(index) {
+            if(waypointMarkersArray[index]) waypointMarkersArray[index].remove();
+            waypointMarkersArray.splice(index, 1);
+            intermediateWaypoints.splice(index, 1);
+            updateWaypointQueueUI();
+            calculateNavigationVectors();
+        };
+
+        // Engine Routing Architecture Compilation Optimization Loop
+        async function calculateNavigationVectors() {
+            let coordinateSequenceString = currentOriginCoords.join(',');
+            
+            if (intermediateWaypoints.length > 0) {
+                coordinateSequenceString += ';' + intermediateWaypoints.map(wp => wp.coords.join(',')).join(';');
+            }
+            if (selectedDestinationCoords) {
+                coordinateSequenceString += ';' + selectedDestinationCoords.join(',');
+            } else if (intermediateWaypoints.length === 0) {
+                clearActiveRouteTrace();
+                return;
+            }
+
             const profileMode = currentTravelMode === 'driving-traffic' ? 'driving' : currentTravelMode;
-            const directionsEndpoint = `https://api.mapbox.com/directions/v5/mapbox/${profileMode}/${currentOriginCoords.join(',')};${selectedDestinationCoords.join(',')}?steps=true&geometries=geojson&alternatives=true&access_token=${mapboxgl.accessToken}`;
+            const endpoint = `https://api.mapbox.com/directions/v5/mapbox/${profileMode}/${coordinateSequenceString}?steps=true&geometries=geojson&alternatives=true&access_token=${mapboxgl.accessToken}`;
 
             try {
-                const request = await fetch(directionsEndpoint);
-                const payload = await request.json();
+                const response = await fetch(endpoint);
+                const payload = await response.json();
                 if (payload.code !== 'Ok') return;
                 routeAlternatives = payload.routes;
-                
-                if (selectedRouteIdx >= routeAlternatives.length) {
-                    selectedRouteIdx = 0;
-                }
-
                 renderVisualRouteLines();
                 populateAlternativeSelectors();
                 
-                if (isNavigating) {
-                    updateActiveHUDLayout(routeAlternatives[selectedRouteIdx]);
-                }
-            } catch (error) {
-                console.error("Critical routing calculation exception:", error);
+                if (isNavigating) updateActiveHUDLayout(routeAlternatives[selectedRouteIdx]);
+            } catch (err) {
+                console.error("Critical core directions compile sequence fault:", err);
             }
         }
 
         function renderVisualRouteLines() {
-            routeAlternatives.forEach((_, index) => {
-                if (map.getLayer(`route-line-${index}`)) map.removeLayer(`route-line-${index}`);
-                if (map.getSource(`route-source-${index}`)) map.removeSource(`route-source-${index}`);
-            });
+            // Flush older pipelines completely
+            for (let i = 0; i < 5; i++) {
+                if (map.getLayer(`route-line-${i}`)) map.removeLayer(`route-line-${i}`);
+                if (map.getSource(`route-source-${i}`)) map.removeSource(`route-source-${i}`);
+            }
 
             routeAlternatives.forEach((route, index) => {
+                if (index > 2) return; // Cap fallback metrics calculation processing load
                 const isSelected = (index === selectedRouteIdx);
                 map.addSource(`route-source-${index}`, {
                     type: 'geojson',
@@ -831,9 +755,9 @@
                     source: `route-source-${index}`,
                     layout: { 'line-join': 'round', 'line-cap': 'round' },
                     paint: {
-                        'line-color': isSelected ? '#ff2222' : '#3a3a44',
-                        'line-width': isSelected ? 6 : 4,
-                        'line-opacity': isSelected ? 0.95 : 0.35
+                        'line-color': isSelected ? '#ff2222' : '#2d2d38',
+                        'line-width': isSelected ? 7 : 4,
+                        'line-opacity': isSelected ? 0.95 : 0.4
                     }
                 }, map.getLayer('3d-buildings') ? '3d-buildings' : undefined);
             });
@@ -841,13 +765,14 @@
 
         function populateAlternativeSelectors() {
             const row = document.getElementById('route-alt-row');
+            if(!row) return;
             row.innerHTML = '';
             routeAlternatives.forEach((route, index) => {
-                const minutes = Math.round(route.duration / 60);
+                if (index > 2) return;
                 const isSelected = (index === selectedRouteIdx);
                 const pill = document.createElement('button');
                 pill.className = `route-alt-pill ${isSelected ? 'selected' : ''}`;
-                pill.innerHTML = `${minutes} MIN`;
+                pill.innerHTML = `${Math.round(route.duration / 60)} MIN`;
                 pill.addEventListener('click', () => {
                     selectedRouteIdx = index;
                     renderVisualRouteLines();
@@ -859,14 +784,24 @@
 
         function updateActiveHUDLayout(route) {
             if (!route) return;
-            document.getElementById('nav-instruction-text').innerText = route.legs[0].steps[0]?.maneuver?.instruction || 'Continue down the path';
-            document.getElementById('nav-instruction-dist').innerText = `${Math.round(route.legs[0].steps[0]?.distance || 50)} m`;
+            document.getElementById('nav-instruction-text').innerText = route.legs[0]?.steps[0]?.maneuver?.instruction || 'Proceed safely along the path trajectory';
+            document.getElementById('nav-instruction-dist').innerText = `${Math.round(route.legs[0]?.steps[0]?.distance || 100)} m`;
             document.getElementById('nav-eta-val').innerText = `${Math.round(route.duration / 60)}m`;
             document.getElementById('nav-time-left').innerText = `${Math.round(route.duration / 60)} min`;
             document.getElementById('nav-dist-left').innerText = `${(route.distance / 1609.34).toFixed(1)} mi`;
         }
 
+        // Radar Real-Time Engine Projection Math
+        function updateRadarScreenProjection() {
+            const screenCoords = map.project(currentOriginCoords);
+            const radar = document.getElementById('radar-glow');
+            radar.style.left = `${screenCoords.x - 50}px`;
+            radar.style.top = `${screenCoords.y - 50}px`;
+        }
+
         function hookInterfaceControls() {
+            document.getElementById('add-waypoint-trigger').addEventListener('click', appendCurrentNodeToSequenceStack);
+
             document.querySelectorAll('.mode-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
@@ -876,11 +811,18 @@
                 });
             });
 
+            document.getElementById('radar-toggle').addEventListener('click', (e) => {
+                radarActive = !radarActive;
+                e.currentTarget.classList.toggle('active', radarActive);
+                document.getElementById('radar-glow').style.display = radarActive ? 'block' : 'none';
+                if (radarActive) updateRadarScreenProjection();
+            });
+
             document.getElementById('toggle-3d').addEventListener('click', (e) => {
                 layers3DActive = !layers3DActive;
                 e.currentTarget.classList.toggle('active', layers3DActive);
                 if (map.getLayer('3d-buildings')) {
-                    map.setPaintProperty('3d-buildings', 'fill-extrusion-opacity', layers3DActive ? (isSatelliteActive ? 0.55 : 0.85) : 0.0);
+                    map.setPaintProperty('3d-buildings', 'fill-extrusion-opacity', layers3DActive ? 0.85 : 0.0);
                 }
             });
 
@@ -892,7 +834,7 @@
 
             document.getElementById('recenter-gps').addEventListener('click', () => {
                 userInterruptedTracking = false; 
-                map.flyTo({ center: currentOriginCoords, zoom: isNavigating ? 17 : 15, pitch: isNavigating ? 50 : 30 });
+                map.flyTo({ center: currentOriginCoords, zoom: isNavigating ? 18 : 15, pitch: isNavigating ? 55 : 30 });
             });
 
             document.getElementById('clear-route-trigger').addEventListener('click', clearActiveRouteTrace);
@@ -901,16 +843,20 @@
         }
 
         function clearActiveRouteTrace() {
-            routeAlternatives.forEach((_, index) => {
-                if (map.getLayer(`route-line-${index}`)) map.removeLayer(`route-line-${index}`);
-                if (map.getSource(`route-source-${index}`)) map.removeSource(`route-source-${index}`);
-            });
+            waypointMarkersArray.forEach(m => m.remove());
+            waypointMarkersArray = [];
+            intermediateWaypoints = [];
+            updateWaypointQueueUI();
+
+            for (let i = 0; i < 5; i++) {
+                if (map.getLayer(`route-line-${i}`)) map.removeLayer(`route-line-${i}`);
+                if (map.getSource(`route-source-${i}`)) map.removeSource(`route-source-${i}`);
+            }
             routeAlternatives = [];
             selectedDestinationCoords = null;
-            globalDestinationMarker.remove();
             document.getElementById('destination-card').style.display = 'none';
             if (geocoderInstance) geocoderInstance.value = '';
-            map.easeTo({ pitch: 20, bearing: 0 });
+            map.easeTo({ pitch: 30, bearing: 0 });
         }
 
         function toggleNavigationHUD() {
@@ -921,56 +867,47 @@
             document.getElementById('speed-chip').style.display = isNavigating ? 'flex' : 'none';
             
             if (isNavigating && routeAlternatives[selectedRouteIdx]) {
-                map.easeTo({ center: currentOriginCoords, zoom: 17, pitch: 50, duration: 800 });
+                map.easeTo({ center: currentOriginCoords, zoom: 18, pitch: 55, duration: 800 });
                 updateActiveHUDLayout(routeAlternatives[selectedRouteIdx]);
             } else {
                 clearActiveRouteTrace();
             }
         }
 
+        // Custom High-Performance Touch UI Sheet Engine Interceptor
         function initializeDraggableConsoleSheet() {
             const deck = document.getElementById('command-deck');
             const handle = document.getElementById('drag-handle');
-            let isDragging = false, startY = 0, startHeight = 0, startTransformY = 0;
+            let isDragging = false, startY = 0, startHeight = 0;
 
             handle.addEventListener('pointerdown', (e) => {
                 isDragging = true; startY = e.clientY;
-                deck.classList.add('is-dragging'); handle.setPointerCapture(e.pointerId);
-                const isMobile = window.innerWidth <= 480;
-                if (isMobile) { startHeight = deck.offsetHeight; } else {
-                    const matrix = new WebKitCSSMatrix(window.getComputedStyle(deck).transform);
-                    startTransformY = matrix.m42 || 0;
-                }
+                handle.setPointerCapture(e.pointerId);
+                if (window.innerWidth <= 480) startHeight = deck.offsetHeight;
             });
 
             window.addEventListener('pointermove', (e) => {
-                if (!isDragging) return;
+                if (!isDragging || window.innerWidth > 480) return;
                 const deltaY = e.clientY - startY;
-                const isMobile = window.innerWidth <= 480;
-
-                if (isMobile) {
-                    const targetHeight = startHeight - deltaY;
-                    deck.style.height = `${Math.max(120, Math.min(window.innerHeight * 0.85, targetHeight))}px`;
-                    deck.style.transform = 'none'; 
-                } else {
-                    let targetY = startTransformY + deltaY;
-                    if (targetY < 0) targetY *= 0.2; 
-                    deck.style.transform = `translateY(${targetY}px)`;
-                }
+                deck.style.height = `${Math.max(140, Math.min(window.innerHeight * 0.85, startHeight - deltaY))}px`;
             });
 
-            window.addEventListener('pointerup', () => {
-                if (!isDragging) return; isDragging = false; deck.classList.remove('is-dragging');
-                if (window.innerWidth > 480) {
-                    const matrix = new WebKitCSSMatrix(window.getComputedStyle(deck).transform);
-                    if ((matrix.m42 || 0) > 180) { deck.style.transform = `translateY(calc(100vh - 120px))`; } 
-                    else { deck.style.transform = `translateY(0px)`; }
-                }
-            });
+            window.addEventListener('pointerup', () => { isDragging = false; });
         }
 
+        map.on('move', () => { if (radarActive) updateRadarScreenProjection(); });
         map.on('mousemove', (e) => {
-            document.getElementById('spatial-overlay').innerText = `LNG: ${e.lngLat.lng.toFixed(4)} | LAT: ${e.lngLat.lat.toFixed(4)}`;
+            document.getElementById('spatial-overlay').innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
+        });
+        
+        // Fast-click Injector Pipeline Overrides
+        document.querySelectorAll('.category-search-pill').forEach(p => {
+            p.addEventListener('click', () => {
+                if(geocoderInstance) {
+                    geocoderInstance.value = p.getAttribute('data-query');
+                    geocoderInstance.focus();
+                }
+            });
         });
     </script>
 </body>
