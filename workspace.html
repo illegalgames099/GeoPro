@@ -281,10 +281,11 @@
             border-bottom: 1px solid rgba(255,255,255,0.02);
             color: var(--text-secondary);
             font-size: 0.8rem;
+            cursor: pointer;
         }
 
-        .direction-step:last-child {
-            border-bottom: none;
+        .direction-step:hover {
+            background: rgba(255, 255, 255, 0.03);
         }
 
         .step-index {
@@ -312,24 +313,6 @@
             font-family: var(--font-monospace);
             font-size: 0.72rem;
             flex-shrink: 0;
-        }
-
-        .traffic-matrix-control {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #0e0e11;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 0.78rem;
-            color: var(--text-secondary);
-        }
-
-        .traffic-matrix-control input[type="range"] {
-            accent-color: var(--action-red);
-            cursor: pointer;
-            width: 140px;
         }
 
         .workspace-hardware-row {
@@ -383,12 +366,13 @@
         }
 
         .live-gps-beacon-node {
-            width: 16px;
-            height: 16px;
+            width: 18px;
+            height: 18px;
             background: #007aff;
             border: 3px solid #ffffff;
             border-radius: 50%;
-            box-shadow: 0 0 14px rgba(0, 122, 255, 0.8);
+            box-shadow: 0 0 16px rgba(0, 122, 255, 0.95);
+            transition: transform 0.1s linear;
         }
     </style>
 </head>
@@ -425,11 +409,6 @@
                     <div id="node-panel-title">Selected Matrix Node</div>
                     <div id="node-panel-address">Tracking calculations offline...</div>
                 </div>
-            </div>
-
-            <div class="traffic-matrix-control">
-                <label>3D Traffic Congestion</label>
-                <input type="range" id="traffic-matrix-density" min="1" max="3" value="2" step="1">
             </div>
 
             <div id="route-variants-dashboard"></div>
@@ -470,11 +449,7 @@
         let activeRouteDataStore = []; 
         let satelliteModeActive = false;
         let cameraTrackingMode = true; 
-
-        let trafficFlowDensity = 2; 
-        let laneAnimationTicker = 0;
-        let trafficEngineLoopId = null;
-        let activeTrafficPointsGeoJSON = { type: 'FeatureCollection', features: [] };
+        let currentVehicleHeading = 0;
 
         const REGULAR_MAP_STYLE = 'https://tiles.openfreemap.org/styles/liberty';
 
@@ -483,7 +458,7 @@
             style: REGULAR_MAP_STYLE, 
             center: defaultUserCoordinates, 
             zoom: 2, 
-            pitch: 50, 
+            pitch: 65, 
             bearing: 0,
             antialias: true
         });
@@ -533,6 +508,18 @@
             return resultantPoints;
         }
 
+        function calculateBearingAngle(p1, p2) {
+            const lng1 = p1[0] * Math.PI / 180;
+            const lat1 = p1[1] * Math.PI / 180;
+            const lng2 = p2[0] * Math.PI / 180;
+            const lat2 = p2[1] * Math.PI / 180;
+            const dLng = lng2 - lng1;
+            const y = Math.sin(dLng) * Math.cos(lat2);
+            const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+            const bearing = Math.atan2(y, x) * 180 / Math.PI;
+            return (bearing + 360) % 360;
+        }
+
         map.on('load', () => {
             initTacticalPanelDraggingPhysics();
             initAutonomousSearchMatrix();
@@ -540,13 +527,6 @@
             initHardwareConsoleTriggers();
             injectRealtime3DGeometryAndLanes();
             establishLiveHardwarePositioningStream();
-
-            document.getElementById('traffic-matrix-density').addEventListener('input', (e) => {
-                trafficFlowDensity = parseInt(e.target.value);
-                if (activeRouteDataStore.length > 0) {
-                    renderRouteDashboardUI();
-                }
-            });
 
             map.on('mousemove', (e) => {
                 const overlay = document.getElementById('coordinate-overlay-tracker');
@@ -572,19 +552,33 @@
 
             if (!map.getSource(sourceKey)) return;
 
-            // Refactored to generate explicit asphalt foundations and white dashed lane dividers based on IMG_4607.jpg
-            if (!map.getLayer('spatial-3d-lanes')) {
+            // Highly Improved Realtime Multi-Lane Architecture
+            if (!map.getLayer('spatial-3d-lanes-asphalt-base')) {
                 map.addLayer({
-                    'id': 'spatial-3d-lanes',
+                    'id': 'spatial-3d-lanes-asphalt-base',
                     'source': sourceKey,
                     'source-layer': 'transportation',
                     'type': 'line',
                     'filter': ['==', '$geometryType', 'LineString'],
                     'layout': { 'line-join': 'round', 'line-cap': 'round' },
                     'paint': {
-                        'line-color': satelliteModeActive ? '#2c2c35' : '#b0b9c6',
-                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 15, 12, 18, 32],
-                        'line-opacity': 0.85
+                        'line-color': satelliteModeActive ? '#222226' : '#a2adb9',
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 6, 15, 24, 18, 64],
+                        'line-opacity': 0.95
+                    }
+                });
+
+                map.addLayer({
+                    'id': 'spatial-3d-lanes-inner-bed',
+                    'source': sourceKey,
+                    'source-layer': 'transportation',
+                    'type': 'line',
+                    'filter': ['==', '$geometryType', 'LineString'],
+                    'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                    'paint': {
+                        'line-color': satelliteModeActive ? '#18181c' : '#4a535d',
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 4, 15, 20, 18, 56],
+                        'line-opacity': 1.0
                     }
                 });
 
@@ -597,9 +591,9 @@
                     'layout': { 'line-join': 'round', 'line-cap': 'round' },
                     'paint': {
                         'line-color': '#ffffff',
-                        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 18, 1.5],
-                        'line-dasharray': [3, 3],
-                        'line-opacity': 0.6
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 1, 18, 2.5],
+                        'line-dasharray': [4, 6],
+                        'line-opacity': 0.85
                     }
                 });
             }
@@ -615,7 +609,7 @@
                         'fill-extrusion-color': satelliteModeActive ? '#1a1a1f' : '#f0f2f5',
                         'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 15],
                         'fill-extrusion-base': ['coalesce', ['get', 'min_height'], ['get', 'render_min_height'], 0],
-                        'fill-extrusion-opacity': satelliteModeActive ? 0.80 : 0.85
+                        'fill-extrusion-opacity': satelliteModeActive ? 0.75 : 0.85
                     }
                 });
             }
@@ -664,7 +658,8 @@
 
                             return {
                                 text: rawMessage.charAt(0).toUpperCase() + rawMessage.slice(1),
-                                distance: step.distance
+                                distance: step.distance,
+                                coordinates: step.maneuver.location
                             };
                         }).filter(item => item.text);
                     }
@@ -688,9 +683,17 @@
             renderRouteDashboardUI();
             
             if (activeRouteDataStore.length > 0) {
-                const coordinates = activeRouteDataStore[0].geometry.coordinates;
-                const bounds = coordinates.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
-                map.fitBounds(bounds, { padding: 40, duration: 800 });
+                const coords = activeRouteDataStore[0].geometry.coordinates;
+                if (coords.length > 1) {
+                    const dynamicInitialBearing = calculateBearingAngle(coords[0], coords[1]);
+                    map.flyTo({
+                        center: coords[0],
+                        zoom: 17,
+                        pitch: 65,
+                        bearing: dynamicInitialBearing,
+                        duration: 1000
+                    });
+                }
             }
 
             btn.style.display = "none"; 
@@ -714,9 +717,9 @@
                     duration: (rawDistanceMeters / 13.4), 
                     distance: rawDistanceMeters,
                     steps: [
-                        { text: "Depart initial coordinate orientation point", distance: rawDistanceMeters * 0.5 },
-                        { text: "Perform tracking intersection grid turn adjustment", distance: rawDistanceMeters * 0.5 },
-                        { text: "Approach destination target point coordinate lock", distance: 0 }
+                        { text: "Depart initial coordinate orientation point", distance: rawDistanceMeters * 0.5, coordinates: start },
+                        { text: "Perform tracking intersection grid turn adjustment", distance: rawDistanceMeters * 0.5, coordinates: midPoint },
+                        { text: "Approach destination target point coordinate lock", distance: 0, coordinates: end }
                     ],
                     isFallback: true
                 }
@@ -730,8 +733,8 @@
             activeRouteDataStore.forEach((r) => {
                 const baseCoords = r.geometry.coordinates;
 
-                const centerLaneLeft = calculateParallelOffsetLane(baseCoords, -3.5);
-                const centerLaneRight = calculateParallelOffsetLane(baseCoords, 3.5);
+                const centerLaneLeft = calculateParallelOffsetLane(baseCoords, -4.5);
+                const centerLaneRight = calculateParallelOffsetLane(baseCoords, 4.5);
 
                 const lanesData = [
                     { id: `lane-L-${r.index}`, coords: centerLaneLeft },
@@ -757,9 +760,9 @@
                             source: srcId,
                             layout: { 'line-join': 'round', 'line-cap': 'round' },
                             paint: {
-                                'line-color': '#222226',
-                                'line-width': ['interpolate', ['linear'], ['zoom'], 12, 2, 16, 6, 20, 22],
-                                'line-opacity': 0.9
+                                'line-color': '#ff3333',
+                                'line-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 16, 8, 20, 26],
+                                'line-opacity': lane.id.includes('-C-') ? 0.95 : 0.4
                             }
                         });
 
@@ -769,102 +772,15 @@
                             source: srcId,
                             layout: { 'line-join': 'round', 'line-cap': 'round' },
                             paint: {
-                                'line-color': 'rgba(255,255,255,0.25)',
-                                'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.5, 16, 1.5],
-                                'line-dasharray': [3, 4]
+                                'line-color': '#ffffff',
+                                'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.8, 16, 2],
+                                'line-dasharray': [4, 4],
+                                'line-opacity': 0.9
                             }
                         });
                     }
                 });
-
-                const trafficSrcId = `traffic-dots-src-${r.index}`;
-                if (!map.getSource(trafficSrcId)) {
-                    map.addSource(trafficSrcId, { type: 'geojson', data: activeTrafficPointsGeoJSON });
-                    
-                    map.addLayer({
-                        id: `traffic-dots-layer-${r.index}`,
-                        type: 'circle',
-                        source: trafficSrcId,
-                        paint: {
-                            'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 2, 16, 5, 20, 12],
-                            'circle-color': ['get', 'color'],
-                            'circle-opacity': 0.95,
-                            'circle-stroke-width': 1,
-                            'circle-stroke-color': '#ffffff'
-                        }
-                    });
-                }
-
-                if (trafficEngineLoopId === null) {
-                    animateClientTrafficFlow(baseCoords, centerLaneLeft, centerLaneRight);
-                }
             });
-        }
-
-        function animateClientTrafficFlow(center, left, right) {
-            if (activeRouteDataStore.length === 0) {
-                trafficEngineLoopId = null;
-                return;
-            }
-
-            laneAnimationTicker += 0.0018; 
-            const features = [];
-            
-            let vehicleSpeedModifier = 1.0;
-            let stressColor = '#22c55e'; 
-
-            if (trafficFlowDensity === 2) {
-                vehicleSpeedModifier = 0.6;
-                stressColor = '#eab308'; 
-            } else if (trafficFlowDensity === 3) {
-                vehicleSpeedModifier = 0.15;
-                stressColor = '#ff3333'; 
-            }
-
-            const activeLanes = [left, center, right];
-            const maxProceduralVehicles = 15 * trafficFlowDensity;
-
-            for (let i = 0; i < maxProceduralVehicles; i++) {
-                const laneIdx = i % 3;
-                const targetedLaneCoords = activeLanes[laneIdx];
-                if (!targetedLaneCoords || targetedLaneCoords.length < 2) continue;
-
-                const rawProgressFactor = (laneAnimationTicker * (1 + (i * 0.04) * vehicleSpeedModifier)) % 1.0;
-                const exactFloatingIdx = rawProgressFactor * (targetedLaneCoords.length - 1);
-                const baseIdx = Math.floor(exactFloatingIdx);
-                const nextIdx = Math.min(baseIdx + 1, targetedLaneCoords.length - 1);
-                const interpolationWeight = exactFloatingIdx - baseIdx;
-
-                const p1 = targetedLaneCoords[baseIdx];
-                const p2 = targetedLaneCoords[nextIdx];
-
-                if (p1 && p2) {
-                    const interpolatedLng = p1[0] + (p2[0] - p1[0]) * interpolationWeight;
-                    const interpolatedLat = p1[1] + (p2[1] - p1[1]) * interpolationWeight;
-
-                    let actualColor = stressColor;
-                    if (trafficFlowDensity === 2) {
-                        actualColor = i % 2 === 0 ? '#22c55e' : '#eab308';
-                    } else if (trafficFlowDensity === 3) {
-                        actualColor = i % 3 === 0 ? '#eab308' : '#ff3333';
-                    }
-
-                    features.push({
-                        type: 'Feature',
-                        geometry: { type: 'Point', coordinates: [interpolatedLng, interpolatedLat] },
-                        properties: { color: actualColor }
-                    });
-                }
-            }
-
-            activeTrafficPointsGeoJSON.features = features;
-
-            activeRouteDataStore.forEach(r => {
-                const sourceInstance = map.getSource(`traffic-dots-src-${r.index}`);
-                if (sourceInstance) sourceInstance.setData(activeTrafficPointsGeoJSON);
-            });
-
-            trafficEngineLoopId = requestAnimationFrame(() => animateClientTrafficFlow(center, left, right));
         }
 
         function renderRouteDashboardUI() {
@@ -874,23 +790,19 @@
             dashboard.style.display = 'flex';
 
             activeRouteDataStore.forEach((r) => {
-                const multiFactor = trafficFlowDensity === 3 ? 2.4 : (trafficFlowDensity === 2 ? 1.3 : 1.0);
-                const mins = Math.max(1, Math.round((r.duration * multiFactor) / 60));
+                const mins = Math.max(1, Math.round(r.duration / 60));
                 const miles = (r.distance / 1609.34).toFixed(1);
-
-                const trafficLabels = { 1: 'FREE FLOWING', 2: 'MODERATE SLOWDOWNS', 3: 'HEAVY GRIDLOCK' };
                  
                 const metricsRow = document.createElement('div');
                 metricsRow.className = 'route-badge-row';
                 metricsRow.innerHTML = `
                     <div>
                         <span class="badge-tag-label" style="color: var(--action-red); font-weight: bold;">
-                            ${r.isFallback ? '⚡ LOCAL AUTONOMOUS PATH' : '★ OPTIMAL STREET ROUTE'}
+                            ${r.isFallback ? '⚡ LOCAL AUTONOMOUS PATH' : '★ OPTIMAL NAVIGATION TRAJECTORY'}
                         </span>
                         <div style="color: var(--text-primary); margin-top: 4px; font-size: 0.95rem; font-weight: bold;">
                             ${mins} mins <span style="color: var(--text-muted); font-weight: normal; font-size: 0.8rem;">(${miles} mi)</span>
                         </div>
-                        <div style="color: var(--text-muted); font-size: 0.7rem; margin-top: 2px; font-family: var(--font-monospace);">Traffic Matrix: ${trafficLabels[trafficFlowDensity]}</div>
                     </div>
                 `;
                 dashboard.appendChild(metricsRow);
@@ -911,6 +823,24 @@
                             <div class="step-text">${step.text}</div>
                             <div class="step-distance">${distanceDisplay}</div>
                         `;
+
+                        stepEl.addEventListener('click', () => {
+                            cameraTrackingMode = false;
+                            let targetStepBearing = currentVehicleHeading;
+                            
+                            if (stepIndex < r.steps.length - 1) {
+                                targetStepBearing = calculateBearingAngle(step.coordinates, r.steps[stepIndex + 1].coordinates);
+                            }
+
+                            map.flyTo({
+                                center: step.coordinates,
+                                zoom: 17.5,
+                                pitch: 65,
+                                bearing: targetStepBearing,
+                                duration: 800
+                            });
+                        });
+
                         manifestContainer.appendChild(stepEl);
                     });
                     
@@ -920,21 +850,15 @@
         }
 
         function clearActiveRouteLayers() {
-            if (trafficEngineLoopId) {
-                cancelAnimationFrame(trafficEngineLoopId);
-                trafficEngineLoopId = null;
-            }
-
             for (let idx = 0; idx < 20; idx++) {
                 const elements = [
                     `layer-lane-L-${idx}`, `layer-lane-L-${idx}-dash`,
                     `layer-lane-C-${idx}`, `layer-lane-C-${idx}-dash`,
-                    `layer-lane-R-${idx}`, `layer-lane-R-${idx}-dash`,
-                    `traffic-dots-layer-${idx}`
+                    `layer-lane-R-${idx}`, `layer-lane-R-${idx}-dash`
                 ];
                 elements.forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
 
-                const sources = [`src-lane-L-${idx}`, `src-lane-C-${idx}`, `src-lane-R-${idx}`, `traffic-dots-src-${idx}`];
+                const sources = [`src-lane-L-${idx}`, `src-lane-C-${idx}`, `src-lane-R-${idx}`];
                 sources.forEach(id => { if (map.getSource(id)) map.removeSource(id); });
             }
         }
@@ -944,14 +868,26 @@
             if (!diagnosticStatus) return;
             if (!navigator.geolocation) { diagnosticStatus.innerText = "UNSUPPORTED SENSOR"; return; }
 
+            // High-Precision Location Processing Engine
             navigator.geolocation.watchPosition(
                 (position) => {
                     const lon = position.coords.longitude;
                     const lat = position.coords.latitude;
-                    currentLiveGpsPosition = [lon, lat];
+                    const incomingPositionArray = [lon, lat];
                     
-                    diagnosticStatus.innerText = "ONLINE (LIVE)";
+                    diagnosticStatus.innerText = "ONLINE (HIGH ACCURACY)";
                     diagnosticStatus.style.color = "#007aff";
+
+                    if (position.coords.heading !== null && position.coords.heading !== undefined) {
+                        currentVehicleHeading = position.coords.heading;
+                    } else if (currentLiveGpsPosition) {
+                        const calculatedAngle = calculateBearingAngle(currentLiveGpsPosition, incomingPositionArray);
+                        if (Math.abs(calculatedAngle - currentVehicleHeading) > 2) {
+                            currentVehicleHeading = calculatedAngle;
+                        }
+                    }
+
+                    currentLiveGpsPosition = incomingPositionArray;
 
                     if (!userLocationBeaconMarker) {
                         const beaconEl = document.createElement('div');
@@ -960,7 +896,7 @@
                             .setLngLat(currentLiveGpsPosition)
                             .addTo(map);
                         
-                        map.flyTo({ center: currentLiveGpsPosition, zoom: 16, pitch: 50 });
+                        map.flyTo({ center: currentLiveGpsPosition, zoom: 17, pitch: 65, bearing: currentVehicleHeading });
                     } else {
                         userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
                     }
@@ -968,9 +904,10 @@
                     if (cameraTrackingMode) {
                         map.easeTo({
                             center: currentLiveGpsPosition,
-                            pitch: 50,
-                            zoom: 16.5,
-                            duration: 400
+                            pitch: 65,
+                            bearing: currentVehicleHeading,
+                            zoom: 17.5,
+                            duration: 300
                         });
                     }
                 },
@@ -978,14 +915,18 @@
                     diagnosticStatus.style.color = "#ff9500"; 
                     diagnosticStatus.innerText = "LOCAL EDGE LINK"; 
                 },
-                { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+                { 
+                    enableHighAccuracy: true, 
+                    timeout: 10000, 
+                    maximumAge: 0 
+                }
             );
         }
 
         function initHardwareConsoleTriggers() {
             const compassBtn = document.getElementById('compass-orientation-lock');
             if (compassBtn) {
-                compassBtn.addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 50 }));
+                compassBtn.addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 65 }));
             }
              
             const recenterBtn = document.getElementById('force-gps-recenter');
@@ -993,7 +934,7 @@
                 recenterBtn.addEventListener('click', () => {
                     cameraTrackingMode = true; 
                     if (currentLiveGpsPosition) {
-                        map.flyTo({ center: currentLiveGpsPosition, zoom: 16.5, pitch: 50 });
+                        map.flyTo({ center: currentLiveGpsPosition, zoom: 17.5, pitch: 65, bearing: currentVehicleHeading, duration: 600 });
                     }
                 });
             }
@@ -1123,7 +1064,7 @@
                                 const targetLoc = feature.geometry.coordinates;
                                 dropdown.style.display = 'none';
                                 input.value = labeledLocation;
-                                map.flyTo({ center: targetLoc, zoom: 16, pitch: 50 });
+                                map.flyTo({ center: targetLoc, zoom: 17, pitch: 65 });
                                 triggerWorkspaceTargetDeck(targetLoc, p.name || "Target Vector", labeledLocation);
                             });
                             dropdown.appendChild(segmentItem);
