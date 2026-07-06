@@ -1,18 +1,16 @@
 <!DOCTYPE html>
 <html lang="en">
-<head><!DOCTYPE html>
-<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Minimal Mapbox Search Interface</title>
+    <title>GeoPro - Advanced Search & Map Platform</title>
     
-    <!-- Mapbox GL JS -->
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css" rel="stylesheet">
-    <script src="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.js"></script>
+    <!-- Mapbox GL JS Styles and Scripts -->
+    <link href="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.css" rel="stylesheet">
+    <script src="https://api.mapbox.com/mapbox-gl-js/v3.10.0/mapbox-gl.js"></script>
     
     <!-- Mapbox Search JS Web Component -->
-    <script id="search-js" defer src="https://api.mapbox.com/search-js/v1.5.0/web.js"></script>
+    <script src="https://api.mapbox.com/search-js/v1.5.0/web.js" defer></script>
 
     <style>
         * {
@@ -26,42 +24,55 @@
             height: 100%;
             overflow: hidden;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #111;
         }
 
         .app-container {
             width: 100%;
             height: 100%;
             position: relative;
-            display: flex;
-            flex-direction: column;
         }
 
+        /* Fixed absolute rendering path prevents map canvas collapse bugs */
         #map {
-            flex: 1;
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
             width: 100%;
             height: 100%;
+            z-index: 1;
         }
 
-        /* Floating Search Panel Stack */
-        .search-container {
+        /* Floating GeoPro Control Header Block */
+        .control-stack {
             position: absolute;
-            top: 20px;
+            top: 16px;
             left: 50%;
             transform: translateX(-50%);
-            width: 90%;
-            max-width: 480px;
+            width: 92%;
+            max-width: 460px;
             z-index: 10;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
         }
 
-        /* Category Fast Search Pills */
+        /* Search Input Anchor Tuning */
+        #search-box-anchor {
+            width: 100%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        /* Category Action Buttons Container */
         .category-row {
             display: flex;
             gap: 8px;
             overflow-x: auto;
-            padding: 2px;
+            padding: 4px 2px;
             scrollbar-width: none;
         }
         .category-row::-webkit-scrollbar {
@@ -69,780 +80,119 @@
         }
 
         .category-pill {
-            background: white;
-            border: 1px solid #ccc;
-            padding: 8px 16px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            white-space: nowrap;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-            transition: background 0.2s;
-        }
-        .category-pill:hover {
-            background: #f0f0f0;
-        }
-
-        /* Draggable & Scrollable Bottom Sheet */
-        .bottom-sheet {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            height: 200px; /* Default height */
-            min-height: 100px;
-            max-height: 80vh;
-            background: white;
-            border-top: 1px solid #ddd;
-            border-radius: 16px 16px 0 0;
-            z-index: 20;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 -4px 16px rgba(0,0,0,0.15);
-        }
-
-        .drag-handle {
-            width: 100%;
-            height: 24px;
-            cursor: ns-resize;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            touch-action: none; /* Intercepts mobile gestures safely */
-        }
-
-        .handle-bar {
-            width: 40px;
-            height: 4px;
-            background: #ccc;
-            border-radius: 2px;
-        }
-
-        .sheet-content {
-            flex: 1;
-            overflow-y: auto; /* Enables standard scrolling inside the panel */
-            padding: 0 20px 20px 20px;
-            -webkit-overflow-scrolling: touch;
-        }
-    </style>
-</head>
-<body>
-
-<div class="app-container">
-    
-    <!-- Floating Search Engine Elements -->
-    <div class="search-container">
-        <div id="search-box-anchor"></div>
-        
-        <div class="category-row">
-            <button class="category-pill" data-query="Fast Food">🍔 Fast Food</button>
-            <button class="category-pill" data-query="Dinner">🍴 Dinner</button>
-            <button class="category-pill" data-query="Gas Stations">⛽ Gas Stations</button>
-        </div>
-    </div>
-
-    <!-- Map Elements -->
-    <div id="map"></div>
-
-    <!-- Draggable / Scrollable Bottom Sheet Container -->
-    <div class="bottom-sheet" id="bottomSheet">
-        <div class="drag-handle" id="dragHandle">
-            <div class="handle-bar"></div>
-        </div>
-        <div class="sheet-content">
-            <h3 style="margin-bottom: 10px;">Location Details</h3>
-            <p style="color: #666; line-height: 1.5;">
-                Your search results or routing metrics will populate here. Because this section is scrollable, you can add as much content or text blocks here as required without breaking your UI view constraints. Drag the top bar handle upward to expand the viewing window.
-            </p>
-            <div style="height: 300px; margin-top: 15px; background: #f5f5f5; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; color: #999;">
-                (Scrollable Content Area Placeholder)
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-    // Add your valid Mapbox Access Token here
-    const MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoiaWxsZWdhbGdhbWVzIiwiYSI6ImNscWxpZTh4bzA1YTAydG1hbXh4M3I1N2IifQ.0X3gK_2w8A0V6W9j9O8-4A'; 
-    mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
-
-    let map = null;
-    let searchBox = null;
-    let initialLocationCoords = [-123.2078, 39.1503];
-
-    // Initialize Map Core Engine
-    function initMap() {
-        map = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/mapbox/streets-v12',
-            center: initialLocationCoords,
-            zoom: 13,
-            attributionControl: false
-        });
-
-        map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
-
-        // Dynamically shift proximity search target center when map dragging stops
-        map.on('moveend', () => {
-            const newCenter = map.getCenter().toArray();
-            if (searchBox && searchBox.options) {
-                searchBox.options = { ...searchBox.options, proximity: newCenter };
-            }
-        });
-    }
-
-    // Initialize Mapbox Search JS Engine
-    function initSearch() {
-        const script = document.getElementById('search-js');
-        if (!script) return;
-
-        script.onload = function() {
-            searchBox = new mapboxsearch.MapboxSearchBox();
-            searchBox.accessToken = MAPBOX_ACCESS_TOKEN;
-            searchBox.options = { proximity: initialLocationCoords, language: 'en' };
-            
-            // Connect to map engine layout
-            searchBox.mapboxgl = mapboxgl;
-            searchBox.bindMap(map);
-
-            document.getElementById('search-box-anchor').appendChild(searchBox);
-            setupCategoryButtons();
-        };
-    }
-
-    // Make Fast Search Action Buttons Work
-    function setupCategoryButtons() {
-        document.querySelectorAll('.category-pill').forEach(button => {
-            button.addEventListener('click', () => {
-                const query = button.getAttribute('data-query');
-                
-                if (searchBox) {
-                    searchBox.value = query;
-                    searchBox.focus();
-
-                    // Programmatically fire the search action
-                    if (typeof searchBox.search === 'function') {
-                        searchBox.search();
-                    } else {
-                        // Fallback Event dispatch if Web Component shadow boundaries vary
-                        const inputEvent = new Event('input', { bubbles: true });
-                        const innerInput = searchBox.shadowRoot?.querySelector('input') || searchBox.querySelector('input');
-                        if (innerInput) innerInput.dispatchEvent(inputEvent);
-                    }
-                }
-            });
-        });
-    }
-
-    // Draggable Sheet UI Handling Math
-    function initDraggableSheet() {
-        const sheet = document.getElementById('bottomSheet');
-        const handle = document.getElementById('dragHandle');
-        
-        let isDragging = false;
-        let startY = 0;
-        let startHeight = 0;
-
-        // Desktop Mouse Click Actions
-        handle.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            startY = e.clientY;
-            startHeight = sheet.offsetHeight;
-            sheet.style.transition = 'none'; // Clear physics transitions while pulling
-        });
-
-        // Mobile Screen Drag Gestures
-        handle.addEventListener('touchstart', (e) => {
-            isDragging = true;
-            startY = e.touches[0].clientY;
-            startHeight = sheet.offsetHeight;
-            sheet.style.transition = 'none';
-        }, { passive: true });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            const deltaY = startY - e.clientY;
-            const targetHeight = Math.max(100, Math.min(window.innerHeight * 0.80, startHeight + deltaY));
-            sheet.style.height = `${targetHeight}px`;
-        });
-
-        document.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            const deltaY = startY - e.touches[0].clientY;
-            const targetHeight = Math.max(100, Math.min(window.innerHeight * 0.80, startHeight + deltaY));
-            sheet.style.height = `${targetHeight}px`;
-        }, { passive: true });
-
-        const endDrag = () => {
-            if (!isDragging) return;
-            isDragging = false;
-            sheet.style.transition = 'height 0.2s ease-out';
-        };
-
-        document.addEventListener('mouseup', endDrag);
-        document.addEventListener('touchend', endDrag);
-    }
-
-    // Load elements sequentially safely
-    window.addEventListener('DOMContentLoaded', () => {
-        initMap();
-        initSearch();
-        initDraggableSheet();
-    });
-</script>
-</body>
-</html>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GeoPro</title>
-    
-    <!-- Mapbox GL JS v3 CSS & JS -->
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.css" rel="stylesheet">
-    <script src="https://api.mapbox.com/mapbox-gl-js/v3.1.2/mapbox-gl.js"></script>
-    
-    <!-- Mapbox Search JS Web Web Component Framework -->
-    <script id="search-js" defer src="https://api.mapbox.com/search-js/v1.5.0/web.js"></script>
-
-    <!-- Google Fonts for Cyber Aesthetic -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;600;800&family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
-
-    <style>
-        :root {
-            --bg-dark: #0a0a0c;
-            --bg-surface: #121216;
-            --bg-surface-elevated: #1a1a22;
-            --accent-red: #ff2a2a;
-            --accent-red-hover: #ff5555;
-            --accent-red-dim: #5c0f0f;
-            --text-main: #f0f0f5;
-            --text-muted: #8a8a9e;
-            --border-color: #2a2a35;
-            --glow-red: 0 0 12px rgba(255, 42, 42, 0.4);
-            --font-display: 'Orbitron', sans-serif;
-            --font-mono: 'JetBrains Mono', monospace;
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        body, html {
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: var(--bg-dark);
-            font-family: var(--font-mono);
-            color: var(--text-main);
-        }
-
-        /* App Layout Container */
-        .app-container {
-            display: flex;
-            flex-direction: column;
-            width: 100%;
-            height: 100%;
-            position: relative;
-        }
-
-        /* Top Navigation Bar */
-        .top-navbar {
-            height: 60px;
-            background: var(--bg-surface);
-            border-bottom: 2px solid var(--accent-red);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 20px;
-            z-index: 1010;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.6);
-        }
-
-        .brand-section {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .brand-logo {
-            font-family: var(--font-display);
-            font-weight: 900;
-            font-size: 1.3rem;
-            letter-spacing: 2px;
-            color: var(--text-main);
-            text-shadow: var(--glow-red);
-        }
-
-        .brand-logo span {
-            color: var(--accent-red);
-        }
-
-        .status-badge {
-            background: rgba(0, 230, 115, 0.1);
-            border: 1px solid #00e673;
-            color: #00e673;
-            padding: 3px 8px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            font-weight: bold;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            animation: status-pulse 2s infinite alternate;
-        }
-
-        @keyframes status-pulse {
-            0% { box-shadow: 0 0 4px rgba(0,230,115,0.2); opacity: 0.8; }
-            100% { box-shadow: 0 0 10px rgba(0,230,115,0.5); opacity: 1; }
-        }
-
-        .system-metrics-top {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            font-size: 0.85rem;
-        }
-
-        .metric-item-top {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .metric-icon-battery {
-            width: 24px;
-            height: 12px;
-            border: 1px solid var(--text-muted);
-            border-radius: 2px;
-            padding: 1px;
-            position: relative;
-            display: inline-block;
-        }
-        .metric-icon-battery::after {
-            content: '';
-            position: absolute;
-            right: -3px;
-            top: 3px;
-            width: 2px;
-            height: 4px;
-            background: var(--text-muted);
-        }
-        .battery-level {
-            width: 88%;
-            height: 100%;
-            background: #00e673;
-        }
-
-        /* Map Window Viewport */
-        .map-viewport-container {
-            flex: 1;
-            position: relative;
-            width: 100%;
-            background: #111;
-        }
-
-        #map {
-            width: 100%;
-            height: 100%;
-        }
-
-        /* Search Overlay Architecture */
-        .search-control-container {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 90%;
-            max-width: 520px;
-            z-index: 1005;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-
-        /* Mapbox Search Custom Element Overrides */
-        mapbox-search-box, .mapboxgl-ctrl-geocoder {
-            width: 100% !important;
-            max-width: 100% !important;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.7) !important;
-        }
-
-        /* Category Fast Search Row */
-        .category-pill-container {
-            display: flex;
-            gap: 8px;
-            overflow-x: auto;
-            padding: 4px 2px;
-            scrollbar-width: none; /* Hide standard scrollbar */
-        }
-        .category-pill-container::-webkit-scrollbar {
-            display: none;
-        }
-
-        .category-search-pill {
-            background: rgba(18, 18, 22, 0.85);
+            background: rgba(20, 20, 20, 0.85);
             backdrop-filter: blur(8px);
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
+            -webkit-backdrop-filter: blur(8px);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.15);
             padding: 8px 16px;
             border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
+            font-size: 0.85rem;
+            font-weight: 500;
             cursor: pointer;
             white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
             transition: all 0.2s ease;
             display: flex;
             align-items: center;
             gap: 6px;
         }
-
-        .category-search-pill:hover, .category-search-pill:active {
-            border-color: var(--accent-red);
-            background: var(--bg-surface-elevated);
-            box-shadow: var(--glow-red);
+        .category-pill:hover {
+            background: #cc0000;
+            border-color: #ff3333;
             transform: translateY(-1px);
         }
-
-        .category-search-pill::before {
-            content: '⌖';
-            color: var(--accent-red);
-            font-weight: bold;
+        .category-pill:active {
+            transform: translateY(1px);
         }
 
-        /* Left Dashboard Control Overlay */
-        .left-control-dashboard {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 320px;
-            background: rgba(18, 18, 22, 0.9);
-            backdrop-filter: blur(12px);
-            border: 1px solid var(--border-color);
-            border-left: 3px solid var(--accent-red);
-            border-radius: 6px;
-            z-index: 1002;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
-            max-height: calc(100% - 160px);
-            overflow-y: auto;
-            transition: opacity 0.3s ease, transform 0.3s ease;
-        }
-
-        .dashboard-section-title {
-            font-family: var(--font-display);
-            font-size: 0.85rem;
-            text-transform: uppercase;
-            letter-spacing: 1.5px;
-            color: var(--text-muted);
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 6px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .dashboard-section-title::after {
-            content: '●';
-            color: var(--accent-red);
-            font-size: 0.6rem;
-        }
-
-        /* Interactive Layer Radio Formats */
-        .layer-selector-group {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .layer-label {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 4px;
-            background: rgba(255,255,255,0.02);
-            border: 1px solid transparent;
-            font-size: 0.85rem;
-            transition: all 0.2s ease;
-        }
-
-        .layer-label:hover {
-            background: rgba(255,42,42,0.05);
-            border-color: rgba(255,42,42,0.2);
-        }
-
-        .layer-label input[type="radio"] {
-            appearance: none;
-            width: 14px;
-            height: 14px;
-            border: 2px solid var(--text-muted);
-            border-radius: 50%;
-            outline: none;
-            display: grid;
-            place-content: center;
-            transition: border-color 0.2s ease;
-        }
-
-        .layer-label input[type="radio"]::before {
-            content: "";
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            transform: scale(0);
-            transition: 0.15s transform ease-in-out;
-            background-color: var(--accent-red);
-            box-shadow: var(--glow-red);
-        }
-
-        .layer-label input[type="radio"]:checked {
-            border-color: var(--accent-red);
-        }
-
-        .layer-label input[type="radio"]:checked::before {
-            transform: scale(1);
-        }
-
-        /* Action Panel Buttons */
-        .operation-actions-vertical {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .btn-core-action {
-            width: 100%;
-            background: var(--bg-surface-elevated);
-            border: 1px solid var(--border-color);
-            color: var(--text-main);
-            padding: 10px 14px;
-            border-radius: 4px;
-            font-family: var(--font-mono);
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-align: left;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            transition: all 0.2s ease;
-        }
-
-        .btn-core-action:hover {
-            border-color: var(--accent-red);
-            background: rgba(255,42,42,0.1);
-            color: #fff;
-            box-shadow: var(--glow-red);
-        }
-
-        .btn-core-action::after {
-            content: '→';
-            color: var(--accent-red);
-            font-weight: bold;
-        }
-
-        /* Stats Grid System */
-        .telemetry-summary-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .telemetry-card {
-            background: rgba(0,0,0,0.2);
-            border: 1px solid var(--border-color);
-            padding: 10px;
-            border-radius: 4px;
-        }
-
-        .telemetry-label {
-            font-size: 0.7rem;
-            color: var(--text-muted);
-            text-transform: uppercase;
-            margin-bottom: 4px;
-        }
-
-        .telemetry-value {
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: var(--text-main);
-        }
-
-        /* Bottom Drag & Scroll Panel Sheet Layout */
-        .console-panel {
+        /* Precision Drag Sheet Layout Configuration */
+        .bottom-sheet {
             position: fixed;
             bottom: 0;
             left: 0;
             right: 0;
-            height: 300px; /* Default Initial Desktop Height */
-            min-height: 140px;
+            height: 220px; 
+            min-height: 80px;
             max-height: 85vh;
-            background: var(--bg-surface);
-            border-top: 2px solid var(--accent-red);
-            z-index: 1020;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-top: 1px solid rgba(0,0,0,0.1);
+            border-radius: 20px 20px 0 0;
+            z-index: 20;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 -8px 32px rgba(0,0,0,0.8);
+            box-shadow: 0 -6px 24px rgba(0, 0, 0, 0.15);
+            transition: transform 0.1s linear;
         }
 
-        /* Tactile Sheet Drag Bar Panel Element */
         .drag-handle {
             width: 100%;
-            height: 24px;
-            background: var(--bg-dark);
+            height: 28px;
             cursor: ns-resize;
             display: flex;
             align-items: center;
             justify-content: center;
-            border-bottom: 1px solid var(--border-color);
-            touch-action: none; /* Crucial block for structural gesture intercept */
+            touch-action: none;
+            user-select: none;
         }
 
         .handle-bar {
-            width: 44px;
-            height: 4px;
-            background: var(--border-color);
-            border-radius: 2px;
-            transition: background 0.2s ease;
+            width: 46px;
+            height: 5px;
+            background: #bbb;
+            border-radius: 3px;
+            transition: background 0.2s;
         }
-
         .drag-handle:hover .handle-bar {
-            background: var(--accent-red);
+            background: #888;
         }
 
-        /* Tabs Interface */
-        .console-tabs {
+        .sheet-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 24px 24px 24px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .sheet-title {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #111;
+            margin-bottom: 6px;
             display: flex;
-            background: var(--bg-dark);
-            border-bottom: 1px solid var(--border-color);
-            overflow-x: auto;
+            align-items: center;
+            justify-content: space-between;
         }
 
-        .tab-trigger {
-            background: transparent;
-            border: none;
-            border-right: 1px solid var(--border-color);
-            color: var(--text-muted);
-            padding: 10px 20px;
-            font-family: var(--font-mono);
-            font-size: 0.78rem;
-            font-weight: 600;
-            cursor: pointer;
+        .brand-badge {
+            font-size: 0.75rem;
+            background: #cc0000;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
             text-transform: uppercase;
             letter-spacing: 1px;
-            transition: all 0.2s ease;
         }
 
-        .tab-trigger:hover {
-            color: var(--text-main);
-            background: rgba(255,255,255,0.02);
+        .sheet-body {
+            color: #444;
+            font-size: 0.95rem;
+            line-height: 1.6;
         }
 
-        .tab-trigger.active {
-            background: var(--bg-surface);
-            color: var(--accent-red);
-            border-bottom: 2px solid var(--accent-red);
-            height: calc(100% + 1px);
-        }
-
-        /* Scrollable Sheet Content Window Area */
-        .console-body {
-            flex: 1;
-            overflow-y: auto; /* Active scrolling implementation */
-            -webkit-overflow-scrolling: touch; /* Momentum scrolling layout utility */
-            padding: 15px;
-            background: #0d0d11;
-        }
-
-        .tab-content {
-            display: none;
-            height: 100%;
-        }
-
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Log Output Formatting */
-        .log-entry {
-            font-size: 0.8rem;
-            line-height: 1.5;
-            margin-bottom: 6px;
-            word-break: break-all;
-            display: flex;
-            gap: 10px;
-        }
-
-        .log-time {
-            color: var(--text-muted);
-            flex-shrink: 0;
-        }
-
-        .log-tag {
-            color: var(--accent-red);
-            font-weight: bold;
-            flex-shrink: 0;
-        }
-
-        .log-tag.system { color: #00b3ff; }
-        .log-tag.success { color: #00e673; }
-        .log-tag.action { color: #ffaa00; }
-
-        .node-list-table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.8rem;
-            text-align: left;
-        }
-
-        .node-list-table th, .node-list-table td {
-            padding: 8px 12px;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .node-list-table th {
-            color: var(--text-muted);
-            text-transform: uppercase;
-            font-size: 0.75rem;
-        }
-
-        .status-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 6px;
-        }
-        .status-dot.online { background: #00e673; box-shadow: 0 0 6px #00e673;}
-        .status-dot.maintenance { background: #ffaa00; box-shadow: 0 0 6px #ffaa00;}
-
-        /* Responsive Layout Overrides */
-        @media(max-width: 768px) {
-            .left-control-dashboard {
-                display: none; /* Hide wide desktop sidebar panels on tight viewports */
-            }
-            .search-control-container {
-                width: 94%;
-                top: 10px;
-            }
-            .top-navbar {
-                padding: 0 12px;
-            }
-            .system-metrics-top {
-                gap: 10px;
-            }
-            .metric-item-top span {
-                display: none; /* Conserve navbar room */
-            }
-            .console-panel {
-                height: 40vh; /* Start taller on mobile viewports for easier tap target layout */
-            }
+        .placeholder-box {
+            height: 260px; 
+            margin-top: 16px; 
+            background: #fcfcfc; 
+            border: 2px dashed #ddd; 
+            border-radius: 8px;
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: #aaa;
+            font-size: 0.9rem;
         }
     </style>
 </head>
@@ -850,417 +200,190 @@
 
 <div class="app-container">
     
-    <!-- Top Bar Control -->
-    <header class="top-navbar">
-        <div class="brand-section">
-            <h1 class="brand-logo">INTERCELL <span>OSD</span></h1>
-            <div class="status-badge">System Online</div>
-        </div>
-        <div class="system-metrics-top">
-            <div class="metric-item-top">
-                <span style="color: var(--text-muted);">LOC:</span> <span>39.1503° N, 123.2078° W</span>
-            </div>
-            <div class="metric-item-top">
-                <div class="metric-icon-battery"><div class="battery-level"></div></div>
-                <span>88% PWR</span>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Map View Area Container -->
-    <main class="map-viewport-container">
+    <!-- GeoPro Primary Interactive Interface Layers -->
+    <div class="control-stack">
+        <div id="search-box-anchor"></div>
         
-        <!-- Search Input Floating Stack Overlay -->
-        <div class="search-control-container">
-            <!-- Target element wrapper for custom MapboxSearchBox rendering -->
-            <div id="search-box-anchor"></div>
-            
-            <!-- Proximity Action Fast Filter Search Pills Row -->
-            <div class="category-pill-container">
-                <button class="category-search-pill" data-query="Fast Food">Fast Food</button>
-                <button class="category-search-pill" data-query="Dinner">Dinner</button>
-                <button class="category-search-pill" data-query="Gas Stations">Gas Stations</button>
-            </div>
+        <div class="category-row">
+            <button class="category-pill" data-query="Gas Stations">⛽ Gas</button>
+            <button class="category-pill" data-query="Restaurants">🍔 Food</button>
+            <button class="category-pill" data-query="Coffee">☕ Coffee</button>
+            <button class="category-pill" data-query="Hotels">🏨 Hotels</button>
         </div>
+    </div>
 
-        <!-- System Operations Left Dashboard Overlay -->
-        <section class="left-control-dashboard" id="leftDashboard">
-            <div>
-                <h3 class="dashboard-section-title" style="margin-bottom: 12px;">Layer Configurations</h3>
-                <div class="layer-selector-group">
-                    <label class="layer-label">
-                        <input type="radio" name="map-layer" value="standard" checked>
-                        <span>Standard Topology</span>
-                    </label>
-                    <label class="layer-label">
-                        <input type="radio" name="map-layer" value="satellite">
-                        <span>Satellite Grid</span>
-                    </label>
-                    <label class="layer-label">
-                        <input type="radio" name="map-layer" value="heat">
-                        <span>RF Coverage Heatmap</span>
-                    </label>
-                </div>
-            </div>
+    <!-- Map Elements Render Target -->
+    <div id="map"></div>
 
-            <div>
-                <h3 class="dashboard-section-title" style="margin-bottom: 12px;">System Operations</h3>
-                <div class="operation-actions-vertical">
-                    <button class="btn-core-action" id="btnDeployNodes">Deploy System Nodes</button>
-                    <button class="btn-core-action" id="btnPurgeLogs">Purge Offline Logs</button>
-                    <button class="btn-core-action" id="btnDownloadConfig">Download Configuration</button>
-                </div>
-            </div>
-
-            <div>
-                <h3 class="dashboard-section-title" style="margin-bottom: 12px;">Telemetry Overview</h3>
-                <div class="telemetry-summary-grid">
-                    <div class="telemetry-card">
-                        <div class="telemetry-label">Total Nodes</div>
-                        <div class="telemetry-value">14</div>
-                    </div>
-                    <div class="telemetry-card">
-                        <div class="telemetry-label">Active CH</div>
-                        <div class="telemetry-value">42</div>
-                    </div>
-                    <div class="telemetry-card" style="grid-column: span 2;">
-                        <div class="telemetry-label">Aggregated Bandwidth</div>
-                        <div class="telemetry-value" style="color: var(--accent-red);">1.2 Gbps</div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- The Mapbox Canvas Insertion Node Target -->
-        <div id="map"></div>
-    </main>
-
-    <!-- Bottom Context Drag/Scroll Console Sheet Panel Container -->
-    <footer class="console-panel" id="consolePanel">
-        <!-- Structural Top Bar Handle for drag updates -->
+    <!-- Premium Draggable Metadata Sheet Container -->
+    <div class="bottom-sheet" id="bottomSheet">
         <div class="drag-handle" id="dragHandle">
             <div class="handle-bar"></div>
         </div>
-        
-        <!-- Interactive Panel Tabs -->
-        <div class="console-tabs">
-            <button class="tab-trigger active" data-tab="logStream">Log Stream</button>
-            <button class="tab-trigger" data-tab="activeNodes">Active Nodes</button>
-            <button class="tab-trigger" data-tab="hardwareStatus">Hardware Status</button>
-        </div>
-
-        <!-- Scrollable Body Terminal Layer container box -->
-        <div class="console-body" id="consoleBody">
-            
-            <!-- Tab Element Content Panel Viewports -->
-            <div class="tab-content active" id="logStream">
-                <!-- Javascript fills live operational events layout -->
+        <div class="sheet-content">
+            <div class="sheet-title">
+                <span>Location Metrics</span>
+                <span class="brand-badge">GeoPro Engine</span>
             </div>
-
-            <div class="tab-content" id="activeNodes">
-                <table class="node-list-table">
-                    <thead>
-                        <tr>
-                            <th>Node ID</th>
-                            <th>Frequency</th>
-                            <th>Status</th>
-                            <th>Load</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td>N-UKH-01 (Core Hub)</td>
-                            <td>5.8 GHz</td>
-                            <td><span class="status-dot online"></span>Active</td>
-                            <td>34%</td>
-                        </tr>
-                        <tr>
-                            <td>N-UKH-02 (North Relay)</td>
-                            <td>5.8 GHz</td>
-                            <td><span class="status-dot online"></span>Active</td>
-                            <td>12%</td>
-                        </tr>
-                        <tr>
-                            <td>N-UKH-03 (South Tower)</td>
-                            <td>2.4 GHz</td>
-                            <td><span class="status-dot maintenance"></span>Calibrating</td>
-                            <td>--</td>
-                        </tr>
-                        <tr>
-                            <td>N-UKH-04 (West Sector)</td>
-                            <td>6.0 GHz</td>
-                            <td><span class="status-dot online"></span>Active</td>
-                            <td>68%</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="tab-content" id="hardwareStatus">
-                <div style="font-size: 0.8rem; line-height: 1.6; color: var(--text-muted);">
-                    <p><strong style="color: var(--text-main);">RF Transmitter Array:</strong> Operational (Optimal Temperature 38°C)</p>
-                    <p><strong style="color: var(--text-main);">Solar Regulator Stage:</strong> Battery Array Floating at 13.6V</p>
-                    <p><strong style="color: var(--text-main);">LTE Backhaul Uplink:</strong> Connected via Secondary Carrier Protocol</p>
-                    <p><strong style="color: var(--text-main);">Local Host Kernel:</strong> v5.15.0-patched-realtime-x86_64</p>
+            <div class="sheet-body">
+                <p>
+                    Interactive spatial query telemetry and real-time mapping indexes render inside this panel layer. Drag the access handle upward to smoothly maximize the content matrix view viewport windows.
+                </p>
+                <div class="placeholder-box">
+                    (No active tracking node selected)
                 </div>
             </div>
-
         </div>
-    </footer>
+    </div>
 </div>
 
 <script>
-    // System Configurations Default Access Tokens
-    // Replace with your real Mapbox token for fully rendering customized tile arrays
+    // System tokens verified and stored globally
     const MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoiaWxsZWdhbGdhbWVzIiwiYSI6ImNscWxpZTh4bzA1YTAydG1hbXh4M3I1N2IifQ.0X3gK_2w8A0V6W9j9O8-4A'; 
     mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
 
-    let mapInstance = null;
-    let searchBoxInstance = null;
-    let currentMapCenter = [-123.2078, 39.1503]; // Default Map Initialization Target Local Point Coordinate Array
+    let map = null;
+    let searchBox = null;
+    const defaultCenterLocation = [-123.2078, 39.1503]; // Standard initialization alignment coordinates
 
-    // Initialize Mapbox Engine
-    function initMapboxEngine() {
-        mapInstance = new mapboxgl.Map({
-            container: 'map',
-            style: 'mapbox://styles/mapbox/dark-v11', // Beautiful matching base vector setup out-of-the-box
-            center: currentMapCenter,
-            zoom: 13.5,
-            pitch: 30,
-            attributionControl: false
-        });
+    // Safely spins up the Mapbox GL JS engine
+    function initMap() {
+        try {
+            map = new mapboxgl.Map({
+                container: 'map',
+                style: 'mapbox://styles/mapbox/streets-v12',
+                center: defaultCenterLocation,
+                zoom: 13,
+                attributionControl: false
+            });
 
-        mapInstance.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
+            map.addControl(new mapboxgl.NavigationControl(), 'bottom-right');
 
-        // Track location center state updates dynamically to feed into search engine proximity queries
-        mapInstance.on('moveend', () => {
-            currentMapCenter = mapInstance.getCenter().toArray();
-            if (searchBoxInstance && searchBoxInstance.options) {
-                searchBoxInstance.options = {
-                    ...searchBoxInstance.options,
-                    proximity: currentMapCenter
-                };
-            }
-        });
-
-        mapInstance.on('load', () => {
-            appendConsoleLog('SYSTEM', 'Mapbox GL Engine v3 Core fully mounted.', 'success');
-            appendConsoleLog('SYSTEM', 'Grid coordinates targeted successfully.', 'system');
-        });
-    }
-
-    // Initialize Mapbox Search Component Engine
-    function initMapboxSearchEngine() {
-        const script = document.getElementById('search-js');
-        if (!script) return;
-
-        script.onload = function() {
-            searchBoxInstance = new mapboxsearch.MapboxSearchBox();
-            searchBoxInstance.accessToken = MAPBOX_ACCESS_TOKEN;
-            
-            // Set proximity context mapping configuration to ensure close category filtering results
-            searchBoxInstance.options = {
-                proximity: currentMapCenter,
-                language: 'en'
-            };
-
-            // Hook direct functional reference interaction to binding map updates natively
-            searchBoxInstance.mapboxgl = mapboxgl;
-            searchBoxInstance.bindMap(mapInstance);
-
-            // Append explicitly to localized interface node wrapper layout framework anchor
-            document.getElementById('search-box-anchor').appendChild(searchBoxInstance);
-            
-            appendConsoleLog('SEARCH', 'Mapbox Search Web Components bound to network map layer.', 'success');
-            setupFastSearchInteractions();
-        };
-    }
-
-    // Connect Proximity Fast Search Action Control Buttons
-    function setupFastSearchInteractions() {
-        document.querySelectorAll('.category-search-pill').forEach(pill => {
-            pill.addEventListener('click', (e) => {
-                const queryTarget = pill.getAttribute('data-query');
-                appendConsoleLog('OPERATOR', `Initiated fast search vector routing for query: "${queryTarget}"`, 'action');
-
-                if (searchBoxInstance) {
-                    // Update search box input display explicitly
-                    searchBoxInstance.value = queryTarget;
-                    searchBoxInstance.focus();
-
-                    // Programmatically enforce search execution across Mapbox API interfaces
-                    if (typeof searchBoxInstance.search === 'function') {
-                        searchBoxInstance.search();
-                    } else {
-                        // Resilient structural event dispatch fallback layer if programmatic method wrapping encounters variance
-                        const inputEvent = new Event('input', { bubbles: true, cancelable: true });
-                        const innerInputElement = searchBoxInstance.shadowRoot?.querySelector('input') || searchBoxInstance.querySelector('input');
-                        if (innerInputElement) {
-                            innerInputElement.dispatchEvent(inputEvent);
-                        } else {
-                            searchBoxInstance.dispatchEvent(inputEvent);
-                        }
-                    }
-                } else {
-                    appendConsoleLog('ERROR', 'Search engine layer not yet ready.', 'system');
+            // Bias search proximity when panning or shifting center point finishes
+            map.on('moveend', () => {
+                const currentCenter = map.getCenter().toArray();
+                if (searchBox && searchBox.options) {
+                    searchBox.options = { ...searchBox.options, proximity: currentCenter };
                 }
             });
-        });
-    }
-
-    // Advanced Draggable Sheet Console Implementation (Touch Responsive & Scrollable)
-    function initializeDraggableConsoleSheet() {
-        const consolePanel = document.getElementById('consolePanel');
-        const dragHandle = document.getElementById('dragHandle');
-        const consoleBody = document.getElementById('consoleBody');
-        
-        if (!consolePanel || !dragHandle) return;
-
-        let isDragging = false;
-        let startY = 0;
-        let startHeight = 0;
-
-        // Desktop Pointer Interface Events
-        dragHandle.addEventListener('mousedown', (e) => {
-            isDragging = true;
-            startY = e.clientY;
-            startHeight = consolePanel.offsetHeight;
-            document.body.style.cursor = 'ns-resize';
-            document.body.style.userSelect = 'none';
-            consolePanel.style.transition = 'none'; // Terminate active CSS transitions during physics updates
-        });
-
-        // Mobile Native Touch Architecture Sheet Dragging Gestures
-        dragHandle.addEventListener('touchstart', (e) => {
-            isDragging = true;
-            startY = e.touches[0].clientY;
-            startHeight = consolePanel.offsetHeight;
-            consolePanel.style.transition = 'none';
-        }, { passive: true });
-
-        document.addEventListener('mousemove', (e) => {
-            if (!isDragging) return;
-            const deltaY = startY - e.clientY;
-            // Bound sheet height limits dynamically to safeguard viewport constraints
-            const newHeight = Math.max(140, Math.min(window.innerHeight * 0.85, startHeight + deltaY));
-            consolePanel.style.height = `${newHeight}px`;
-        });
-
-        document.addEventListener('touchmove', (e) => {
-            if (!isDragging) return;
-            const deltaY = startY - e.touches[0].clientY;
-            const newHeight = Math.max(140, Math.min(window.innerHeight * 0.85, startHeight + deltaY));
-            consolePanel.style.height = `${newHeight}px`;
-        }, { passive: true });
-
-        const terminateDragGestureState = () => {
-            if (!isDragging) return;
-            isDragging = false;
-            document.body.style.cursor = '';
-            document.body.style.userSelect = '';
-            consolePanel.style.transition = 'height 0.2s cubic-bezier(0.4, 0, 0.2, 1)';
-        };
-
-        document.addEventListener('mouseup', terminateDragGestureState);
-        document.addEventListener('touchend', terminateDragGestureState);
-    }
-
-    // Modular Tab Selector Framework Controller
-    function setupConsoleTabs() {
-        const triggers = document.querySelectorAll('.tab-trigger');
-        triggers.forEach(trigger => {
-            trigger.addEventListener('click', () => {
-                const targetTabId = trigger.getAttribute('data-tab');
-                
-                // Toggle triggers
-                triggers.forEach(t => t.classList.remove('active'));
-                trigger.classList.add('active');
-
-                // Toggle viewport displays
-                document.querySelectorAll('.tab-content').forEach(content => {
-                    content.classList.remove('active');
-                });
-                document.getElementById(targetTabId).classList.add('active');
-                
-                appendConsoleLog('OSD', `Switched console terminal viewport context view to: [${targetTabId}]`, 'system');
-            });
-        });
-    }
-
-    // Auxiliary Console Stream Formatting Logging Tool
-    function appendConsoleLog(tag, text, type = 'system') {
-        const logStream = document.getElementById('logStream');
-        if (!logStream) return;
-
-        const timeString = new Date().toISOString().split('T')[1].slice(0, 8);
-        
-        const logEntry = document.createElement('div');
-        logEntry.className = 'log-entry';
-        logEntry.innerHTML = `
-            <span class="log-time">[${timeString}]</span>
-            <span class="log-tag ${type}">[${tag}]</span>
-            <span class="log-msg">${text}</span>
-        `;
-        
-        logStream.appendChild(logEntry);
-        
-        // Auto scroll terminal log interface layer views automatically on update arrays
-        const consoleBody = document.getElementById('consoleBody');
-        if (consoleBody) {
-            consoleBody.scrollTop = consoleBody.scrollHeight;
+        } catch (error) {
+            console.error("GeoPro Error: Map core initialization failed -> Check access tokens bounds configuration.", error);
         }
     }
 
-    // Setup Mock Functional Operations Triggers
-    function setupInteractiveOperations() {
-        document.getElementById('btnDeployNodes')?.addEventListener('click', () => {
-            appendConsoleLog('ACTION', 'Deploying supplementary remote cellular cluster arrays...', 'action');
-            setTimeout(() => {
-                appendConsoleLog('SUCCESS', '14 active deployment operational nodes synchronized.', 'success');
-            }, 1200);
-        });
+    // Resolves cross-browser Search Web Component class compilation models
+    function initSearchBox() {
+        try {
+            let searchBoxInstance = null;
 
-        document.getElementById('btnPurgeLogs')?.addEventListener('click', () => {
-            appendConsoleLog('ACTION', 'Purging cold offline crash reporting nodes logs data safely...', 'action');
-            setTimeout(() => {
-                appendConsoleLog('SYSTEM', 'Storage buffer cache purged successfully. Freed 412MB.', 'system');
-            }, 800);
-        });
+            // Look up every possible namespace variant to prevent CDN execution crashes
+            if (typeof mapboxsearch !== 'undefined' && mapboxsearch.MapboxSearchBox) {
+                searchBoxInstance = new mapboxsearch.MapboxSearchBox();
+            } else if (typeof MapboxSearchBox !== 'undefined') {
+                searchBoxInstance = new MapboxSearchBox();
+            } else {
+                searchBoxInstance = document.createElement('mapbox-search-box');
+            }
 
-        document.getElementById('btnDownloadConfig')?.addEventListener('click', () => {
-            appendConsoleLog('ACTION', 'Packaging system core encryption configs array details...', 'action');
-            setTimeout(() => {
-                appendConsoleLog('SUCCESS', 'Manifest config secure binary generated. Package downloaded.', 'success');
-            }, 1000);
-        });
+            if (!searchBoxInstance) throw new Error("SearchBox component constructor unavailable.");
 
-        // Layer map toggle runtime integration hooks
-        document.querySelectorAll('input[name="map-layer"]').forEach(radio => {
-            radio.addEventListener('change', (e) => {
-                const targetLayer = e.target.value;
-                appendConsoleLog('MAP', `Re-routing style array configurations mapping engine to: ${targetLayer}`, 'system');
-                if (mapInstance) {
-                    if (targetLayer === 'satellite') {
-                        mapInstance.setStyle('mapbox://styles/mapbox/satellite-streets-v12');
+            searchBox = searchBoxInstance;
+            searchBox.accessToken = MAPBOX_ACCESS_TOKEN;
+            searchBox.options = { proximity: defaultCenterLocation, language: 'en' };
+            
+            // Connect structural engines together
+            searchBox.mapboxgl = mapboxgl;
+            searchBox.bindMap(map);
+
+            document.getElementById('search-box-anchor').appendChild(searchBox);
+            bindCategoryPills();
+
+        } catch (error) {
+            console.error("GeoPro Error: Web Search component setup failed -> Check dependency assets load channels.", error);
+        }
+    }
+
+    // Manages clean category data parsing triggers
+    function bindCategoryPills() {
+        document.querySelectorAll('.category-pill').forEach(pill => {
+            pill.addEventListener('click', () => {
+                const queryStr = pill.getAttribute('data-query');
+                
+                if (searchBox) {
+                    searchBox.value = queryStr;
+                    searchBox.focus();
+
+                    // Programmatic search execution framework fallback matching all builds
+                    if (typeof searchBox.search === 'function') {
+                        searchBox.search();
                     } else {
-                        mapInstance.setStyle('mapbox://styles/mapbox/dark-v11');
+                        const nativeInputEvent = new Event('input', { bubbles: true });
+                        const targets = searchBox.shadowRoot?.querySelector('input') || searchBox.querySelector('input');
+                        if (targets) {
+                            targets.dispatchEvent(nativeInputEvent);
+                        }
                     }
                 }
             });
         });
     }
 
-    // Master Mount Initialization Bootstrapper Pipeline
-    window.addEventListener('DOMContentLoaded', () => {
-        initMapboxEngine();
-        initMapboxSearchEngine();
-        initializeDraggableConsoleSheet();
-        setupConsoleTabs();
-        setupInteractiveOperations();
+    // High performance Drag/Gesture Mathematics setup
+    function initDraggableSheetFramework() {
+        const sheet = document.getElementById('bottomSheet');
+        const handle = document.getElementById('dragHandle');
+        
+        let activeDrag = false;
+        let originY = 0;
+        let baseHeight = 0;
 
-        // Feed standard initial startup welcome diagnostic telemetry messages
-        appendConsoleLog('BOOT', 'INTERCELL System Terminal OSD Initialization Core v2026.7 Mounted.', 'system');
-        appendConsoleLog('SECURITY', 'SSL Handshake complete. Remote node operator link authenticated.', 'success');
+        const updateSheetHeight = (currentClientY) => {
+            const movementDelta = originY - currentClientY;
+            const targetCalculatedHeight = Math.max(80, Math.min(window.innerHeight * 0.85, baseHeight + movementDelta));
+            sheet.style.height = `${targetCalculatedHeight}px`;
+        };
+
+        // Desktop Mouse Triggers
+        handle.addEventListener('mousedown', (e) => {
+            activeDrag = true;
+            originY = e.clientY;
+            baseHeight = sheet.offsetHeight;
+            sheet.style.transition = 'none';
+        });
+
+        // Mobile Screen Multi-Touch Triggers
+        handle.addEventListener('touchstart', (e) => {
+            activeDrag = true;
+            originY = e.touches[0].clientY;
+            baseHeight = sheet.offsetHeight;
+            sheet.style.transition = 'none';
+        }, { passive: true });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!activeDrag) return;
+            updateSheetHeight(e.clientY);
+        });
+
+        document.addEventListener('touchmove', (e) => {
+            if (!activeDrag) return;
+            updateSheetHeight(e.touches[0].clientY);
+        }, { passive: true });
+
+        const terminateDragGesture = () => {
+            if (!activeDrag) return;
+            activeDrag = false;
+            sheet.style.transition = 'height 0.2s cubic-bezier(0.25, 1, 0.5, 1)';
+        };
+
+        document.addEventListener('mouseup', terminateDragGesture);
+        document.addEventListener('touchend', terminateDragGesture);
+    }
+
+    // Unified sequencing structure prevents race condition compilation crashes
+    window.addEventListener('load', () => {
+        initMap();
+        initSearchBox();
+        initDraggableSheetFramework();
     });
 </script>
 </body>
