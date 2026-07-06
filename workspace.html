@@ -65,7 +65,7 @@
             left: 25px;
             width: var(--sidebar-width);
             max-height: calc(100% - 50px);
-            z-index: 2000; /* Elevated past MapLibre internal interaction structures */
+            z-index: 2000;
             background: var(--bg-panel);
             backdrop-filter: blur(35px) saturate(210%);
             -webkit-backdrop-filter: blur(35px) saturate(210%);
@@ -210,7 +210,7 @@
             position: absolute; 
             top: 25px; 
             right: 25px; 
-            z-index: 2000; /* Fixed layer depth override */
+            z-index: 2000; 
             display: flex; 
             flex-direction: column; 
             gap: 8px;
@@ -260,6 +260,23 @@
             cursor: pointer;
         }
 
+        /* Distinctive Styling for Live Device Location Dot */
+        .live-gps-beacon-node {
+            width: 18px;
+            height: 18px;
+            background: #007aff;
+            border: 3px solid #ffffff;
+            border-radius: 50%;
+            box-shadow: 0 0 0 8px rgba(0, 122, 255, 0.25), 0 2px 6px rgba(0,0,0,0.4);
+            animation: beaconPulse 2.5s infinite ease-in-out;
+        }
+
+        @keyframes beaconPulse {
+            0% { box-shadow: 0 0 0 0px rgba(0, 122, 255, 0.4), 0 2px 6px rgba(0,0,0,0.4); }
+            70% { box-shadow: 0 0 0 12px rgba(0, 122, 255, 0), 0 2px 6px rgba(0,0,0,0.4); }
+            100% { box-shadow: 0 0 0 0px rgba(0, 122, 255, 0), 0 2px 6px rgba(0,0,0,0.4); }
+        }
+
         @media (max-width: 480px) {
             #control-panel-deck {
                 width: calc(100% - 32px);
@@ -307,7 +324,7 @@
 
                 <div class="hardware-diagnostics-deck">
                     <div class="diagnostic-row"><span>Engine Source</span><span class="brand-status">MAPLIBRE V4</span></div>
-                    <div class="diagnostic-row"><span>Search Registry</span><span>PHOTON INDEX</span></div>
+                    <div class="diagnostic-row"><span>Telemetry Status</span><span id="telemetry-status-node" style="color: #ff9500;">WAITING PERMISSION</span></div>
                     <div class="diagnostic-row"><span>Routing Pipeline</span><span id="routing-engine-status">OSRM ROUTER</span></div>
                 </div>
             </div>
@@ -327,22 +344,25 @@
     </div>
 
     <script>
-        const defaultUserCoordinates = [-123.2078, 39.1502];
+        // Default structural anchor point if the hardware sensor fails completely
+        let defaultUserCoordinates = [-122.084, 37.422]; 
+        let currentLiveGpsPosition = null; 
         let targetSelectedCoordinates = null;
         let querySearchDebounceTimer = null;
+        
         let activeMapMarker = null; 
+        let userLocationBeaconMarker = null;
 
         const map = new maplibregl.Map({
             container: 'map',
             style: 'https://tiles.openfreemap.org/styles/dark', 
             center: defaultUserCoordinates, 
-            zoom: 13,
+            zoom: 2, // Start wide until telemetry resolves position
             pitch: 25,
             bearing: 0,
             antialias: true
         });
 
-        // Custom SVG Red Brand Node Factory
         function createCustomMarkerElement() {
             const el = document.createElement('div');
             el.className = 'custom-spatial-marker';
@@ -356,26 +376,82 @@
             return el;
         }
 
-        // Fired as soon as stylesheet data compiles entirely 
-        map.on('style.load', () => {
-            map.jumpTo({
-                center: defaultUserCoordinates,
-                zoom: 13,
-                pitch: 25,
-                bearing: 0
-            });
-        });
-
         map.on('load', () => {
             initTacticalPanelDraggingPhysics();
             initAutonomousSearchMatrix();
             initDirectMapInputListeners();
             initHardwareConsoleTriggers();
+            
+            // Immediately run a high-accuracy geolocation capture loop
+            establishLiveHardwarePositioningStream();
 
             map.on('mousemove', (e) => {
                 document.getElementById('coordinate-overlay-tracker').innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
             });
         });
+
+        /* ── HARDWARE GEOLOCATION ORCHESTRATION ── */
+        function establishLiveHardwarePositioningStream() {
+            const diagnosticStatus = document.getElementById('telemetry-status-node');
+
+            if (!navigator.geolocation) {
+                diagnosticStatus.innerText = "UNSUPPORTED SENSOR";
+                diagnosticStatus.style.color = "#ff2222";
+                return;
+            }
+
+            const geoOptions = {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            };
+
+            // WatchPosition handles the initial lock and streams subsequent changes
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    const lon = position.coords.longitude;
+                    const lat = position.coords.latitude;
+                    const initialLockAchieved = (currentLiveGpsPosition === null);
+                    
+                    currentLiveGpsPosition = [lon, lat];
+                    
+                    diagnosticStatus.innerText = "ONLINE (LIVE)";
+                    diagnosticStatus.style.color = "#007aff";
+
+                    // Update or generate the pulsing location beacon on the canvas map
+                    if (!userLocationBeaconMarker) {
+                        const beaconEl = document.createElement('div');
+                        beaconEl.className = 'live-gps-beacon-node';
+                        
+                        userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })
+                            .setLngLat(currentLiveGpsPosition)
+                            .addTo(map);
+                    } else {
+                        userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
+                    }
+
+                    // On the very first telemetry capture, immediately snap the camera to position
+                    if (initialLockAchieved) {
+                        map.flyTo({
+                            center: currentLiveGpsPosition,
+                            zoom: 14,
+                            essential: true
+                        });
+                    }
+                },
+                (error) => {
+                    console.warn("Telemetry connection failed:", error.message);
+                    diagnosticStatus.style.color = "#ff2222";
+                    
+                    if (error.code === 1) {
+                        diagnosticStatus.innerText = "ACCESS DENIED";
+                    } else {
+                        diagnosticStatus.innerText = "SIGNAL TIMEOUT";
+                    }
+                },
+                geoOptions
+            );
+        }
 
         /* ── POSITIONING & DRAG PHYSICS ── */
         function initTacticalPanelDraggingPhysics() {
@@ -504,7 +580,9 @@
         async function runLocalSpatialRouteCalculation() {
             if (!targetSelectedCoordinates) return;
             
-            const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${defaultUserCoordinates.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson`;
+            // Check if live coordinates exist; if not, fall back to our map center as origin anchor
+            const originCoords = currentLiveGpsPosition ? currentLiveGpsPosition : [map.getCenter().lng, map.getCenter().lat];
+            const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson`;
             
             try {
                 const stream = await fetch(routingQueryUrl);
@@ -526,7 +604,16 @@
 
         function initHardwareConsoleTriggers() {
             document.getElementById('compass-orientation-lock').addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 25 }));
-            document.getElementById('force-gps-recenter').addEventListener('click', () => map.flyTo({ center: defaultUserCoordinates, zoom: 14 }));
+            
+            document.getElementById('force-gps-recenter').addEventListener('click', () => {
+                if (currentLiveGpsPosition) {
+                    map.flyTo({ center: currentLiveGpsPosition, zoom: 15 });
+                } else {
+                    // Try to re-request if it wasn't available
+                    establishLiveHardwarePositioningStream();
+                }
+            });
+
             document.getElementById('launch-routing-action').addEventListener('click', runLocalSpatialRouteCalculation);
             document.getElementById('flush-workspace-trigger').addEventListener('click', () => {
                 if (map.getLayer('active-route-line')) map.removeLayer('active-route-line');
