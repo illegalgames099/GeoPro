@@ -3,16 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GeoPro | Premium Tactical Workspace</title>
+    <title>GeoPro | Autonomous Spatial Workspace</title>
 
-    <!-- Mapbox GL JS Core -->
-    <script src="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.js"></script>
-    <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
+    <!-- MapLibre GL JS Core (100% Open Source Fork) -->
+    <script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
+    <link href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" rel="stylesheet" />
 
     <style>
         :root {
             --bg-base: #020203;
-            --bg-panel: rgba(10, 10, 12, 0.92);
+            --bg-panel: rgba(10, 10, 12, 0.94);
             --bg-surface: rgba(20, 20, 25, 0.7);
             --bg-surface-hover: rgba(35, 35, 42, 0.9);
             --action-red: #ff2222;
@@ -60,7 +60,7 @@
         button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
         input { font: inherit; }
 
-        /* ── TACTILE DRAGGABLE CONTROL INTERFACE PANEL ── */
+        /* ── TACTILE DRAGGABLE PANEL ── */
         #control-panel-deck {
             position: absolute;
             bottom: 25px;
@@ -86,7 +86,6 @@
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
-        /* Drag Handle Element Target */
         .drag-handle-bar {
             width: 100%;
             padding: 14px 0 8px 0;
@@ -103,7 +102,6 @@
             height: 5px;
             background: rgba(255, 255, 255, 0.15);
             border-radius: 3px;
-            transition: background 0.2s;
         }
         .drag-handle-bar:hover .drag-handle-pill { background: rgba(255, 255, 255, 0.3); }
 
@@ -115,8 +113,6 @@
             flex-direction: column;
             gap: 18px;
         }
-        .panel-scrollable-body::-webkit-scrollbar { width: 4px; }
-        .panel-scrollable-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 4px; }
 
         .panel-branding-header {
             display: flex;
@@ -126,7 +122,7 @@
         .brand-logo { font-size: 1.3rem; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; }
         .brand-logo span { color: var(--action-red); text-shadow: 0 0 12px var(--action-red-glow); }
 
-        /* Search Interface Core */
+        /* Search Interface */
         .search-field-container { position: relative; width: 100%; }
         .search-input-wrapper {
             display: flex;
@@ -150,10 +146,7 @@
             font-size: 0.9rem;
         }
         .search-input-node::placeholder { color: var(--text-muted); }
-        .clear-input-node-trigger { padding: 0 14px; color: var(--text-muted); font-size: 0.8rem; display: none; }
-        .clear-input-node-trigger:hover { color: var(--action-red); }
 
-        /* Dropdown suggestions matrix overlay */
         .osm-dropdown-menu {
             position: absolute;
             top: 100%;
@@ -167,7 +160,6 @@
             overflow-y: auto;
             z-index: 150;
             display: none;
-            box-shadow: 0 15px 30px rgba(0,0,0,0.5);
         }
         .osm-suggest-item {
             padding: 12px 16px;
@@ -180,58 +172,7 @@
         }
         .osm-suggest-item:hover { background: rgba(255, 34, 34, 0.08); color: var(--action-red); }
 
-        /* Multi-Stop Sequential Queue Pipeline */
-        .pipeline-manager-box {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            background: rgba(0,0,0,0.2);
-            padding: 8px;
-            border-radius: 14px;
-            border: 1px solid var(--border-subtle);
-        }
-        .pipeline-item-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: var(--bg-surface);
-            padding: 10px 12px;
-            border-radius: 10px;
-            border: 1px solid var(--border-subtle);
-            font-size: 0.8rem;
-        }
-        .pipeline-badge { width: 18px; height: 18px; border-radius: 50%; background: var(--action-red); font-size: 0.65rem; font-weight: 900; display: flex; align-items: center; justify-content: center; }
-        .pipeline-string { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); }
-        .pipeline-node-remove { color: var(--text-muted); }
-        .pipeline-node-remove:hover { color: var(--action-red); }
-
-        /* Travel Matrices Selection Layout */
-        .travel-matrix-box {
-            display: flex;
-            gap: 4px;
-            background: rgba(0,0,0,0.25);
-            padding: 4px;
-            border-radius: 14px;
-            border: 1px solid var(--border-subtle);
-        }
-        .matrix-btn-node {
-            flex: 1;
-            padding: 10px 0;
-            border-radius: 10px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            font-size: 0.65rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            color: var(--text-muted);
-        }
-        .matrix-btn-node svg { stroke: var(--text-muted); fill: none; }
-        .matrix-btn-node.active { background: rgba(255, 34, 34, 0.12); color: var(--action-red); border: 1px solid rgba(255, 34, 34, 0.15); }
-        .matrix-btn-node.active svg { stroke: var(--action-red); }
-
-        /* Dynamic Context Workspace Workcard */
+        /* Context Workspace Card */
         #context-destination-panel {
             background: linear-gradient(135deg, var(--bg-surface), rgba(10,10,14,0.1));
             border: 1px solid var(--border-subtle);
@@ -243,21 +184,12 @@
         }
         .panel-header-title { font-size: 1rem; font-weight: 700; }
         .panel-address-sub { font-size: 0.8rem; color: var(--text-secondary); line-height: 1.4; }
-        .alternatives-container { display: flex; gap: 6px; overflow-x: auto; }
-        .alt-route-pill {
-            flex-shrink: 0; background: rgba(255,255,255,0.02); border: 1px solid var(--border-subtle);
-            padding: 8px 12px; border-radius: 10px; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary);
-        }
-        .alt-route-pill.selected { border-color: var(--action-red); color: var(--action-red); background: rgba(255, 34, 34, 0.1); }
         
         .action-button-matrix { display: flex; gap: 8px; }
-        .primary-action-btn { flex: 2; background: var(--action-red); padding: 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; box-shadow: 0 6px 16px var(--action-red-glow); }
-        .secondary-action-btn { flex: 1; background: rgba(255,255,255,0.04); border: 1px solid var(--border-subtle); padding: 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
-        .secondary-action-btn:hover { background: rgba(255,255,255,0.08); }
+        .primary-action-btn { flex: 1; background: var(--action-red); padding: 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; text-align: center; box-shadow: 0 6px 16px var(--action-red-glow); }
         .kill-action-btn { background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); width: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
         .kill-action-btn:hover { border-color: var(--action-red); color: var(--action-red); }
 
-        /* Telemetry Diagnostic Matrix Layer */
         .hardware-diagnostics-deck {
             background: rgba(0,0,0,0.3);
             border: 1px solid var(--border-subtle);
@@ -273,55 +205,23 @@
         .diagnostic-row span:first-child { color: var(--text-muted); text-transform: uppercase; }
         .diagnostic-row span:last-child { color: var(--text-secondary); font-weight: bold; }
 
-        /* ── DYNAMIC NAVIGATION ENGINE FLIGHT HUD OVERLAY ── */
-        #active-navigation-hud-overlay {
-            display: none; position: absolute; top: 25px; left: 25px; width: var(--sidebar-width); z-index: 15; flex-direction: column; gap: 10px;
-        }
-        .nav-instruction-banner { background: linear-gradient(165deg, rgba(255,34,34,0.2), #0a0a0d); backdrop-filter: blur(35px); border: 1px solid rgba(255,255,255,0.1); border-radius: 20px; padding: 20px; display: flex; flex-direction: column; gap: 4px; }
-        .nav-banner-metrics { font-size: 1.7rem; font-weight: 900; color: var(--text-main); }
-        .nav-banner-instruction-string { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.4; }
-        
-        .nav-telemetry-strip { background: var(--bg-panel); backdrop-filter: blur(35px); border: 1px solid var(--border-subtle); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; }
-        .strip-metric-node { display: flex; flex-direction: column; }
-        .strip-metric-node .metric-val { font-size: 1.1rem; font-weight: 800; color: var(--text-main); }
-        .strip-metric-node .metric-lbl { font-size: 0.6rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-top: 2px; }
-        .kill-session-action-trigger { background: #1f1f24; border: 1px solid var(--border-subtle); padding: 10px 16px; border-radius: 10px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
-        .kill-session-action-trigger:hover { background: var(--action-red); border-color: var(--action-red); }
-
-        #velocity-hud-chip {
-            display: none; position: absolute; bottom: 35px; left: 450px; z-index: 15; width: 80px; height: 80px; border-radius: 50%; background: #050507; border: 3px solid var(--action-red); flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 0 20px var(--action-red-glow);
-        }
-        #velocity-hud-chip .velocity-readout-val { font-size: 1.6rem; font-weight: 900; color: var(--text-main); line-height: 1; }
-        #velocity-hud-chip .velocity-readout-lbl { font-size: 0.55rem; color: var(--text-muted); font-weight: 800; margin-top: 1px; }
-
-        /* ── RIGID FLOATING CONSOLE TOOLSTACK ── */
+        /* Toolstack Controls */
         #right-floating-console-stack {
             position: absolute; top: 25px; right: 25px; z-index: 100; display: flex; flex-direction: column; gap: 8px;
         }
         .console-action-btn-node {
-            background: var(--bg-panel); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-subtle); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.05rem;
+            background: var(--bg-panel); backdrop-filter: blur(20px); border: 1px solid var(--border-subtle); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.05rem;
         }
-        .console-action-btn-node:hover { background: var(--bg-surface-hover); border-color: var(--text-secondary); transform: translateY(-1px); }
+        .console-action-btn-node:hover { background: var(--bg-surface-hover); border-color: var(--text-secondary); }
         .console-action-btn-node.active { border-color: var(--action-red); color: var(--action-red); box-shadow: 0 0 12px var(--action-red-glow); }
 
-        .compass-dial-ring { position: relative; width: 20px; height: 20px; transition: transform 0.1s linear; }
         #coordinate-overlay-tracker { position: absolute; bottom: 25px; right: 25px; background: var(--bg-panel); backdrop-filter: blur(10px); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-subtle); font-family: monospace; font-size: 0.7rem; z-index: 5; color: var(--text-secondary); }
-
-        @keyframes radarPing { 0% { transform: scale(1); opacity: 0.6; } 100% { transform: scale(3.5); opacity: 0; } }
-        .radar-spatial-ping-ring { position: absolute; width: 100px; height: 100px; border: 2px solid var(--action-red); border-radius: 50%; pointer-events: none; z-index: 2; display: none; transform-origin: center; animation: radarPing 1.5s cubic-bezier(0.1, 0.8, 0.3, 1) infinite; }
-
-        @media(max-width: 480px) {
-            #control-panel-deck { width: calc(100% - 30px); left: 15px; bottom: 15px; max-height: 75vh; }
-            #active-navigation-hud-overlay { width: calc(100% - 30px); left: 15px; top: 15px; }
-            #velocity-hud-chip { left: 25px; bottom: auto; top: 140px; }
-        }
     </style>
 </head>
 <body>
 
     <div id="app-viewport">
         <div id="map"></div>
-        <div id="radar-ping-node" class="radar-spatial-ping-ring"></div>
 
         <!-- Draggable UI Deck Panel -->
         <div id="control-panel-deck">
@@ -332,142 +232,73 @@
             <div class="panel-scrollable-body">
                 <div class="panel-branding-header">
                     <div class="brand-logo">Geo<span>Pro</span></div>
-                    <div style="font-family: monospace; font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">v2.5 DRAG ACTIVE</div>
+                    <div style="font-family: monospace; font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">AUTONOMOUS STACK</div>
                 </div>
 
-                <!-- 100% Free Open-Source OSM Searching Node Wrapper -->
+                <!-- 100% Free Open-Source Search Node -->
                 <div class="search-field-container">
                     <div class="search-input-wrapper">
-                        <input type="text" class="search-input-node" id="osm-engine-input" placeholder="Search physical node trace or grids...">
-                        <button class="clear-input-node-trigger" id="osm-engine-clear">✖</button>
+                        <input type="text" class="search-input-node" id="osm-engine-input" placeholder="Search physical vectors via Photon...">
                     </div>
                     <div class="osm-dropdown-menu" id="osm-engine-dropdown"></div>
                 </div>
 
-                <div class="pipeline-manager-box" id="pipeline-wrapper" style="display: none;"></div>
-
-                <div class="travel-matrix-box" id="routing-profile-matrix">
-                    <button class="matrix-btn-node active" data-mode="driving-traffic">
-                        <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M5 17h14M5 17a2 2 0 1 0 4 0M15 17a2 2 0 1 0 4 0M5 17l1-6 2-3h8l2 3 1 6M6 11h12"/></svg>
-                        Drive
-                    </button>
-                    <button class="matrix-btn-node" data-mode="cycling">
-                        <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-9h4l4 9"/></svg>
-                        Bike
-                    </button>
-                    <button class="matrix-btn-node" data-mode="walking">
-                        <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="13" cy="4" r="1.6"/><path d="M10 22l2-7 2 2 3 5"/></svg>
-                        Walk
-                    </button>
-                </div>
-
                 <div id="context-destination-panel">
                     <div class="panel-header-title" id="node-panel-title">Target Vector</div>
-                    <div class="panel-address-sub" id="node-panel-address">Analyzing matrix tracking layers...</div>
-                    <div class="alternatives-container" id="alternatives-pills-row"></div>
+                    <div class="panel-address-sub" id="node-panel-address">Analyzing coordinates...</div>
                     <div class="action-button-matrix">
-                        <button class="primary-action-btn" id="launch-navigation-session">Launch Track</button>
-                        <button class="secondary-action-btn" id="append-pipeline-node">+ Stop</button>
+                        <button class="primary-action-btn" id="launch-routing-action">Calculate Route</button>
                         <button class="kill-action-btn" id="flush-workspace-trigger">✖</button>
                     </div>
                 </div>
 
                 <div class="hardware-diagnostics-deck">
-                    <div class="diagnostic-row"><span>Geocoding Engine</span><span style="color: var(--accent-green);">OSM NOMINATIM [FREE]</span></div>
-                    <div class="diagnostic-row"><span>Hardware Stream</span><span id="hardware-stream-status" style="color: var(--action-red);">AWAITING BEACON SYNC</span></div>
+                    <div class="diagnostic-row"><span>Tile Engine</span><span style="color: var(--accent-green);">MAPLIBRE (OPEN)</span></div>
+                    <div class="diagnostic-row"><span>Search Engine</span><span>PHOTON / OSM</span></div>
+                    <div class="diagnostic-row"><span>Routing Logic</span><span id="routing-engine-status">OSRM PUBLIC ROUTER</span></div>
                 </div>
             </div>
         </div>
 
-        <!-- Flight Telemetry HUD Overlay -->
-        <div id="active-navigation-hud-overlay">
-            <div class="nav-instruction-banner">
-                <div class="nav-banner-metrics" id="hud-step-distance">--</div>
-                <div class="nav-banner-instruction-string" id="hud-step-instruction">Calculating course vectors...</div>
-            </div>
-            <div class="nav-telemetry-strip">
-                <div class="strip-metric-node"><span class="metric-val" id="hud-eta-clock">--:--</span><span class="metric-lbl">ETA</span></div>
-                <div class="strip-metric-node"><span class="metric-val" id="hud-duration-countdown">--</span><span class="metric-lbl">Duration</span></div>
-                <div class="strip-metric-node"><span class="metric-val" id="hud-distance-remaining">--</span><span class="metric-lbl">Distance</span></div>
-                <button class="kill-session-action-trigger" id="terminate-navigation-session">Kill</button>
-            </div>
-        </div>
-
-        <div id="velocity-hud-chip"><span class="velocity-readout-val" id="velocity-readout-val">0</span><span class="velocity-readout-lbl">MPH</span></div>
-
         <!-- Toolstack Array -->
         <div id="right-floating-console-stack">
             <button class="console-action-btn-node" id="force-gps-recenter" title="Recenter Engine">🎯</button>
-            <button class="console-action-btn-node" id="compass-orientation-lock" title="True North ($0^\circ$)">
-                <svg class="compass-dial-ring" id="compass-svg-dial" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                    <polygon points="12,2 16,9 12,7 8,9" fill="var(--action-red)" stroke="var(--action-red)"/>
-                    <polygon points="12,22 16,15 12,17 8,15" fill="var(--text-muted)" stroke="var(--text-muted)"/>
-                </svg>
-            </button>
-            <button class="console-action-btn-node" id="radar-scanner-toggle" title="Radar Pulse">📡</button>
-            <button class="console-action-btn-node" id="satellite-feed-toggle" title="Satellite Orbital Layer">🛰️</button>
-            <button class="console-action-btn-node" id="extrusion-3d-toggle" title="Volumetric 3D Engine">🏙️</button>
+            <button class="console-action-btn-node" id="compass-orientation-lock" title="True North">🧭</button>
         </div>
 
         <div id="coordinate-overlay-tracker">X: -- | Y: --</div>
     </div>
 
     <script>
-        mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
-
-        const mapGraphicStyles = {
-            darkVector: 'mapbox://styles/mapbox/dark-v11',
-            satelliteStreets: 'mapbox://styles/mapbox/satellite-streets-v12'
-        };
-
-        let userCurrentPositionCoordinates = [-123.2078, 39.1502]; 
-        let temporaryTargetDestinationCoords = null;
-        let activeSelectedRoutingProfile = 'driving-traffic';
-        let routingSolutionsArray = [];
-        let chosenActiveRouteSegmentIdx = 0;
-        let chronologicalSequenceWaypoints = [];
-        let graphicalWaypointsRenderArray = [];
-
-        let applicationNavigationStateActive = false;
-        let architectural3DExtrusionsActive = false;
-        let orbitalSatelliteLayerActive = false;
-        let localRadarPulseScannerActive = false;
-        let engineLockStateOnLiveGPS = false; 
-        let operatorManualMapInteractionInterrupted = false;
-        let openSourceSearchDebounceTimer = null;
-
-        const map = new mapboxgl.Map({
+        // Set up MapLibre with an open, keyless vector map style layer
+        // FOR TRUE OFFLINE/SELF-HOSTED OPERATION: Point this URL directly to your local tileserver config
+        const map = new maplibregl.Map({
             container: 'map',
-            style: mapGraphicStyles.darkVector,
-            center: userCurrentPositionCoordinates,
-            zoom: 14,
+            style: 'https://tiles.openfreemap.org/styles/dark', 
+            center: [-123.2078, 39.1502], 
+            zoom: 13,
             pitch: 30,
             bearing: 0,
             antialias: true
         });
 
-        map.on('style.load', () => {
-            provisionLivePositionTrackingLayers();
-            executeVolumetric3DLightingCalculations();
-            if (temporaryTargetDestinationCoords || chronologicalSequenceWaypoints.length > 0) processTacticalRoutingNetworkVectors();
-        });
+        let userCurrentPositionCoordinates = [-123.2078, 39.1502];
+        let temporaryTargetDestinationCoords = null;
+        let openSourceSearchDebounceTimer = null;
 
         map.on('load', () => {
-            provisionFreeOSMNominatimEngine();
-            bindDynamicMapQueryInteractions();
-            bindConsoleInterfaceControlTriggers();
-            mountHardwareTelemetryBeacons();
             initTacticalPanelDraggingPhysics();
+            bindAutonomousSearchEngine();
+            bindMapClickInteractions();
+            bindConsoleInterfaceControlTriggers();
 
-            map.on('dragstart', () => { operatorManualMapInteractionInterrupted = true; });
-            map.on('zoomstart', () => { operatorManualMapInteractionInterrupted = true; });
-            map.on('rotate', () => {
-                const updatedBearing = map.getBearing();
-                document.getElementById('compass-svg-dial').style.transform = `rotate(${-updatedBearing}deg)`;
+            // Track cursor coordinates across the global data matrix
+            map.on('mousemove', (e) => {
+                document.getElementById('coordinate-overlay-tracker').innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
             });
         });
 
-        /* ── TACTILE DRAG PHYSICS LOGIC ENGINE ── */
+        /* ── INTERACTIVE DRAG PHYSICS ── */
         function initTacticalPanelDraggingPhysics() {
             const panel = document.getElementById('control-panel-deck');
             const handle = document.getElementById('drag-handle');
@@ -495,9 +326,8 @@
                 if (!isDragging) return;
                 let deltaY = e.clientY - startY;
                 let nextY = lastTranslateY + deltaY;
-                
-                // Allow panel down-drag hiding structural frames safely
-                if (nextY < -400) nextY = -400; 
+
+                if (nextY < -300) nextY = -300;
                 if (nextY > 500) nextY = 500;
 
                 currentTranslateY = nextY;
@@ -509,13 +339,12 @@
                 isDragging = false;
                 panel.classList.add('snapping');
 
-                // Velocity Grid Snapping Profile Rules
-                if (currentTranslateY > 180) {
-                    currentTranslateY = 460; // Docked / Hidden Viewport Profile
-                } else if (currentTranslateY < -100) {
-                    currentTranslateY = -150; // High Elevation Focus
+                if (currentTranslateY > 150) {
+                    currentTranslateY = 420; // Docked Viewport Profile
+                } else if (currentTranslateY < -80) {
+                    currentTranslateY = -120; // Extended Focus Frame
                 } else {
-                    currentTranslateY = 0; // Factory Zero State Baseline
+                    currentTranslateY = 0; // Standard Floating Viewport Baseline
                 }
 
                 panel.style.transform = `translateY(${currentTranslateY}px)`;
@@ -523,234 +352,108 @@
             }
         }
 
-        function provisionLivePositionTrackingLayers() {
-            if (map.getSource('live-hardware-beacon-source')) return;
-            map.addSource('live-hardware-beacon-source', {
-                type: 'geojson',
-                data: { type: 'Feature', geometry: { type: 'Point', coordinates: userCurrentPositionCoordinates } }
-            });
-            map.addLayer({
-                id: 'beacon-pulse-glow', type: 'circle', source: 'live-hardware-beacon-source',
-                paint: { 'circle-radius': 24, 'circle-color': '#ff2222', 'circle-opacity': 0.2, 'circle-blur': 0.7 }
-            });
-            map.addLayer({
-                id: 'beacon-core-dot', type: 'circle', source: 'live-hardware-beacon-source',
-                paint: { 'circle-radius': 7, 'circle-color': '#ff2222', 'circle-stroke-width': 2, 'circle-stroke-color': '#ffffff' }
-            });
-        }
-
-        function refreshHardwareBeaconLayerData() {
-            const source = map.getSource('live-hardware-beacon-source');
-            if (source) source.setData({ type: 'Feature', geometry: { type: 'Point', coordinates: userCurrentPositionCoordinates } });
-            if (localRadarPulseScannerActive) refreshRadarScreenPulseCoordinates();
-        }
-
-        function mountHardwareTelemetryBeacons() {
-            if (!navigator.geolocation) return;
-            navigator.geolocation.watchPosition(position => {
-                userCurrentPositionCoordinates = [position.coords.longitude, position.coords.latitude];
-                refreshHardwareBeaconLayerData();
-                document.getElementById('hardware-stream-status').innerText = "LIVE DEPLOYED SYNC";
-                document.getElementById('hardware-stream-status').style.color = "var(--accent-green)";
-                if (position.coords.speed !== null && position.coords.speed >= 0) {
-                    document.getElementById('velocity-readout-val').innerText = Math.round(position.coords.speed * 2.23694);
-                }
-                if (!engineLockStateOnLiveGPS) {
-                    map.flyTo({ center: userCurrentPositionCoordinates, zoom: 14.5 });
-                    engineLockStateOnLiveGPS = true;
-                }
-            }, null, { enableHighAccuracy: true });
-        }
-
-        function provisionFreeOSMNominatimEngine() {
+        /* ── PHOTON SEARCH ENGINE INTEGRATION ── */
+        function bindAutonomousSearchEngine() {
             const input = document.getElementById('osm-engine-input');
-            const clear = document.getElementById('osm-engine-clear');
             const dropdown = document.getElementById('osm-engine-dropdown');
 
             input.addEventListener('input', (e) => {
                 const val = e.target.value.trim();
-                clear.style.display = val.length > 0 ? 'block' : 'none';
                 clearTimeout(openSourceSearchDebounceTimer);
                 if (val.length < 3) { dropdown.style.display = 'none'; return; }
-                openSourceSearchDebounceTimer = setTimeout(() => executeNominatimDataFetch(val), 300);
+                
+                // Using Photon API — completely free geocoding with no restrictions
+                openSourceSearchDebounceTimer = setTimeout(async () => {
+                    try {
+                        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&limit=5`);
+                        const data = await res.json();
+                        if (!data.features || data.features.length === 0) { dropdown.style.display = 'none'; return; }
+                        
+                        dropdown.innerHTML = '';
+                        data.features.forEach(f => {
+                            const el = document.createElement('div');
+                            el.className = 'osm-suggest-item';
+                            const props = f.properties;
+                            const nameStr = [props.name, props.city, props.state].filter(Boolean).join(', ');
+                            el.innerText = nameStr;
+                            
+                            el.addEventListener('click', () => {
+                                const target = f.geometry.coordinates;
+                                dropdown.style.display = 'none';
+                                input.value = nameStr;
+                                map.flyTo({ center: target, zoom: 15 });
+                                showTargetDetailsCard(target, props.name || "Resolved Node", nameStr);
+                            });
+                            dropdown.appendChild(el);
+                        });
+                        dropdown.style.display = 'block';
+                    } catch (err) { console.error(err); }
+                }, 300);
             });
-
-            clear.addEventListener('click', () => { input.value = ''; clear.style.display = 'none'; dropdown.style.display = 'none'; });
         }
 
-        async function executeNominatimDataFetch(query) {
-            const panel = document.getElementById('osm-engine-dropdown');
-            const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5`;
-            try {
-                const res = await fetch(url, { headers: { 'User-Agent': 'GeoProTacticalFramework/2.5' } });
-                const rows = await res.json();
-                if (!rows || rows.length === 0) { panel.style.display = 'none'; return; }
-                panel.innerHTML = '';
-                rows.forEach(r => {
-                    const el = document.createElement('div');
-                    el.className = 'osm-suggest-item';
-                    el.innerText = r.display_name;
-                    el.addEventListener('click', () => {
-                        const target = [parseFloat(r.lon), parseFloat(r.lat)];
-                        panel.style.display = 'none';
-                        input.value = r.display_name;
-                        map.flyTo({ center: target, zoom: 15 });
-                        displayInteractiveWorkspacePanel(target, r.name || "Resolved Vector", r.display_name);
-                    });
-                    panel.appendChild(el);
-                });
-                panel.style.display = 'block';
-            } catch (err) { console.error(err); }
-        }
-
-        function bindDynamicMapQueryInteractions() {
+        function bindMapClickInteractions() {
             map.on('click', async (e) => {
                 const coords = [e.lngLat.lng, e.lngLat.lat];
-                operatorManualMapInteractionInterrupted = true;
-                displayInteractiveWorkspacePanel(coords, "Selected Map Coordinate", `LAT: ${coords[1].toFixed(5)} | LNG: ${coords[0].toFixed(5)}`);
+                showTargetDetailsCard(coords, "Selected Grid Pointer", `X: ${coords[0].toFixed(5)} | Y: ${coords[1].toFixed(5)}`);
+                
+                // Reverse lookup via Photon's free reverse index
                 try {
-                    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords[1]}&lon=${coords[0]}&zoom=18`, { headers: { 'User-Agent': 'GeoProTacticalFramework/2.5' } });
+                    const res = await fetch(`https://photon.komoot.io/api/?lon=${coords[0]}&lat=${coords[1]}`);
                     const data = await res.json();
-                    if (data && data.display_name) displayInteractiveWorkspacePanel(coords, data.name || "Resolved Map Node", data.display_name);
-                } catch(err) {}
+                    if (data.features && data.features.length > 0) {
+                        const props = data.features[0].properties;
+                        const nameStr = [props.name, props.street, props.city].filter(Boolean).join(', ');
+                        showTargetDetailsCard(coords, props.name || "Identified Feature", nameStr || "Discovered Geometry Coordinates");
+                    }
+                } catch(err){}
             });
         }
 
-        function displayInteractiveWorkspacePanel(coords, title, address) {
+        function showTargetDetailsCard(coords, title, address) {
             temporaryTargetDestinationCoords = coords;
             document.getElementById('node-panel-title').innerText = title;
             document.getElementById('node-panel-address').innerText = address;
             document.getElementById('context-destination-panel').style.display = 'flex';
-            processTacticalRoutingNetworkVectors();
         }
 
-        async function processTacticalRoutingNetworkVectors() {
-            let routingString = userCurrentPositionCoordinates.join(',');
-            if (chronologicalSequenceWaypoints.length > 0) routingString += ';' + chronologicalSequenceWaypoints.map(w => w.coords.join(',')).join(';');
-            if (temporaryTargetDestinationCoords) routingString += ';' + temporaryTargetDestinationCoords.join(',');
-            else if (chronologicalSequenceWaypoints.length === 0) { clearRouteLayers(); return; }
-
-            const activeProfileStr = activeSelectedRoutingProfile === 'driving-traffic' ? 'driving' : activeSelectedRoutingProfile;
-            const endpoint = `https://api.mapbox.com/directions/v5/mapbox/${activeProfileStr}/${routingString}?steps=true&geometries=geojson&alternatives=true&access_token=${mapboxgl.accessToken}`;
+        /* ── FREE ROUTING LOGIC ENGINE ── */
+        async function calculateAutonomousRoutingPath() {
+            if (!temporaryTargetDestinationCoords) return;
+            
+            // Querying a completely keyless public OSRM demonstration engine instance
+            // Swap out with your own local server endpoint: http://localhost:5000/route/v1/...
+            const queryUrl = `https://router.project-osrm.org/route/v1/driving/${userCurrentPositionCoordinates.join(',')};${temporaryTargetDestinationCoords.join(',')}?overview=full&geometries=geojson`;
+            
             try {
-                const res = await fetch(endpoint);
+                const res = await fetch(queryUrl);
                 const data = await res.json();
-                if (data.code !== 'Ok') return;
-                routingSolutionsArray = data.routes;
-                drawRouteTracks();
-                generateAlternativeRoutePills();
-            } catch(e) {}
-        }
-
-        function drawRouteTracks() {
-            for (let i = 0; i < 3; i++) {
-                if (map.getLayer(`route-line-${i}`)) map.removeLayer(`route-line-${i}`);
-                if (map.getSource(`route-src-${i}`)) map.removeSource(`route-src-${i}`);
-            }
-            routingSolutionsArray.forEach((route, idx) => {
-                const isSelected = (idx === chosenActiveRouteSegmentIdx);
-                map.addSource(`route-src-${idx}`, { type: 'geojson', data: { type: 'Feature', geometry: route.geometry } });
+                if (data.code !== 'Ok' || !data.routes[0]) return;
+                
+                const routeGeom = data.routes[0].geometry;
+                
+                if (map.getLayer('active-route-line')) map.removeLayer('active-route-line');
+                if (map.getSource('active-route-source')) map.removeSource('active-route-source');
+                
+                map.addSource('active-route-source', { type: 'geojson', data: { type: 'Feature', geometry: routeGeom } });
                 map.addLayer({
-                    id: `route-line-${idx}`, type: 'line', source: `route-src-${idx}`,
-                    paint: { 'line-color': isSelected ? '#ff2222' : '#2d2d38', 'line-width': isSelected ? 5 : 3, 'line-opacity': isSelected ? 0.95 : 0.4 }
-                }, map.getLayer('3d-buildings') ? '3d-buildings' : undefined);
-            });
-        }
-
-        function generateAlternativeRoutePills() {
-            const row = document.getElementById('alternatives-pills-row');
-            row.innerHTML = '';
-            routingSolutionsArray.forEach((route, idx) => {
-                const btn = document.createElement('button');
-                btn.className = `alt-route-pill ${idx === chosenActiveRouteSegmentIdx ? 'selected' : ''}`;
-                btn.innerText = `${Math.round(route.duration / 60)} MIN`;
-                btn.addEventListener('click', () => { chosenActiveRouteSegmentIdx = idx; drawRouteTracks(); generateAlternativeRoutePills(); });
-                row.appendChild(btn);
-            });
-        }
-
-        function refreshRadarScreenPulseCoordinates() {
-            const pix = map.project(userCurrentPositionCoordinates);
-            const r = document.getElementById('radar-ping-node');
-            r.style.left = `${pix.x - 50}px`; r.style.top = `${pix.y - 50}px`;
-        }
-
-        function executeVolumetric3DLightingCalculations() {
-            if (map.getLayer('3d-buildings')) return;
-            map.addLayer({
-                id: '3d-buildings', source: 'composite', 'source-layer': 'building', filter: ['==', 'extrude', 'true'], type: 'fill-extrusion', minzoom: 13,
-                paint: { 'fill-extrusion-color': '#111115', 'fill-extrusion-height': ['get', 'height'], 'fill-extrusion-base': ['get', 'min_height'], 'fill-extrusion-opacity': 0.0 }
-            });
+                    id: 'active-route-line', type: 'line', source: 'active-route-source',
+                    paint: { 'line-color': '#ff2222', 'line-width': 5, 'line-opacity': 0.85 }
+                });
+            } catch (err) { console.error("Routing resolution calculation pipeline failure:", err); }
         }
 
         function bindConsoleInterfaceControlTriggers() {
-            document.querySelectorAll('.matrix-btn-node').forEach(b => {
-                b.addEventListener('click', (e) => {
-                    document.querySelectorAll('.matrix-btn-node').forEach(node => node.classList.remove('active'));
-                    e.currentTarget.classList.add('active');
-                    activeSelectedRoutingProfile = e.currentTarget.getAttribute('data-mode');
-                    processTacticalRoutingNetworkVectors();
-                });
-            });
-
             document.getElementById('compass-orientation-lock').addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 30 }));
-            document.getElementById('force-gps-recenter').addEventListener('click', () => { operatorManualMapInteractionInterrupted = false; map.flyTo({ center: userCurrentPositionCoordinates, zoom: 15 }); });
-            
-            document.getElementById('radar-scanner-toggle').addEventListener('click', (e) => {
-                localRadarPulseScannerActive = !localRadarPulseScannerActive;
-                e.currentTarget.classList.toggle('active', localRadarPulseScannerActive);
-                document.getElementById('radar-ping-node').style.display = localRadarPulseScannerActive ? 'block' : 'none';
-                if (localRadarPulseScannerActive) refreshRadarScreenPulseCoordinates();
+            document.getElementById('force-gps-recenter').addEventListener('click', () => map.flyTo({ center: userCurrentPositionCoordinates, zoom: 14 }));
+            document.getElementById('launch-routing-action').addEventListener('click', calculateAutonomousRoutingPath);
+            document.getElementById('flush-workspace-trigger').addEventListener('click', () => {
+                if (map.getLayer('active-route-line')) map.removeLayer('active-route-line');
+                if (map.getSource('active-route-source')) map.removeSource('active-route-source');
+                document.getElementById('context-destination-panel').style.display = 'none';
+                temporaryTargetDestinationCoords = null;
             });
-
-            document.getElementById('extrusion-3d-toggle').addEventListener('click', (e) => {
-                architectural3DExtrusionsActive = !architectural3DExtrusionsActive;
-                e.currentTarget.classList.toggle('active', architectural3DExtrusionsActive);
-                map.setPaintProperty('3d-buildings', 'fill-extrusion-opacity', architectural3DExtrusionsActive ? 0.85 : 0.0);
-            });
-
-            document.getElementById('satellite-feed-toggle').addEventListener('click', (e) => {
-                orbitalSatelliteLayerActive = !orbitalSatelliteLayerActive;
-                e.currentTarget.classList.toggle('active', orbitalSatelliteLayerActive);
-                map.setStyle(orbitalSatelliteLayerActive ? mapGraphicStyles.satelliteStreets : mapGraphicStyles.darkVector);
-            });
-
-            document.getElementById('flush-workspace-trigger').addEventListener('click', clearRouteLayers);
-            document.getElementById('launch-navigation-session').addEventListener('click', toggleNavHUD);
-            document.getElementById('terminate-navigation-session').addEventListener('click', toggleNavHUD);
         }
-
-        function clearRouteLayers() {
-            for(let i=0; i<3; i++) {
-                if(map.getLayer(`route-line-${i}`)) map.removeLayer(`route-line-${i}`);
-                if(map.getSource(`route-src-${i}`)) map.removeSource(`route-src-${i}`);
-            }
-            document.getElementById('context-destination-panel').style.display = 'none';
-            temporaryTargetDestinationCoords = null;
-        }
-
-        function toggleNavHUD() {
-            applicationNavigationStateActive = !applicationNavigationStateActive;
-            document.getElementById('control-panel-deck').style.display = applicationNavigationStateActive ? 'none' : 'flex';
-            document.getElementById('active-navigation-hud-overlay').style.display = applicationNavigationStateActive ? 'flex' : 'none';
-            document.getElementById('velocity-hud-chip').style.display = applicationNavigationStateActive ? 'flex' : 'none';
-            if(applicationNavigationStateActive && routingSolutionsArray[chosenActiveRouteSegmentIdx]) {
-                map.easeTo({ center: userCurrentPositionCoordinates, zoom: 17.5, pitch: 50 });
-                const r = routingSolutionsArray[chosenActiveRouteSegmentIdx];
-                document.getElementById('hud-step-instruction').innerText = r.legs[0]?.steps[0]?.maneuver?.instruction || 'Follow route line';
-                document.getElementById('hud-step-distance').innerText = `${Math.round(r.legs[0]?.steps[0]?.distance || 100)} m`;
-                document.getElementById('hud-eta-clock').innerText = `${Math.round(r.duration / 60)}m`;
-                document.getElementById('hud-duration-countdown').innerText = `${Math.round(r.duration / 60)} min`;
-                document.getElementById('hud-distance-remaining').innerText = `${(r.distance / 1609.34).toFixed(1)} mi`;
-            } else {
-                clearRouteLayers();
-            }
-        }
-
-        map.on('move', () => { if (localRadarPulseScannerActive) refreshRadarScreenPulseCoordinates(); });
-        map.on('mousemove', (e) => {
-            document.getElementById('coordinate-overlay-tracker').innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
-        });
     </script>
 </body>
 </html>
