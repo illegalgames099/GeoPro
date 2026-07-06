@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>GeoPro | Autonomous Spatial Workspace</title>
 
-    <!-- MapLibre GL JS Core (100% Open Source Fork) -->
+    <!-- MapLibre GL JS Core -->
     <script src="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.js"></script>
     <link href="https://unpkg.com/maplibre-gl@4.1.2/dist/maplibre-gl.css" rel="stylesheet" />
 
@@ -22,7 +22,7 @@
             --text-secondary: #a0a0ab;
             --text-muted: #4b4b54;
             --accent-green: #30d158;
-            --sidebar-width: 400px;
+            --sidebar-width: 380px;
         }
 
         * {
@@ -45,7 +45,6 @@
             position: relative;
             width: 100%;
             height: 100%;
-            display: flex;
         }
 
         #map {
@@ -60,7 +59,7 @@
         button { font: inherit; background: none; border: none; cursor: pointer; color: inherit; transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
         input { font: inherit; }
 
-        /* ── TACTILE DRAGGABLE PANEL ── */
+        /* ── FIXED LOWER-LEFT PANEL DECK ── */
         #control-panel-deck {
             position: absolute;
             bottom: 25px;
@@ -78,7 +77,6 @@
             flex-direction: column;
             overflow: hidden;
             transform: translateY(0);
-            transition: transform 0.1s ease-out;
             user-select: none;
         }
 
@@ -187,6 +185,7 @@
         
         .action-button-matrix { display: flex; gap: 8px; }
         .primary-action-btn { flex: 1; background: var(--action-red); padding: 12px; border-radius: 12px; font-size: 0.8rem; font-weight: 700; text-align: center; box-shadow: 0 6px 16px var(--action-red-glow); }
+        .primary-action-btn:hover { opacity: 0.9; }
         .kill-action-btn { background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); width: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
         .kill-action-btn:hover { border-color: var(--action-red); color: var(--action-red); }
 
@@ -213,9 +212,18 @@
             background: var(--bg-panel); backdrop-filter: blur(20px); border: 1px solid var(--border-subtle); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.05rem;
         }
         .console-action-btn-node:hover { background: var(--bg-surface-hover); border-color: var(--text-secondary); }
-        .console-action-btn-node.active { border-color: var(--action-red); color: var(--action-red); box-shadow: 0 0 12px var(--action-red-glow); }
 
         #coordinate-overlay-tracker { position: absolute; bottom: 25px; right: 25px; background: var(--bg-panel); backdrop-filter: blur(10px); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-subtle); font-family: monospace; font-size: 0.7rem; z-index: 5; color: var(--text-secondary); }
+
+        /* Responsive Mobile Handling Layer */
+        @media (max-width: 480px) {
+            #control-panel-deck {
+                width: calc(100% - 32px);
+                left: 16px;
+                bottom: 16px;
+            }
+            --sidebar-width: 100%;
+        }
     </style>
 </head>
 <body>
@@ -223,7 +231,7 @@
     <div id="app-viewport">
         <div id="map"></div>
 
-        <!-- Draggable UI Deck Panel -->
+        <!-- Draggable UI Deck Panel (Perfected Bottom-Left Boundary Alignment) -->
         <div id="control-panel-deck">
             <div class="drag-handle-bar" id="drag-handle">
                 <div class="drag-handle-pill"></div>
@@ -235,14 +243,15 @@
                     <div style="font-family: monospace; font-size: 0.7rem; color: var(--text-muted); font-weight: bold;">AUTONOMOUS STACK</div>
                 </div>
 
-                <!-- 100% Free Open-Source Search Node -->
+                <!-- Open Search Entry Vector -->
                 <div class="search-field-container">
                     <div class="search-input-wrapper">
-                        <input type="text" class="search-input-node" id="osm-engine-input" placeholder="Search physical vectors via Photon...">
+                        <input type="text" class="search-input-node" id="osm-engine-input" placeholder="Search physical vectors...">
                     </div>
                     <div class="osm-dropdown-menu" id="osm-engine-dropdown"></div>
                 </div>
 
+                <!-- Focus Target Information Workspace -->
                 <div id="context-destination-panel">
                     <div class="panel-header-title" id="node-panel-title">Target Vector</div>
                     <div class="panel-address-sub" id="node-panel-address">Analyzing coordinates...</div>
@@ -253,14 +262,14 @@
                 </div>
 
                 <div class="hardware-diagnostics-deck">
-                    <div class="diagnostic-row"><span>Tile Engine</span><span style="color: var(--accent-green);">MAPLIBRE (OPEN)</span></div>
-                    <div class="diagnostic-row"><span>Search Engine</span><span>PHOTON / OSM</span></div>
-                    <div class="diagnostic-row"><span>Routing Logic</span><span id="routing-engine-status">OSRM PUBLIC ROUTER</span></div>
+                    <div class="diagnostic-row"><span>Engine Source</span><style color: var(--accent-green);>MAPLIBRE V4</style><span>MAPLIBRE V4</span></div>
+                    <div class="diagnostic-row"><span>Search Registry</span><span>PHOTON INDEX</span></div>
+                    <div class="diagnostic-row"><span>Routing Pipeline</span><span id="routing-engine-status">LOCAL SYSTEM MOCK</span></div>
                 </div>
             </div>
         </div>
 
-        <!-- Toolstack Array -->
+        <!-- System Control Cluster -->
         <div id="right-floating-console-stack">
             <button class="console-action-btn-node" id="force-gps-recenter" title="Recenter Engine">🎯</button>
             <button class="console-action-btn-node" id="compass-orientation-lock" title="True North">🧭</button>
@@ -270,35 +279,33 @@
     </div>
 
     <script>
-        // Set up MapLibre with an open, keyless vector map style layer
-        // FOR TRUE OFFLINE/SELF-HOSTED OPERATION: Point this URL directly to your local tileserver config
+        // Initializing MapLibre Engine instance with open dark vector styles
         const map = new maplibregl.Map({
             container: 'map',
             style: 'https://tiles.openfreemap.org/styles/dark', 
             center: [-123.2078, 39.1502], 
             zoom: 13,
-            pitch: 30,
+            pitch: 25,
             bearing: 0,
             antialias: true
         });
 
-        let userCurrentPositionCoordinates = [-123.2078, 39.1502];
-        let temporaryTargetDestinationCoords = null;
-        let openSourceSearchDebounceTimer = null;
+        let defaultUserCoordinates = [-123.2078, 39.1502];
+        let targetSelectedCoordinates = null;
+        let querySearchDebounceTimer = null;
 
         map.on('load', () => {
             initTacticalPanelDraggingPhysics();
-            bindAutonomousSearchEngine();
-            bindMapClickInteractions();
-            bindConsoleInterfaceControlTriggers();
+            initAutonomousSearchMatrix();
+            initDirectMapInputListeners();
+            initHardwareConsoleTriggers();
 
-            // Track cursor coordinates across the global data matrix
             map.on('mousemove', (e) => {
                 document.getElementById('coordinate-overlay-tracker').innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
             });
         });
 
-        /* ── INTERACTIVE DRAG PHYSICS ── */
+        /* ── SOLIDIFIED POSITIONING & SLIDEOVER DRAG PHYSICS ── */
         function initTacticalPanelDraggingPhysics() {
             const panel = document.getElementById('control-panel-deck');
             const handle = document.getElementById('drag-handle');
@@ -327,8 +334,9 @@
                 let deltaY = e.clientY - startY;
                 let nextY = lastTranslateY + deltaY;
 
-                if (nextY < -300) nextY = -300;
-                if (nextY > 500) nextY = 500;
+                // Safeguards preventing panel overflow offscreen boundaries
+                if (nextY < -150) nextY = -150;
+                if (nextY > 400) nextY = 400;
 
                 currentTranslateY = nextY;
                 panel.style.transform = `translateY(${currentTranslateY}px)`;
@@ -339,12 +347,13 @@
                 isDragging = false;
                 panel.classList.add('snapping');
 
+                // Snapping steps
                 if (currentTranslateY > 150) {
-                    currentTranslateY = 420; // Docked Viewport Profile
-                } else if (currentTranslateY < -80) {
-                    currentTranslateY = -120; // Extended Focus Frame
+                    currentTranslateY = 320; // Collapsed compact status profile
+                } else if (currentTranslateY < -50) {
+                    currentTranslateY = -80; // Tall analytical window extension
                 } else {
-                    currentTranslateY = 0; // Standard Floating Viewport Baseline
+                    currentTranslateY = 0;   // Centered standard view format
                 }
 
                 panel.style.transform = `translateY(${currentTranslateY}px)`;
@@ -352,106 +361,102 @@
             }
         }
 
-        /* ── PHOTON SEARCH ENGINE INTEGRATION ── */
-        function bindAutonomousSearchEngine() {
+        /* ── COMPREHENSIVE ADDRESS VECTOR RESOLUTION ── */
+        function initAutonomousSearchMatrix() {
             const input = document.getElementById('osm-engine-input');
             const dropdown = document.getElementById('osm-engine-dropdown');
 
             input.addEventListener('input', (e) => {
-                const val = e.target.value.trim();
-                clearTimeout(openSourceSearchDebounceTimer);
-                if (val.length < 3) { dropdown.style.display = 'none'; return; }
+                const queryVal = e.target.value.trim();
+                clearTimeout(querySearchDebounceTimer);
+                if (queryVal.length < 3) { dropdown.style.display = 'none'; return; }
                 
-                // Using Photon API — completely free geocoding with no restrictions
-                openSourceSearchDebounceTimer = setTimeout(async () => {
+                querySearchDebounceTimer = setTimeout(async () => {
                     try {
-                        const res = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(val)}&limit=5`);
-                        const data = await res.json();
-                        if (!data.features || data.features.length === 0) { dropdown.style.display = 'none'; return; }
+                        const response = await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`);
+                        const payload = await response.json();
+                        if (!payload.features || payload.features.length === 0) { dropdown.style.display = 'none'; return; }
                         
                         dropdown.innerHTML = '';
-                        data.features.forEach(f => {
-                            const el = document.createElement('div');
-                            el.className = 'osm-suggest-item';
-                            const props = f.properties;
-                            const nameStr = [props.name, props.city, props.state].filter(Boolean).join(', ');
-                            el.innerText = nameStr;
+                        payload.features.forEach(feature => {
+                            const segmentItem = document.createElement('div');
+                            segmentItem.className = 'osm-suggest-item';
+                            const p = feature.properties;
+                            const labeledLocation = [p.name, p.city, p.state].filter(Boolean).join(', ');
+                            segmentItem.innerText = labeledLocation;
                             
-                            el.addEventListener('click', () => {
-                                const target = f.geometry.coordinates;
+                            segmentItem.addEventListener('click', () => {
+                                const targetLoc = feature.geometry.coordinates;
                                 dropdown.style.display = 'none';
-                                input.value = nameStr;
-                                map.flyTo({ center: target, zoom: 15 });
-                                showTargetDetailsCard(target, props.name || "Resolved Node", nameStr);
+                                input.value = labeledLocation;
+                                map.flyTo({ center: targetLoc, zoom: 15 });
+                                triggerWorkspaceTargetDeck(targetLoc, p.name || "Target Vector", labeledLocation);
                             });
-                            dropdown.appendChild(el);
+                            dropdown.appendChild(segmentItem);
                         });
                         dropdown.style.display = 'block';
-                    } catch (err) { console.error(err); }
-                }, 300);
+                    } catch (err) { console.error("Search pipeline fault:", err); }
+                }, 250);
             });
         }
 
-        function bindMapClickInteractions() {
+        function initDirectMapInputListeners() {
             map.on('click', async (e) => {
-                const coords = [e.lngLat.lng, e.lngLat.lat];
-                showTargetDetailsCard(coords, "Selected Grid Pointer", `X: ${coords[0].toFixed(5)} | Y: ${coords[1].toFixed(5)}`);
+                const pinpoint = [e.lngLat.lng, e.lngLat.lat];
+                triggerWorkspaceTargetDeck(pinpoint, "Selected Matrix Node", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
                 
-                // Reverse lookup via Photon's free reverse index
                 try {
-                    const res = await fetch(`https://photon.komoot.io/api/?lon=${coords[0]}&lat=${coords[1]}`);
-                    const data = await res.json();
-                    if (data.features && data.features.length > 0) {
-                        const props = data.features[0].properties;
-                        const nameStr = [props.name, props.street, props.city].filter(Boolean).join(', ');
-                        showTargetDetailsCard(coords, props.name || "Identified Feature", nameStr || "Discovered Geometry Coordinates");
+                    const lookup = await fetch(`https://photon.komoot.io/api/?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
+                    const details = await lookup.json();
+                    if (details.features && details.features.length > 0) {
+                        const p = details.features[0].properties;
+                        const addressString = [p.name, p.street, p.postcode].filter(Boolean).join(', ');
+                        triggerWorkspaceTargetDeck(pinpoint, p.name || "Discovered Feature Context", addressString || "Raw Geographic Geometry Data");
                     }
-                } catch(err){}
+                } catch(error){}
             });
         }
 
-        function showTargetDetailsCard(coords, title, address) {
-            temporaryTargetDestinationCoords = coords;
+        function triggerWorkspaceTargetDeck(coords, title, details) {
+            targetSelectedCoordinates = coords;
             document.getElementById('node-panel-title').innerText = title;
-            document.getElementById('node-panel-address').innerText = address;
+            document.getElementById('node-panel-address').innerText = details;
             document.getElementById('context-destination-panel').style.display = 'flex';
         }
 
-        /* ── FREE ROUTING LOGIC ENGINE ── */
-        async function calculateAutonomousRoutingPath() {
-            if (!temporaryTargetDestinationCoords) return;
+        /* ── SYSTEM NAV ROUTE GENERATOR ── */
+        async function runLocalSpatialRouteCalculation() {
+            if (!targetSelectedCoordinates) return;
             
-            // Querying a completely keyless public OSRM demonstration engine instance
-            // Swap out with your own local server endpoint: http://localhost:5000/route/v1/...
-            const queryUrl = `https://router.project-osrm.org/route/v1/driving/${userCurrentPositionCoordinates.join(',')};${temporaryTargetDestinationCoords.join(',')}?overview=full&geometries=geojson`;
+            const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${defaultUserCoordinates.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson`;
             
             try {
-                const res = await fetch(queryUrl);
-                const data = await res.json();
-                if (data.code !== 'Ok' || !data.routes[0]) return;
+                const stream = await fetch(routingQueryUrl);
+                const results = await stream.json();
+                if (results.code !== 'Ok' || !results.routes[0]) return;
                 
-                const routeGeom = data.routes[0].geometry;
+                const pathGeometry = results.routes[0].geometry;
                 
                 if (map.getLayer('active-route-line')) map.removeLayer('active-route-line');
                 if (map.getSource('active-route-source')) map.removeSource('active-route-source');
                 
-                map.addSource('active-route-source', { type: 'geojson', data: { type: 'Feature', geometry: routeGeom } });
+                map.addSource('active-route-source', { type: 'geojson', data: { type: 'Feature', geometry: pathGeometry } });
                 map.addLayer({
                     id: 'active-route-line', type: 'line', source: 'active-route-source',
-                    paint: { 'line-color': '#ff2222', 'line-width': 5, 'line-opacity': 0.85 }
+                    paint: { 'line-color': '#ff2222', 'line-width': 5, 'line-opacity': 0.9 }
                 });
-            } catch (err) { console.error("Routing resolution calculation pipeline failure:", err); }
+            } catch (err) { console.error("Routing resolution pipeline error:", err); }
         }
 
-        function bindConsoleInterfaceControlTriggers() {
-            document.getElementById('compass-orientation-lock').addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 30 }));
-            document.getElementById('force-gps-recenter').addEventListener('click', () => map.flyTo({ center: userCurrentPositionCoordinates, zoom: 14 }));
-            document.getElementById('launch-routing-action').addEventListener('click', calculateAutonomousRoutingPath);
+        function initHardwareConsoleTriggers() {
+            document.getElementById('compass-orientation-lock').addEventListener('click', () => map.easeTo({ bearing: 0, pitch: 25 }));
+            document.getElementById('force-gps-recenter').addEventListener('click', () => map.flyTo({ center: defaultUserCoordinates, zoom: 14 }));
+            document.getElementById('launch-routing-action').addEventListener('click', runLocalSpatialRouteCalculation);
             document.getElementById('flush-workspace-trigger').addEventListener('click', () => {
                 if (map.getLayer('active-route-line')) map.removeLayer('active-route-line');
                 if (map.getSource('active-route-source')) map.removeSource('active-route-source');
                 document.getElementById('context-destination-panel').style.display = 'none';
-                temporaryTargetDestinationCoords = null;
+                targetSelectedCoordinates = null;
             });
         }
     </script>
