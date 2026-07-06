@@ -21,7 +21,7 @@
             --text-main: #ffffff;
             --text-secondary: #a0a0ab;
             --text-muted: #4b4b54;
-            --accent-green: #ff2222; /* Standardized to brand red */
+            --accent-green: #ff2222; 
             --sidebar-width: 380px;
         }
 
@@ -211,9 +211,10 @@
             position: absolute; top: 25px; right: 25px; z-index: 100; display: flex; flex-direction: column; gap: 8px;
         }
         .console-action-btn-node {
-            background: var(--bg-panel); backdrop-filter: blur(20px); border: 1px solid var(--border-subtle); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.05rem;
+            background: var(--bg-panel); backdrop-filter: blur(20px); border: 1px solid var(--border-subtle); width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
         }
         .console-action-btn-node:hover { background: var(--bg-surface-hover); border-color: var(--action-red); box-shadow: 0 0 10px rgba(255, 34, 34, 0.2); }
+        .console-action-btn-node svg { width: 18px; height: 18px; fill: currentColor; }
 
         #coordinate-overlay-tracker { position: absolute; bottom: 25px; right: 25px; background: var(--bg-panel); backdrop-filter: blur(10px); padding: 8px 12px; border-radius: 10px; border: 1px solid var(--border-subtle); font-family: monospace; font-size: 0.7rem; z-index: 5; color: var(--text-secondary); }
 
@@ -284,28 +285,34 @@
         <!-- System Control Cluster -->
         <div id="right-floating-console-stack">
             <button class="console-action-btn-node" id="force-gps-recenter" title="Recenter Engine">🎯</button>
-            <button class="console-action-btn-node" id="compass-orientation-lock" title="True North">Compass</button>
+            <button class="console-action-btn-node" id="compass-orientation-lock" title="True North">
+                <!-- High-vis Vector SVG Compass Replacement to bypass text clipping rules -->
+                <svg viewBox="0 0 24 24">
+                    <path d="M7 11h2v2H7zm4 0h2v2h-2zm4 0h2v2h-2zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
+                </svg>
+            </button>
         </div>
 
         <div id="coordinate-overlay-tracker">X: -- | Y: --</div>
     </div>
 
     <script>
+        // Set coordinates configuration baseline 
+        const defaultUserCoordinates = [-123.2078, 39.1502];
+        let targetSelectedCoordinates = null;
+        let querySearchDebounceTimer = null;
+        let activeMapMarker = null; 
+
         // Initializing MapLibre Engine instance with open dark vector styles
         const map = new maplibregl.Map({
             container: 'map',
             style: 'https://tiles.openfreemap.org/styles/dark', 
-            center: [-123.2078, 39.1502], 
+            center: defaultUserCoordinates, 
             zoom: 13,
             pitch: 25,
             bearing: 0,
             antialias: true
         });
-
-        let defaultUserCoordinates = [-123.2078, 39.1502];
-        let targetSelectedCoordinates = null;
-        let querySearchDebounceTimer = null;
-        let activeMapMarker = null; // Track single marker pin instance
 
         // Custom SVG Red Brand Node Factory
         function createCustomMarkerElement() {
@@ -322,6 +329,14 @@
         }
 
         map.on('load', () => {
+            // Force hardware layout viewport to instantly jump focus on the active GPS tracking point
+            map.jumpTo({
+                center: defaultUserCoordinates,
+                zoom: 13,
+                pitch: 25,
+                bearing: 0
+            });
+
             initTacticalPanelDraggingPhysics();
             initAutonomousSearchMatrix();
             initDirectMapInputListeners();
@@ -331,7 +346,6 @@
                 document.getElementById('coordinate-overlay-tracker').innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
             });
             
-            // Set explicit state label
             document.getElementById('routing-engine-status').innerText = "OSRM ROUTER";
         });
 
@@ -451,10 +465,8 @@
             document.getElementById('node-panel-address').innerText = details;
             document.getElementById('context-destination-panel').style.display = 'flex';
 
-            // Clean previous marker pin references
             if (activeMapMarker) activeMapMarker.remove();
 
-            // Append custom brand marker anchor geometry
             activeMapMarker = new maplibregl.Marker({ element: createCustomMarkerElement() })
                 .setLngLat(coords)
                 .addTo(map);
