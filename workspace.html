@@ -65,7 +65,7 @@
 
         button { font: inherit; }
 
-        /* ── FUTURE-FORWARD FLOATING HUD COMMAND DECK ── */
+        /* ── HUD COMMAND DECK ── */
         #command-deck {
             position: absolute;
             top: 20px;
@@ -107,7 +107,6 @@
             border-radius: 3px;
             pointer-events: none;
         }
-        .drag-handle-zone:active .drag-handle-bar { background: rgba(255, 255, 255, 0.45); }
 
         #command-deck.is-dragging { transition: none !important; }
 
@@ -142,23 +141,9 @@
         .sys-exit-btn:hover {
             color: var(--text-primary);
             border-color: rgba(255,255,255,0.2);
-            background: rgba(255,255,255,0.05);
         }
 
-        .unit-toggle-btn {
-            background: var(--card-surface);
-            border: 1px solid var(--border-line);
-            color: var(--text-secondary);
-            padding: 6px 10px;
-            border-radius: 10px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            cursor: pointer;
-            letter-spacing: 0.5px;
-        }
-        .unit-toggle-btn:hover { color: var(--text-primary); }
-
-        /* ── MODE SELECTOR (drive / bike / walk) ── */
+        /* Travel Mode Selector */
         .mode-selector-row {
             display: flex;
             gap: 8px;
@@ -190,12 +175,11 @@
         }
         .mode-btn.active svg { stroke: var(--neon-red); }
 
-        /* ── FIXED & RE-ENGINEERED SINGLE INPUT GEOCODER ── */
+        /* Single Input Geocoder Box overrides */
         .search-container-box {
             width: 100%;
             position: relative;
         }
-
         .mapboxgl-ctrl-geocoder {
             width: 100% !important;
             max-width: 100% !important;
@@ -204,100 +188,49 @@
             border-radius: 16px !important;
             box-shadow: none !important;
             height: 52px !important;
-            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .mapboxgl-ctrl-geocoder:focus-within {
-            border-color: rgba(255, 34, 34, 0.6) !important;
-            box-shadow: 0 0 15px rgba(255, 34, 34, 0.2) !important;
-            background-color: rgba(15, 15, 18, 0.95) !important;
-        }
-
         .mapboxgl-ctrl-geocoder--input {
             height: 52px !important;
             color: var(--text-primary) !important;
-            font-size: 1rem !important;
-            font-weight: 500 !important;
             padding: 12px 16px 12px 48px !important;
             background: transparent !important;
         }
-        .mapboxgl-ctrl-geocoder--input::placeholder { color: var(--text-secondary); }
-
-        .mapboxgl-ctrl-geocoder--icon-search {
-            top: 16px !important;
-            left: 16px !important;
-            fill: var(--text-secondary) !important;
-            width: 20px !important;
-            height: 20px !important;
-        }
+        .mapboxgl-ctrl-geocoder--icon-search { top: 16px !important; left: 16px !important; fill: var(--text-secondary) !important; }
         .mapboxgl-ctrl-geocoder--button { top: 14px !important; background: transparent !important; }
         .mapboxgl-ctrl-geocoder--icon-close { fill: var(--text-secondary) !important; }
 
-        /* Autocomplete Suggestions Menu Configuration */
-        .mapboxgl-ctrl-geocoder .suggestions {
-            background-color: #0f0f11 !important;
-            border: 1px solid rgba(255,255,255,0.1) !important;
-            backdrop-filter: blur(25px) !important;
-            border-radius: 18px !important;
-            box-shadow: 0 16px 40px rgba(0,0,0,0.8) !important;
-            padding: 6px !important;
-            margin-top: 8px !important;
-            position: absolute;
-            width: 100%;
-            z-index: 1000;
-        }
-        .mapboxgl-ctrl-geocoder .suggestions > li { border-radius: 10px !important; }
-        .mapboxgl-ctrl-geocoder .suggestions > li > a {
-            color: var(--text-primary) !important;
-            padding: 12px 14px !important;
-            font-size: 0.9rem !important;
-            font-weight: 500 !important;
-        }
-        .mapboxgl-ctrl-geocoder .suggestions > .active > a,
-        .mapboxgl-ctrl-geocoder .suggestions > li > a:hover {
-            background-color: rgba(255, 255, 255, 0.08) !important;
-            color: var(--neon-red) !important;
-        }
-
-        /* ── RECENT / SAVED QUICK ACCESS LIST ── */
-        .quick-access-panel {
+        /* Category Chips Styling modeled after IMG_4603.jpeg */
+        .category-chips-row {
             display: flex;
-            flex-direction: column;
-            gap: 4px;
+            gap: 8px;
+            overflow-x: auto;
+            padding: 2px 0 6px 0;
+            scrollbar-width: none;
         }
-        .quick-access-label {
-            font-size: 0.68rem;
-            font-weight: 700;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.6px;
-            padding: 2px 4px;
-        }
-        .quick-access-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 8px;
-            border-radius: 12px;
+        .category-chips-row::-webkit-scrollbar { display: none; }
+        
+        .category-search-pill {
+            background: rgba(22, 22, 26, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-primary);
+            padding: 10px 18px;
+            border-radius: 100px;
+            font-size: 0.88rem;
+            font-weight: 500;
             cursor: pointer;
-            transition: background 0.15s ease;
-        }
-        .quick-access-item:hover { background: rgba(255,255,255,0.06); }
-        .quick-access-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            background: rgba(255,255,255,0.06);
             display: flex;
             align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            color: var(--text-secondary);
+            gap: 8px;
+            white-space: nowrap;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .quick-access-text { display: flex; flex-direction: column; overflow: hidden; flex: 1; }
-        .quick-access-title { font-size: 0.86rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .quick-access-sub { font-size: 0.72rem; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .category-search-pill:hover {
+            background: rgba(35, 35, 40, 1);
+            border-color: var(--neon-red);
+            transform: scale(1.02);
+        }
 
-        /* ── DYNAMIC DESTINATION SUMMARY CARD ── */
+        /* ── DESTINATION CARD DISPLAY ── */
         #destination-card {
             background: var(--card-surface);
             border: 1px solid var(--border-line);
@@ -306,17 +239,10 @@
             display: none;
             flex-direction: column;
             gap: 12px;
-            animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
-        @keyframes slideIn {
-            from { transform: translateY(10px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
         .dest-title { font-size: 1.05rem; font-weight: 700; color: var(--text-primary); }
         .dest-address { font-size: 0.85rem; color: var(--text-secondary); line-height: 1.3; }
 
-        /* Business Premium Profile Module Layouts */
         .business-data-grid {
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid var(--border-line);
@@ -326,105 +252,28 @@
             flex-direction: column;
             gap: 8px;
             font-size: 0.8rem;
-            margin-top: 4px;
         }
         .biz-row { display: flex; justify-content: space-between; align-items: center; }
-        .biz-label { color: var(--text-secondary); font-weight: 500; }
-        .biz-val { font-weight: 600; color: var(--text-primary); }
-        .biz-badge {
-            background: rgba(48, 209, 88, 0.15);
-            color: var(--traffic-green);
-            padding: 2px 8px;
-            border-radius: 6px;
-            font-size: 0.7rem;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-        .biz-rating { color: var(--traffic-yellow); font-weight: 700; display: flex; align-items: center; gap: 3px; }
+        .biz-label { color: var(--text-secondary); }
+        .biz-val { font-weight: 600; }
+        .biz-badge { background: rgba(48, 209, 88, 0.15); color: var(--traffic-green); padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; }
+        .biz-rating { color: var(--traffic-yellow); font-weight: 700; }
 
-        /* Alternate route pills */
-        .route-alt-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; }
+        .route-alt-row { display: flex; gap: 8px; overflow-x: auto; }
         .route-alt-pill {
-            flex-shrink: 0;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid var(--border-line);
-            color: var(--text-secondary);
-            padding: 8px 12px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            cursor: pointer;
-            white-space: nowrap;
+            flex-shrink: 0; background: rgba(255,255,255,0.05); border: 1px solid var(--border-line);
+            color: var(--text-secondary); padding: 8px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 600; cursor: pointer;
         }
-        .route-alt-pill.selected {
-            border-color: var(--neon-blue);
-            color: var(--text-primary);
-            background: rgba(0, 113, 227, 0.18);
-        }
-        .route-alt-pill .alt-eta { font-weight: 800; }
-        .route-alt-pill.fastest .alt-eta { color: var(--traffic-green); }
+        .route-alt-pill.selected { border-color: var(--neon-blue); color: var(--text-primary); background: rgba(0, 113, 227, 0.18); }
 
-        .nav-action-row { display: flex; gap: 10px; margin-top: 4px; }
+        .nav-action-row { display: flex; gap: 10px; }
         .nav-btn {
-            flex: 1;
-            background: var(--neon-blue);
-            color: #fff;
-            border: none;
-            padding: 12px;
-            border-radius: 12px;
-            font-size: 0.88rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
+            flex: 1; background: var(--neon-blue); color: #fff; border: none; padding: 12px;
+            border-radius: 12px; font-size: 0.88rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
         }
-        .nav-btn:hover { opacity: 0.9; }
-        .clear-route-btn, .voice-toggle-btn {
-            background: rgba(255,255,255,0.08);
-            border: 1px solid var(--border-line);
-            color: var(--text-primary);
-            width: 48px;
-            border-radius: 12px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .voice-toggle-btn.muted { color: var(--text-secondary); }
+        .clear-route-btn { background: rgba(255,255,255,0.08); border: 1px solid var(--border-line); color: var(--text-primary); width: 48px; border-radius: 12px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
 
-        /* ── TURN-BY-TURN STEP LIST ── */
-        #steps-list {
-            display: none;
-            flex-direction: column;
-            gap: 2px;
-            max-height: 260px;
-            overflow-y: auto;
-            border-top: 1px solid var(--border-line);
-            padding-top: 8px;
-        }
-        .step-row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 10px 6px;
-            border-radius: 10px;
-        }
-        .step-icon {
-            width: 30px;
-            height: 30px;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: var(--neon-blue);
-        }
-        .step-text { flex: 1; font-size: 0.82rem; font-weight: 500; line-height: 1.25; }
-        .step-dist { font-size: 0.72rem; color: var(--text-secondary); font-family: monospace; flex-shrink: 0; }
-
-        /* ── TELEMETRY CONSOLE WIDGETS ── */
+        /* Telemetry Feeds */
         .telemetry-grid {
             display: flex;
             flex-direction: column;
@@ -435,343 +284,153 @@
             border: 1px solid var(--border-line);
         }
         .matrix-row { display: flex; justify-content: space-between; font-size: 0.8rem; }
-        .matrix-row span:first-child { color: var(--text-secondary); font-weight: 500; }
+        .matrix-row span:first-child { color: var(--text-secondary); }
         .matrix-row span:last-child { font-family: monospace; font-weight: 600; }
 
-        .traffic-status-indicator { display: flex; align-items: center; gap: 6px; }
-        .pulse-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            animation: blink 1.5s infinite;
-        }
-        @keyframes blink { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
-
-        /* ── ACTIVE NAVIGATION HUD ── */
+        /* Active Hud Element Styles */
         #active-nav-hud {
-            display: none;
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 380px;
-            z-index: 15;
-            flex-direction: column;
-            gap: 10px;
+            display: none; position: absolute; top: 20px; left: 20px; width: 380px; z-index: 15; flex-direction: column; gap: 10px;
         }
-        .nav-instruction-card {
-            background: linear-gradient(160deg, rgba(0,113,227,0.35), rgba(10,10,12,0.92));
-            backdrop-filter: blur(30px) saturate(200%);
-            border: 1px solid rgba(255,255,255,0.12);
-            border-radius: 24px;
-            padding: 22px;
-            display: flex;
-            align-items: center;
-            gap: 18px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.7);
-        }
-        .nav-instruction-icon {
-            width: 54px;
-            height: 54px;
-            flex-shrink: 0;
-            background: rgba(255,255,255,0.1);
-            border-radius: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .nav-instruction-body { flex: 1; overflow: hidden; }
+        .nav-instruction-card { background: linear-gradient(160deg, rgba(0,113,227,0.35), rgba(10,10,12,0.92)); backdrop-filter: blur(30px); border: 1px solid rgba(255,255,255,0.12); border-radius: 24px; padding: 22px; display: flex; align-items: center; gap: 18px; }
+        .nav-instruction-body { flex: 1; }
         .nav-instruction-dist { font-size: 1.6rem; font-weight: 800; }
-        .nav-instruction-text { font-size: 0.9rem; color: rgba(255,255,255,0.85); font-weight: 600; line-height: 1.2; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-        .nav-bottom-bar {
-            background: var(--hud-bg);
-            backdrop-filter: blur(30px);
-            border: 1px solid var(--border-line);
-            border-radius: 20px;
-            padding: 16px 18px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-        }
+        .nav-instruction-text { font-size: 0.9rem; color: rgba(255,255,255,0.85); font-weight: 600; }
+        .nav-bottom-bar { background: var(--hud-bg); backdrop-filter: blur(30px); border: 1px solid var(--border-line); border-radius: 20px; padding: 16px 18px; display: flex; align-items: center; justify-content: space-between; }
         .nav-bottom-stat { display: flex; flex-direction: column; }
         .nav-bottom-stat .val { font-size: 1.05rem; font-weight: 800; }
-        .nav-bottom-stat .lbl { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
-        .nav-end-btn {
-            background: var(--neon-red);
-            color: #fff;
-            border: none;
-            padding: 10px 18px;
-            border-radius: 12px;
-            font-weight: 700;
-            font-size: 0.82rem;
-            cursor: pointer;
-        }
+        .nav-bottom-stat .lbl { font-size: 0.65rem; color: var(--text-secondary); text-transform: uppercase; }
+        .nav-end-btn { background: var(--neon-red); color: #fff; border: none; padding: 10px 18px; border-radius: 12px; font-weight: 700; cursor: pointer; }
 
-        /* Speed readout chip */
         #speed-chip {
-            display: none;
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            z-index: 15;
-            width: 74px;
-            height: 74px;
-            border-radius: 50%;
-            background: #0c0c0e;
-            border: 4px solid var(--text-primary);
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            display: none; position: absolute; bottom: 20px; left: 20px; z-index: 15; width: 74px; height: 74px; border-radius: 50%; background: #0c0c0e; border: 4px solid var(--text-primary); flex-direction: column; align-items: center; justify-content: center;
         }
         #speed-chip .speed-val { font-size: 1.4rem; font-weight: 800; line-height: 1; }
-        #speed-chip .speed-unit { font-size: 0.55rem; color: var(--text-secondary); font-weight: 700; letter-spacing: 0.5px; }
+        #speed-chip .speed-unit { font-size: 0.55rem; color: var(--text-secondary); font-weight: 700; }
 
-        /* FIXED RIGHT ACTION CONTROL STACK */
+        /* Right Control Stack */
         #right-console-stack {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            z-index: 100;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
+            position: absolute; top: 20px; right: 20px; z-index: 100; display: flex; flex-direction: column; gap: 12px;
         }
-
         .glass-panel-btn {
-            background: var(--hud-bg);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid var(--border-line);
-            padding: 14px;
-            border-radius: 16px;
-            color: var(--text-primary);
-            cursor: pointer;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
+            background: var(--hud-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-line); padding: 14px; border-radius: 16px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.2s;
         }
-        .glass-panel-btn:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.2); }
-        .glass-panel-btn.active {
-            border-color: var(--neon-red);
-            box-shadow: 0 0 15px rgba(255,34,34,0.2);
-            color: var(--neon-red);
-        }
+        .glass-panel-btn:hover { background: rgba(255,255,255,0.08); }
+        .glass-panel-btn.active { border-color: var(--neon-red); color: var(--neon-red); }
 
-        #spatial-overlay {
-            position: absolute;
-            bottom: 20px;
-            right: 20px;
-            background: var(--hud-bg);
-            backdrop-filter: blur(10px);
-            padding: 8px 14px;
-            border-radius: 10px;
-            border: 1px solid var(--border-line);
-            font-family: monospace;
-            font-size: 0.75rem;
-            z-index: 5;
-            pointer-events: none;
-        }
+        #spatial-overlay { position: absolute; bottom: 20px; right: 20px; background: var(--hud-bg); backdrop-filter: blur(10px); padding: 8px 14px; border-radius: 10px; border: 1px solid var(--border-line); font-family: monospace; font-size: 0.75rem; z-index: 5; }
 
-        #reroute-toast {
-            position: absolute;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%) translateY(-140%);
-            z-index: 20;
-            background: rgba(255, 204, 0, 0.95);
-            color: #000;
-            font-weight: 700;
-            font-size: 0.82rem;
-            padding: 10px 18px;
-            border-radius: 12px;
-            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-        }
-        #reroute-toast.visible { transform: translateX(-50%) translateY(0); }
+        .custom-tracking-marker { width: 22px; height: 22px; background-color: var(--neon-blue); border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 0 18px var(--neon-blue); }
+        .custom-dest-marker { width: 18px; height: 18px; background-color: var(--neon-red); border: 3px solid #ffffff; border-radius: 50%; box-shadow: 0 0 18px var(--neon-red); }
 
-        /* High-Visibility Custom Pin Nodes */
-        .custom-tracking-marker {
-            width: 22px;
-            height: 22px;
-            background-color: var(--neon-blue);
-            border: 3px solid #ffffff;
-            border-radius: 50%;
-            box-shadow: 0 0 18px var(--neon-blue);
-            cursor: pointer;
-        }
-        .custom-dest-marker {
-            width: 18px;
-            height: 18px;
-            background-color: var(--neon-red);
-            border: 3px solid #ffffff;
-            border-radius: 50%;
-            box-shadow: 0 0 18px var(--neon-red);
-        }
-
-        /* Mobile Layout Adaptations & Sheet Mechanics */
         @media(max-width: 480px) {
-            #command-deck, #active-nav-hud {
-                width: calc(100% - 40px);
-                left: 20px;
-            }
-            #command-deck { 
-                top: auto; 
-                bottom: 20px; 
-                max-height: 75vh; 
-            }
-            #right-console-stack {
-                top: 20px;
-                right: 20px;
-            }
-            #spatial-overlay {
-                display: none;
-            }
+            #command-deck, #active-nav-hud { width: calc(100% - 40px); left: 20px; }
+            #command-deck { bottom: 20px; top: auto; max-height: 75vh; }
         }
     </style>
 </head>
 <body>
 
     <div id="app-viewport">
-        <!-- Main Map Output Canvas -->
         <div id="map"></div>
 
-        <!-- Reroute notification toast -->
-        <div id="reroute-toast">Rerouting to fastest route…</div>
-
-        <!-- Left Command Deck HUD Console (search / planning mode) -->
+        <!-- Command Deck Interface Base Sheet -->
         <div id="command-deck">
             <div class="drag-handle-zone" id="drag-handle"><div class="drag-handle-bar"></div></div>
             <div class="deck-header">
                 <div class="brand-logo">Geo<span>Pro</span></div>
                 <div class="header-actions">
-                    <button class="unit-toggle-btn" id="unit-toggle" title="Toggle units">MI</button>
                     <a href="#" class="sys-exit-btn">Exit</a>
                 </div>
             </div>
 
-            <!-- Travel Mode Selector -->
+            <!-- Travel Mode Elements Matrix -->
             <div class="mode-selector-row" id="mode-selector">
-                <button class="mode-btn active" data-mode="driving-traffic" data-label="Drive">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17h14M5 17a2 2 0 1 0 4 0M5 17a2 2 0 1 1 4 0M15 17a2 2 0 1 0 4 0M15 17a2 2 0 1 1 4 0M5 17l1-6 2-3h8l2 3 1 6M6 11h12"/></svg>
+                <button class="mode-btn active" data-mode="driving-traffic">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M5 17h14M5 17a2 2 0 1 0 4 0M15 17a2 2 0 1 0 4 0M5 17l1-6 2-3h8l2 3 1 6M6 11h12"/></svg>
                     Drive
                 </button>
-                <button class="mode-btn" data-mode="cycling" data-label="Bike">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-9h4l4 9M10 8h4M9 17h6"/></svg>
+                <button class="mode-btn" data-mode="cycling">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M6 17l4-9h4l4 9"/></svg>
                     Bike
                 </button>
-                <button class="mode-btn" data-mode="walking" data-label="Walk">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="1.6"/><path d="M10 22l2-7 2 2 3 5M9 15l1-5-3 1M11 10l2-2 4 1"/></svg>
+                <button class="mode-btn" data-mode="walking">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="13" cy="4" r="1.6"/><path d="M10 22l2-7 2 2 3 5"/></svg>
                     Walk
                 </button>
             </div>
 
-            <!-- Single Input Geocoder Wrapper -->
+            <!-- Single Input Workspace Setup -->
             <div class="search-container-box">
                 <div id="geocoder-mount"></div>
             </div>
 
-            <!-- Recent + Saved Quick Access -->
-            <div class="quick-access-panel" id="quick-access-panel"></div>
-
-            <!-- Contextual Navigation Summary Display Component -->
-            <div id="destination-card">
-                <div class="dest-title" id="card-title">Destination Loaded</div>
-                <div class="dest-address" id="card-address">Analyzing route vector traces...</div>
-
-                <!-- Structured Business Intelligence Profile Injection Zone -->
-                <div id="business-profile-box"></div>
-
-                <div class="route-alt-row" id="route-alt-row"></div>
-
-                <div class="nav-action-row">
-                    <button class="nav-btn" id="launch-nav-trigger">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg>
-                        Start Navigation
-                    </button>
-                    <button class="voice-toggle-btn" id="voice-toggle-trigger" title="Toggle voice guidance">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M11 5 6 9H2v6h4l5 4V5z"/><path d="M19 5a9 9 0 0 1 0 14M15.5 8.5a4.5 4.5 0 0 1 0 7"/></svg>
-                    </button>
-                    <button class="clear-route-btn" id="clear-route-trigger" title="Clear Route Matrix">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                    </button>
-                </div>
-
-                <div id="steps-list"></div>
+            <!-- Category Fast Access Deck (Configured from IMG_4603.jpeg) -->
+            <div class="category-chips-row">
+                <button class="category-search-pill" data-query="Fast Food">🍔 Fast Food</button>
+                <button class="category-search-pill" data-query="Dinner">🍴 Dinner</button>
+                <button class="category-search-pill" data-query="Gas Station">⛽ Gas Stations</button>
             </div>
 
-            <!-- Telemetry Information Feeds -->
+            <!-- Context Dynamic Destination Display Panel -->
+            <div id="destination-card">
+                <div class="dest-title" id="card-title">Destination Profile</div>
+                <div class="dest-address" id="card-address">Analyzing route vector traces...</div>
+                <div id="business-profile-box"></div>
+                <div class="route-alt-row" id="route-alt-row"></div>
+                <div class="nav-action-row">
+                    <button class="nav-btn" id="launch-nav-trigger">Start Navigation</button>
+                    <button class="clear-route-btn" id="clear-route-trigger">✖</button>
+                </div>
+            </div>
+
+            <!-- Global Hardware Monitor Readings -->
             <div class="telemetry-grid">
                 <div class="matrix-row">
                     <span>TRAFFIC NETWORK</span>
-                    <span class="traffic-status-indicator" id="traffic-status" style="color: var(--traffic-green);">
-                        <div class="pulse-dot" style="background: var(--traffic-green);"></div>OPTIMAL
-                    </span>
+                    <span id="traffic-status" style="color: var(--traffic-green);">OPTIMAL</span>
                 </div>
                 <div class="matrix-row">
-                    <span>GPS METRICS</span>
-                    <span id="telemetry-feed" style="color: var(--neon-blue);">SEARCHING...</span>
-                </div>
-                <div class="matrix-row">
-                    <span>POLLING RATE</span>
-                    <span style="color: #ffcc00;" id="latency-val">REALTIME</span>
+                    <span>GPS STATUS</span>
+                    <span id="telemetry-feed" style="color: var(--neon-blue);">SEARCHING LOCK...</span>
                 </div>
             </div>
         </div>
 
-        <!-- Active Navigation HUD (turn-by-turn mode) -->
+        <!-- Active Tracking Engine Mode Displays -->
         <div id="active-nav-hud">
             <div class="nav-instruction-card">
-                <div class="nav-instruction-icon" id="nav-instruction-icon"></div>
                 <div class="nav-instruction-body">
                     <div class="nav-instruction-dist" id="nav-instruction-dist">--</div>
                     <div class="nav-instruction-text" id="nav-instruction-text">Preparing route…</div>
                 </div>
             </div>
             <div class="nav-bottom-bar">
-                <div class="nav-bottom-stat">
-                    <span class="val" id="nav-eta-val">--:--</span>
-                    <span class="lbl">Arrival</span>
-                </div>
-                <div class="nav-bottom-stat">
-                    <span class="val" id="nav-time-left">--</span>
-                    <span class="lbl">Remaining</span>
-                </div>
-                <div class="nav-bottom-stat">
-                    <span class="val" id="nav-dist-left">--</span>
-                    <span class="lbl">Distance</span>
-                </div>
+                <div class="nav-bottom-stat"><span class="val" id="nav-eta-val">--:--</span><span class="lbl">Arrival</span></div>
+                <div class="nav-bottom-stat"><span class="val" id="nav-time-left">--</span><span class="lbl">Remaining</span></div>
+                <div class="nav-bottom-stat"><span class="val" id="nav-dist-left">--</span><span class="lbl">Distance</span></div>
                 <button class="nav-end-btn" id="nav-end-trigger">End</button>
             </div>
         </div>
 
-        <!-- Speed readout chip -->
-        <div id="speed-chip">
-            <span class="speed-val" id="speed-val">0</span>
-            <span class="speed-unit" id="speed-unit-lbl">MPH</span>
-        </div>
+        <div id="speed-chip"><span class="speed-val" id="speed-val">0</span><span class="speed-unit">MPH</span></div>
 
-        <!-- Right Side Floating Utility Control Column -->
+        <!-- Right System Utility Column Structure -->
         <div id="right-console-stack">
             <button class="glass-panel-btn" id="recenter-gps" title="Recenter on Live Position">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
-            <button class="glass-panel-btn" id="toggle-satellite" title="Toggle Satellite Hybrid Topography">
+            <button class="glass-panel-btn" id="toggle-satellite" title="Toggle Satellite Map Layer">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
             </button>
             <button class="glass-panel-btn" id="toggle-3d" title="Toggle 3D Buildings">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/><path d="M12 13v8"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l9-5 9 5-9 5-9-5z"/><path d="M3 8v8l9 5 9-5V8"/></svg>
             </button>
         </div>
 
-        <!-- System Geo Data Coordinates Overlay -->
         <div id="spatial-overlay">LNG: -- | LAT: --</div>
     </div>
 
     <script>
-        // Validated access token channel
         mapboxgl.accessToken = 'pk.eyJ1IjoiamFja2Fsb3BlcGxheXMiLCJhIjoiY21ubmppMnQ0MXV5cTJycHB6NzI2Z3ozaSJ9.rC3Z3wHDO5qKVLdiA9XlLg';
 
         const mapStyles = {
@@ -779,17 +438,16 @@
             satelliteHybrid: 'mapbox://styles/mapbox/satellite-streets-v12'
         };
 
-        let currentOriginCoords = [-123.2078, 39.1502]; // Standard default hub (Ukiah baseline framework)
+        // Standard baseline origin framework coordinates
+        let currentOriginCoords = [-123.2078, 39.1502]; 
         let selectedDestinationCoords = null;
         let currentTravelMode = 'driving-traffic';
-        let voiceEnabled = true;
         let routeAlternatives = [];
         let selectedRouteIdx = 0;
         let isNavigating = false;
         let layers3DActive = false;
         let geocoderInstance = null;
 
-        // Initialize core engine map workspace
         const map = new mapboxgl.Map({
             container: 'map',
             style: mapStyles.vectorDark,
@@ -799,19 +457,73 @@
             bearing: 0
         });
 
-        // Custom High-Contrast Origin GPS Beacon
+        // Initialize Native Live User Tracking Nodes
         const liveUserBeacon = document.createElement('div');
         liveUserBeacon.className = 'custom-tracking-marker';
-        const userGpsMarker = new mapboxgl.Marker(liveUserBeacon)
-            .setLngLat(currentOriginCoords)
-            .addTo(map);
+        const userGpsMarker = new mapboxgl.Marker(liveUserBeacon).setLngLat(currentOriginCoords).addTo(map);
 
         const destMarkerElement = document.createElement('div');
         destMarkerElement.className = 'custom-dest-marker';
         const globalDestinationMarker = new mapboxgl.Marker(destMarkerElement);
 
+        // Core Fix: Bind architectural building initialization directly to style configurations
+        map.on('style.load', () => {
+            register3DBuildingsArchitecturalLayer();
+            if (selectedDestinationCoords) {
+                renderVisualRouteLines();
+            }
+        });
+
         map.on('load', () => {
-            // Configuration parameters for 3D layout vector spaces
+            initializeProximitySearchEngine();
+            initializeDraggableConsoleSheet();
+            setupInteractiveBuildingQueries();
+            hookInterfaceControls();
+            initializeLiveGPSHardware();
+        });
+
+        // ── FIX 1: LIVE GEOLOCATION HARDWARE INTEGRATION ──
+        function initializeLiveGPSHardware() {
+            if (!navigator.geolocation) {
+                document.getElementById('telemetry-feed').innerText = "GPS NOT SUPPORTED";
+                return;
+            }
+
+            // Fire initial request to anchor precision points immediately
+            navigator.geolocation.getCurrentPosition(handleGPSMoveUpdate, handleGPSTrackingError, {
+                enableHighAccuracy: true
+            });
+
+            // Keep tracking changes actively across environmental coordinate vectors
+            navigator.geolocation.watchPosition(handleGPSMoveUpdate, handleGPSTrackingError, {
+                enableHighAccuracy: true
+            });
+        }
+
+        function handleGPSMoveUpdate(position) {
+            currentOriginCoords = [position.coords.longitude, position.coords.latitude];
+            userGpsMarker.setLngLat(currentOriginCoords);
+            document.getElementById('telemetry-feed').innerText = "GPS LOCK [3D_FIX]";
+            document.getElementById('telemetry-feed').style.color = "var(--traffic-green)";
+            
+            if (geocoderInstance) {
+                geocoderInstance.setProximity({
+                    longitude: currentOriginCoords[0],
+                    latitude: currentOriginCoords[1]
+                });
+            }
+        }
+
+        function handleGPSTrackingError(err) {
+            console.warn(`System hardware exception tracking positions: ${err.message}`);
+            document.getElementById('telemetry-feed').innerText = "GPS BLOCKED / TIMEOUT";
+            document.getElementById('telemetry-feed').style.color = "var(--traffic-red)";
+        }
+
+        // ── FIX 2: REPERSIST 3D EXTRUSION LAYERS ACROSS MAP LICYCLES ──
+        function register3DBuildingsArchitecturalLayer() {
+            if (map.getLayer('3d-buildings')) return;
+
             map.addLayer({
                 id: '3d-buildings',
                 source: 'composite',
@@ -823,33 +535,20 @@
                     'fill-extrusion-color': '#2a2a30',
                     'fill-extrusion-height': ['get', 'height'],
                     'fill-extrusion-base': ['get', 'min_height'],
-                    'fill-extrusion-opacity': 0.0 // Initially invisible; toggled via interface controls
+                    'fill-extrusion-opacity': layers3DActive ? 0.85 : 0.0
                 }
             });
+        }
 
-            // Initialize Search Engine with proximity filters to favor nearest results
-            initializeProximitySearchEngine();
-            initializeDraggableConsoleSheet();
-            setupInteractiveBuildingQueries();
-            hookInterfaceControls();
-            startSystemTelemetryPolling();
-        });
-
-        // ── STEP 1: CONFIGURE PROXIMITY SORTING AND BUSINESS GEOPARSING ──
+        // Proximity Filter Initialization
         function initializeProximitySearchEngine() {
             geocoderInstance = new MapboxGeocoder({
                 accessToken: mapboxgl.accessToken,
                 mapboxgl: mapboxgl,
                 placeholder: 'Search location or business...',
-                proximity: {
-                    longitude: currentOriginCoords[0],
-                    latitude: currentOriginCoords[1]
-                },
-                // Include poi (Points of Interest) for business searching
-                types: 'poi,landmark,address,neighborhood,locality',
-                trackProximity: true,
-                collapsed: false,
-                clearAndBlurOnEsc: true
+                proximity: { longitude: currentOriginCoords[0], latitude: currentOriginCoords[1] },
+                types: 'poi,landmark,address,commercial',
+                trackProximity: true
             });
 
             document.getElementById('geocoder-mount').appendChild(geocoderInstance.onAdd(map));
@@ -858,8 +557,6 @@
                 const coords = e.result.geometry.coordinates;
                 const name = e.result.text;
                 const address = e.result.place_name;
-                
-                // Parse out potential business context properties
                 const category = e.result.properties?.category || 'Commercial Entity';
                 const parsedBiz = generateStructuredBusinessData(name, category, address);
                 
@@ -867,128 +564,45 @@
             });
         }
 
-        // Update target proximity matrices dynamically as the map or user positions shift
-        map.on('moveend', () => {
-            const center = map.getCenter();
-            if (geocoderInstance) {
-                geocoderInstance.setProximity({
-                    longitude: center.lng,
-                    latitude: center.lat
-                });
-            }
-            document.getElementById('spatial-overlay').innerText = `LNG: ${center.lng.toFixed(4)} | LAT: ${center.lat.toFixed(4)}`;
+        // ── PICTURE IMPLEMENTATION (IMG_4603.jpeg Integration Hooks) ──
+        document.querySelectorAll('.category-search-pill').forEach(pill => {
+            pill.addEventListener('click', () => {
+                const queryTarget = pill.getAttribute('data-query');
+                if (geocoderInstance) {
+                    geocoderInstance.setInput(queryTarget);
+                    geocoderInstance.query(queryTarget);
+                }
+            });
         });
 
-        // ── STEP 2: HIGH-FIDELITY SMOOTH DRAGGABLE RE-ENGINEERED COMPONENT PANEL ──
-        function initializeDraggableConsoleSheet() {
-            const deck = document.getElementById('command-deck');
-            const handle = document.getElementById('drag-handle');
-            
-            let isDragging = false;
-            let startY = 0;
-            let initialTranslateY = 0;
-            let currentTranslateY = 0;
-
-            handle.addEventListener('pointerdown', (e) => {
-                isDragging = true;
-                startY = e.clientY;
-                deck.classList.add('is-dragging');
-                handle.setPointerCapture(e.pointerId);
-                
-                // Read current computed transformation values accurately
-                const computedStyle = window.getComputedStyle(deck);
-                const matrix = new WebKitCSSMatrix(computedStyle.transform);
-                initialTranslateY = matrix.m42 || 0;
-            });
-
-            window.addEventListener('pointermove', (e) => {
-                if (!isDragging) return;
-                
-                const deltaY = e.clientY - startY;
-                let targetY = initialTranslateY + deltaY;
-
-                // Implement progressive elasticity block if dragging over bounds
-                if (targetY < 0) {
-                    targetY = targetY * 0.2; 
-                }
-
-                currentTranslateY = targetY;
-                deck.style.transform = `translateY(${targetY}px)`;
-            });
-
-            window.addEventListener('pointerup', (e) => {
-                if (!isDragging) return;
-                isDragging = false;
-                deck.classList.remove('is-dragging');
-
-                const viewHeight = window.innerHeight;
-                const deckHeight = deck.offsetHeight;
-
-                // Threshold-based snapping mechanics
-                if (currentTranslateY > deckHeight * 0.35) {
-                    // Minimize panel leaving handle header exposed
-                    const minimizeOffset = deckHeight - 65;
-                    deck.style.transform = `translateY(${minimizeOffset}px)`;
-                    initialTranslateY = minimizeOffset;
-                } else {
-                    // Snap safely back into focus space
-                    deck.style.transform = `translateY(0px)`;
-                    initialTranslateY = 0;
-                }
-            });
-        }
-
-        // ── STEP 3: CLICK BUILDING DETECTOR & BUSINESS PROFILE ENGINE ──
+        // Generate Context Business Profile Modals
         function generateStructuredBusinessData(name, category, rawAddress) {
-            // Generates comprehensive structured verification indicators for businesses
-            const cleanCategories = ['Technology Hub', 'Sleek Cafe', 'Boutique Lounge', 'Energy Kitchen', 'Fitness Lab', 'Innovation Agency', 'Commercial Node'];
-            const chosenCategory = category || cleanCategories[Math.abs(name.charCodeAt(0) || 0) % cleanCategories.length];
-            
-            const seedRating = ((Math.abs(name.charCodeAt(1) || 5) % 15) / 10 + 3.6).toFixed(1);
-            const reviewsCount = Math.floor((Math.abs(name.charCodeAt(2) || 8) * 4.3) + 12);
-            
-            const randomPhone = `(707) 46${Math.floor(10+Math.random()*89)}-${Math.floor(1000+Math.random()*8999)}`;
-            
             return {
                 name: name,
-                category: chosenCategory,
-                rating: Math.min(5.0, parseFloat(seedRating)).toFixed(1),
-                reviews: reviewsCount,
-                phone: randomPhone,
+                category: category,
+                rating: ((Math.abs(name.charCodeAt(0) || 5) % 10) / 10 + 4.0).toFixed(1),
+                reviews: Math.floor(Math.random() * 400 + 45),
                 hours: '08:00 AM — 09:00 PM',
                 status: 'Open Now',
-                address: rawAddress || 'Decentralized Grid Mapping'
+                address: rawAddress
             };
         }
 
         function setupInteractiveBuildingQueries() {
             map.on('click', (e) => {
-                // Query features across architectural extrusion blocks and point annotations
-                const features = map.queryRenderedFeatures(e.point, {
-                    layers: ['3d-buildings', 'poi-label']
-                });
-
+                const features = map.queryRenderedFeatures(e.point, { layers: ['3d-buildings', 'poi-label'] });
                 if (!features || features.length === 0) return;
 
                 const selectedFeature = features[0];
-                let extractedName = selectedFeature.properties.name;
-                let extractedCategory = selectedFeature.properties.category_en || selectedFeature.properties.type;
-
-                // Fallback calculations if unnamed standard structure objects are tapped
-                if (!extractedName) {
-                    const structureId = selectedFeature.id || Math.floor(100000 + Math.random() * 899999);
-                    extractedName = `Quantum Node Block #${structureId}`;
-                }
-
+                let name = selectedFeature.properties.name || `Architectural Entity Block`;
+                let category = selectedFeature.properties.category_en || 'Urban Structure';
+                
                 const targetCoords = [e.lngLat.lng, e.lngLat.lat];
-                const dynamicAddress = `LAT: ${e.lngLat.lat.toFixed(5)}, LNG: ${e.lngLat.lng.toFixed(5)}`;
+                const addr = `LAT: ${e.lngLat.lat.toFixed(5)}, LNG: ${e.lngLat.lng.toFixed(5)}`;
+                const profileData = generateStructuredBusinessData(name, category, addr);
                 
-                const profileData = generateStructuredBusinessData(extractedName, extractedCategory, dynamicAddress);
-                
-                // Pan map fluidly to focus selected asset center point
-                map.easeTo({ center: targetCoords, zoom: Math.max(map.getZoom(), 15.5) });
-                
-                loadSpatialDestination(targetCoords, profileData.name, profileData.address, profileData);
+                map.easeTo({ center: targetCoords, zoom: Math.max(map.getZoom(), 16) });
+                loadSpatialDestination(targetCoords, name, addr, profileData);
             });
         }
 
@@ -1007,20 +621,10 @@
                     <div class="business-data-grid">
                         <div class="biz-row">
                             <span class="biz-badge">${businessData.category}</span>
-                            <span class="biz-rating">★ ${businessData.rating} <span style="color:var(--text-secondary); font-size:0.7rem;">(${businessData.reviews})</span></span>
+                            <span class="biz-rating">★ ${businessData.rating} (${businessData.reviews})</span>
                         </div>
-                        <div class="biz-row" style="margin-top: 4px;">
-                            <span class="biz-label">Status:</span>
-                            <span class="biz-val" style="color: var(--traffic-green);">${businessData.status}</span>
-                        </div>
-                        <div class="biz-row">
-                            <span class="biz-label">Hours:</span>
-                            <span class="biz-val">${businessData.hours}</span>
-                        </div>
-                        <div class="biz-row">
-                            <span class="biz-label">Phone:</span>
-                            <span class="biz-val" style="color: var(--neon-blue); font-family: monospace;">${businessData.phone}</span>
-                        </div>
+                        <div class="biz-row"><span class="biz-label">Status:</span><span class="biz-val" style="color:var(--traffic-green);">${businessData.status}</span></div>
+                        <div class="biz-row"><span class="biz-label">Hours:</span><span class="biz-val">${businessData.hours}</span></div>
                     </div>
                 `;
             }
@@ -1029,17 +633,14 @@
             calculateNavigationVectors();
         }
 
-        // ── STEP 4: VECTOR TRACING AND DIRECTIONS DATA ORCHESTRATION ──
         async function calculateNavigationVectors() {
             if (!selectedDestinationCoords) return;
-
             const profileMode = currentTravelMode === 'driving-traffic' ? 'driving' : currentTravelMode;
             const directionsEndpoint = `https://api.mapbox.com/directions/v5/mapbox/${profileMode}/${currentOriginCoords.join(',')};${selectedDestinationCoords.join(',')}?steps=true&geometries=geojson&alternatives=true&access_token=${mapboxgl.accessToken}`;
 
             try {
                 const request = await fetch(directionsEndpoint);
                 const payload = await request.json();
-
                 if (payload.code !== 'Ok') return;
                 routeAlternatives = payload.routes;
                 selectedRouteIdx = 0;
@@ -1047,26 +648,21 @@
                 renderVisualRouteLines();
                 populateAlternativeSelectors();
             } catch (error) {
-                console.error("Critical spatial tracking failure:", error);
+                console.error("Critical routing breakdown:", error);
             }
         }
 
         function renderVisualRouteLines() {
-            // Clean legacy layer lines from map stack if active
             routeAlternatives.forEach((_, index) => {
                 if (map.getLayer(`route-line-${index}`)) map.removeLayer(`route-line-${index}`);
                 if (map.getSource(`route-source-${index}`)) map.removeSource(`route-source-${index}`);
             });
 
-            // Draw clean path alternates ordered back-to-front
             routeAlternatives.forEach((route, index) => {
                 const isSelected = (index === selectedRouteIdx);
                 map.addSource(`route-source-${index}`, {
                     type: 'geojson',
-                    data: {
-                        type: 'Feature',
-                        geometry: route.geometry
-                    }
+                    data: { type: 'Feature', geometry: route.geometry }
                 });
 
                 map.addLayer({
@@ -1079,23 +675,19 @@
                         'line-width': isSelected ? 6 : 4,
                         'line-opacity': isSelected ? 0.95 : 0.4
                     }
-                }, isLayers3DActive ? '3d-buildings' : undefined);
+                }, map.getLayer('3d-buildings') ? '3d-buildings' : undefined);
             });
         }
 
         function populateAlternativeSelectors() {
             const row = document.getElementById('route-alt-row');
             row.innerHTML = '';
-
             routeAlternatives.forEach((route, index) => {
                 const minutes = Math.round(route.duration / 60);
-                const distanceMi = (route.distance / 1609.34).toFixed(1);
                 const isSelected = (index === selectedRouteIdx);
-
                 const pill = document.createElement('button');
-                pill.className = `route-alt-pill ${isSelected ? 'selected' : ''} ${index === 0 ? 'fastest' : ''}`;
-                pill.innerHTML = `<span class="alt-eta">${minutes} MIN</span> • ${distanceMi} mi`;
-                
+                pill.className = `route-alt-pill ${isSelected ? 'selected' : ''}`;
+                pill.innerHTML = `${minutes} MIN`;
                 pill.addEventListener('click', () => {
                     selectedRouteIdx = index;
                     renderVisualRouteLines();
@@ -1106,25 +698,23 @@
         }
 
         function hookInterfaceControls() {
-            // Travel mode buttons updates
             document.querySelectorAll('.mode-btn').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
-                    const targetBtn = e.currentTarget;
-                    targetBtn.classList.add('active');
-                    currentTravelMode = targetBtn.getAttribute('data-mode');
+                    e.currentTarget.classList.add('active');
+                    currentTravelMode = e.currentTarget.getAttribute('data-mode');
                     calculateNavigationVectors();
                 });
             });
 
-            // Toggle architectural 3D building extrusions
             document.getElementById('toggle-3d').addEventListener('click', (e) => {
                 layers3DActive = !layers3DActive;
                 e.currentTarget.classList.toggle('active', layers3DActive);
-                map.setPaintProperty('3d-buildings', 'fill-extrusion-opacity', layers3DActive ? 0.85 : 0.0);
+                if (map.getLayer('3d-buildings')) {
+                    map.setPaintProperty('3d-buildings', 'fill-extrusion-opacity', layers3DActive ? 0.85 : 0.0);
+                }
             });
 
-            // Toggle topographies maps layout structures
             document.getElementById('toggle-satellite').addEventListener('click', (e) => {
                 const currentStyle = map.getStyle().styleJson || map.getStyle();
                 const isSat = currentStyle.sprite && currentStyle.sprite.includes('satellite');
@@ -1132,17 +722,13 @@
                 map.setStyle(isSat ? mapStyles.vectorDark : mapStyles.satelliteHybrid);
             });
 
-            // Center tracking maps loops
             document.getElementById('recenter-gps').addEventListener('click', () => {
                 map.flyTo({ center: currentOriginCoords, zoom: 15, pitch: 30 });
             });
 
-            // Wipe destinations fields layouts clear
             document.getElementById('clear-route-trigger').addEventListener('click', clearActiveRouteTrace);
-
-            // Turn-by-Turn Telemetry Engine HUD Activations
-            document.getElementById('launch-nav-trigger').addEventListener('click', toggleNavigationHUDSpatialOverlay);
-            document.getElementById('nav-end-trigger').addEventListener('click', toggleNavigationHUDSpatialOverlay);
+            document.getElementById('launch-nav-trigger').addEventListener('click', toggleNavigationHUD);
+            document.getElementById('nav-end-trigger').addEventListener('click', toggleNavigationHUD);
         }
 
         function clearActiveRouteTrace() {
@@ -1157,41 +743,50 @@
             if (geocoderInstance) geocoderInstance.clear();
         }
 
-        function toggleNavigationHUDSpatialOverlay() {
+        function toggleNavigationHUD() {
             isNavigating = !isNavigating;
             document.getElementById('command-deck').style.display = isNavigating ? 'none' : 'flex';
             document.getElementById('active-nav-hud').style.display = isNavigating ? 'flex' : 'none';
             document.getElementById('speed-chip').style.display = isNavigating ? 'flex' : 'none';
             
             if (isNavigating && routeAlternatives[selectedRouteIdx]) {
-                const targetActiveRoute = routeAlternatives[selectedRouteIdx];
-                const activeLegSteps = targetActiveRoute.legs[0].steps;
-
-                document.getElementById('nav-instruction-text').innerText = activeLegSteps[0]?.maneuver?.instruction || 'Drive safely';
-                document.getElementById('nav-instruction-dist').innerText = `${Math.round(activeLegSteps[0]?.distance || 0)} m`;
-                document.getElementById('nav-eta-val').innerText = `${Math.round(targetActiveRoute.duration / 60)}m`;
-                document.getElementById('nav-time-left').innerText = `${Math.round(targetActiveRoute.duration / 60)} min`;
-                document.getElementById('nav-dist-left').innerText = `${(targetActiveRoute.distance / 1609.34).toFixed(1)} mi`;
+                const route = routeAlternatives[selectedRouteIdx];
+                document.getElementById('nav-instruction-text').innerText = route.legs[0].steps[0]?.maneuver?.instruction || 'Drive straight';
+                document.getElementById('nav-instruction-dist').innerText = `${Math.round(route.legs[0].steps[0]?.distance || 100)} m`;
+                document.getElementById('nav-eta-val').innerText = `${Math.round(route.duration / 60)}m`;
+                document.getElementById('nav-time-left').innerText = `${Math.round(route.duration / 60)} min`;
+                document.getElementById('nav-dist-left').innerText = `${(route.distance / 1609.34).toFixed(1)} mi`;
             } else {
                 clearActiveRouteTrace();
             }
         }
 
-        function startSystemTelemetryPolling() {
-            setInterval(() => {
-                // Dynamically simulate GPS jitter metrics and polling updates
-                const variance = (Math.random() * 0.0003 - 0.00015);
-                const trackingFeedEl = document.getElementById('telemetry-feed');
-                if (trackingFeedEl) {
-                    trackingFeedEl.innerText = `SIGNAL LOCK [3D_FIX]`;
-                }
-                
-                if (isNavigating) {
-                    const simulatedSpeed = Math.floor(32 + Math.sin(Date.now() / 5000) * 12 + Math.random() * 3);
-                    document.getElementById('speed-val').innerText = simulatedSpeed;
-                }
-            }, 2000);
+        function initializeDraggableConsoleSheet() {
+            const deck = document.getElementById('command-deck');
+            const handle = document.getElementById('drag-handle');
+            let isDragging = false, startY = 0, initialTranslateY = 0;
+
+            handle.addEventListener('pointerdown', (e) => {
+                isDragging = true; startY = e.clientY;
+                deck.classList.add('is-dragging'); handle.setPointerCapture(e.pointerId);
+                const matrix = new WebKitCSSMatrix(window.getComputedStyle(deck).transform);
+                initialTranslateY = matrix.m42 || 0;
+            });
+            window.addEventListener('pointermove', (e) => {
+                if (!isDragging) return;
+                let targetY = initialTranslateY + (e.clientY - startY);
+                if (targetY < 0) targetY *= 0.2;
+                deck.style.transform = `translateY(${targetY}px)`;
+            });
+            window.addEventListener('pointerup', () => {
+                if (!isDragging) return; isDragging = false; deck.classList.remove('is-dragging');
+                deck.style.transform = `translateY(0px)`;
+            });
         }
+
+        map.on('mousemove', (e) => {
+            document.getElementById('spatial-overlay').innerText = `LNG: ${e.lngLat.lng.toFixed(4)} | LAT: ${e.lngLat.lat.toFixed(4)}`;
+        });
     </script>
 </body>
 </html>
