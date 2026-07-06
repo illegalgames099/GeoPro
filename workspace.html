@@ -253,8 +253,7 @@
         .biz-row { display: flex; justify-content: space-between; align-items: center; }
         .biz-label { color: var(--text-secondary); }
         .biz-val { font-weight: 600; }
-        .biz-badge { background: rgba(48, 209, 88, 0.15); color: var(--traffic-green); padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; }
-        .biz-rating { color: var(--traffic-yellow); font-weight: 700; }
+        .biz-badge { background: rgba(0, 113, 227, 0.2); color: #409eff; padding: 2px 8px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; }
 
         .route-alt-row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
         .route-alt-pill {
@@ -442,7 +441,8 @@
             satelliteHybrid: 'mapbox://styles/mapbox/satellite-streets-v12'
         };
 
-        // Standard baseline configuration fallback coordinates
+        const gltfModelUri = 'https://docs.mapbox.com/mapbox-gl-js/assets/wind_turbine_static.glb';
+
         let currentOriginCoords = [-123.2078, 39.1502]; 
         let selectedDestinationCoords = null;
         let currentTravelMode = 'driving-traffic';
@@ -450,6 +450,7 @@
         let selectedRouteIdx = 0;
         let isNavigating = false;
         let layers3DActive = false;
+        let isSatelliteActive = false;
         let geocoderInstance = null;
         let mapCenteredOnLiveGPS = false; 
 
@@ -459,10 +460,10 @@
             center: currentOriginCoords,
             zoom: 14,
             pitch: 20,
-            bearing: 0
+            bearing: 0,
+            antialias: true
         });
 
-        // Initialize User Tracking Node Markers
         const liveUserBeacon = document.createElement('div');
         liveUserBeacon.className = 'custom-tracking-marker';
         const userGpsMarker = new mapboxgl.Marker(liveUserBeacon).setLngLat(currentOriginCoords).addTo(map);
@@ -471,10 +472,17 @@
         destMarkerElement.className = 'custom-dest-marker';
         const globalDestinationMarker = new mapboxgl.Marker(destMarkerElement);
 
+        // Core Pipeline State Restoration Engine
         map.on('style.load', () => {
+            registerGlobal3DTerrainEngine();
             register3DBuildingsArchitecturalLayer();
+            
             if (selectedDestinationCoords) {
                 renderVisualRouteLines();
+                // Re-inject custom 3D model structures if active destination is a business
+                if (document.getElementById('business-profile-box').dataset.isBusiness === 'true') {
+                    inject3DModelAtLocation(selectedDestinationCoords);
+                }
             }
         });
 
@@ -486,20 +494,13 @@
             initializeLiveGPSHardware();
         });
 
-        // ── GEOLOCATION INFRASTRUCTURE LOGIC ──
         function initializeLiveGPSHardware() {
             if (!navigator.geolocation) {
                 document.getElementById('telemetry-feed').innerText = "GPS NOT SUPPORTED";
                 return;
             }
-
-            navigator.geolocation.getCurrentPosition(handleGPSMoveUpdate, handleGPSTrackingError, {
-                enableHighAccuracy: true
-            });
-
-            navigator.geolocation.watchPosition(handleGPSMoveUpdate, handleGPSTrackingError, {
-                enableHighAccuracy: true
-            });
+            navigator.geolocation.getCurrentPosition(handleGPSMoveUpdate, handleGPSTrackingError, { enableHighAccuracy: true });
+            navigator.geolocation.watchPosition(handleGPSMoveUpdate, handleGPSTrackingError, { enableHighAccuracy: true });
         }
 
         function handleGPSMoveUpdate(position) {
@@ -510,14 +511,8 @@
             
             updateSearchProximityBias();
 
-            // CAMERA CONSTRAINT: If the app hasn't acquired the user yet, jump away from fallback instantly
             if (!mapCenteredOnLiveGPS) {
-                map.flyTo({
-                    center: currentOriginCoords,
-                    zoom: 14,
-                    pitch: 20,
-                    essential: true
-                });
+                map.flyTo({ center: currentOriginCoords, zoom: 14, pitch: 20, essential: true });
                 mapCenteredOnLiveGPS = true;
             }
         }
@@ -526,6 +521,22 @@
             console.warn(`Hardware telemetry exception: ${err.message}`);
             document.getElementById('telemetry-feed').innerText = "GPS TIMEOUT / DENIED";
             document.getElementById('telemetry-feed').style.color = "var(--traffic-red)";
+        }
+
+        function registerGlobal3DTerrainEngine() {
+            if (isSatelliteActive) {
+                // Inject real 3D high-fidelity topographical map terrain when on satellite layer
+                if (!map.getSource('mapbox-dem')) {
+                    map.addSource('mapbox-dem', {
+                        'type': 'raster-dem',
+                        'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
+                        'tileSize': 512
+                    });
+                }
+                map.setTerrain({ 'source': 'mapbox-dem', 'exaggeration': 1.4 });
+            } else {
+                map.setTerrain(null);
+            }
         }
 
         function register3DBuildingsArchitecturalLayer() {
@@ -539,42 +550,61 @@
                 type: 'fill-extrusion',
                 minzoom: 13,
                 paint: {
-                    'fill-extrusion-color': '#2a2a30',
+                    'fill-extrusion-color': isSatelliteActive ? '#ffffff' : '#2a2a30',
                     'fill-extrusion-height': ['get', 'height'],
                     'fill-extrusion-base': ['get', 'min_height'],
-                    'fill-extrusion-opacity': layers3DActive ? 0.85 : 0.0
+                    'fill-extrusion-opacity': layers3DActive ? (isSatelliteActive ? 0.55 : 0.85) : 0.0
                 }
             });
         }
 
-        // ── MODERN MAPBOX SEARCH BOX INTEGRATION (v1.5.0) ──
+        function inject3DModelAtLocation(coords) {
+            clearActiveBusinessModel();
+
+            map.addSource('active-business-3d-source', {
+                'type': 'model',
+                'models': { 'business-gltf': { 'uri': gltfModelUri } },
+                'features': [{
+                    'type': 'Feature',
+                    'properties': { 'model-id': 'business-gltf' },
+                    'geometry': { 'type': 'Point', 'coordinates': coords }
+                }]
+            });
+
+            map.addLayer({
+                'id': 'active-business-3d-layer',
+                'type': 'model',
+                'source': 'active-business-3d-source',
+                'paint': {
+                    'model-scale': [15, 15, 15],
+                    'model-rotation': [0, 0, 90]
+                }
+            });
+        }
+
+        function clearActiveBusinessModel() {
+            if (map.getLayer('active-business-3d-layer')) map.removeLayer('active-business-3d-layer');
+            if (map.getSource('active-business-3d-source')) map.removeSource('active-business-3d-source');
+        }
+
         function initializeProximitySearchEngine() {
             const script = document.getElementById('search-js');
-            
             const initSearchBox = () => {
                 if (typeof mapboxsearch === 'undefined' || !mapboxsearch.MapboxSearchBox) {
                     setTimeout(initSearchBox, 50);
                     return;
                 }
-                
                 const container = document.getElementById('geocoder-mount');
                 if (!container) return;
                 container.innerHTML = ''; 
                 
                 geocoderInstance = new mapboxsearch.MapboxSearchBox();
                 geocoderInstance.accessToken = mapboxgl.accessToken;
-                
-                geocoderInstance.options = {
-                    types: 'address,poi,neighborhood',
-                    proximity: currentOriginCoords
-                };
-                
+                geocoderInstance.options = { types: 'address,poi,neighborhood', proximity: currentOriginCoords };
                 geocoderInstance.mapboxgl = mapboxgl;
                 geocoderInstance.marker = false; 
-                
                 container.appendChild(geocoderInstance);
                 
-                // Track item retrieval events safely
                 geocoderInstance.addEventListener('retrieve', (e) => {
                     let feature = null;
                     if (e.detail && e.detail.features && e.detail.features.length > 0) {
@@ -582,54 +612,30 @@
                     } else if (e.detail && e.detail.geometry) {
                         feature = e.detail;
                     }
-                    
                     if (feature && feature.geometry && feature.geometry.coordinates) {
                         const coords = feature.geometry.coordinates;
                         const name = feature.properties?.name || feature.text || "Target Destination";
                         const address = feature.properties?.full_address || feature.place_name || "";
-                        const category = feature.properties?.poi_category?.[0] || 'Point of Interest';
-                        
-                        const parsedBiz = generateStructuredBusinessData(name, category, address);
-                        loadSpatialDestination(coords, name, address, parsedBiz);
-                        
-                        map.flyTo({
-                            center: coords,
-                            zoom: 15,
-                            essential: true
-                        });
+                        map.flyTo({ center: coords, zoom: 15, essential: true });
+                        loadSpatialDestination(coords, name, address, feature);
                     }
                 });
             };
-            
-            if (script) {
-                if (typeof mapboxsearch !== 'undefined') {
-                    initSearchBox();
-                } else {
-                    script.onload = initSearchBox;
-                }
-            } else {
-                initSearchBox();
-            }
+            if (script) { if (typeof mapboxsearch !== 'undefined') { initSearchBox(); } else { script.onload = initSearchBox; } } else { initSearchBox(); }
         }
 
         function updateSearchProximityBias() {
             if (geocoderInstance && geocoderInstance.options) {
-                geocoderInstance.options = {
-                    ...geocoderInstance.options,
-                    proximity: currentOriginCoords
-                };
+                geocoderInstance.options = { ...geocoderInstance.options, proximity: currentOriginCoords };
             }
         }
 
-        // Hook interaction for category pills matching Search Box model
         document.querySelectorAll('.category-search-pill').forEach(pill => {
             pill.addEventListener('click', () => {
                 const queryTarget = pill.getAttribute('data-query');
                 if (geocoderInstance) {
                     geocoderInstance.value = queryTarget;
                     geocoderInstance.focus();
-
-                    // Force calculation loop update inside ShadowRoot context
                     if (typeof geocoderInstance.search === 'function') {
                         geocoderInstance.search();
                     } else {
@@ -641,37 +647,22 @@
             });
         });
 
-        function generateStructuredBusinessData(name, category, rawAddress) {
-            return {
-                name: name,
-                category: category,
-                rating: ((Math.abs(name.charCodeAt(0) || 5) % 10) / 10 + 4.0).toFixed(1),
-                reviews: Math.floor(Math.random() * 400 + 45),
-                hours: '08:00 AM — 10:00 PM',
-                status: 'Open Now',
-                address: rawAddress
-            };
-        }
-
         function setupInteractiveBuildingQueries() {
             map.on('click', (e) => {
                 const features = map.queryRenderedFeatures(e.point, { layers: ['3d-buildings', 'poi-label'] });
                 if (!features || features.length === 0) return;
 
                 const selectedFeature = features[0];
-                let name = selectedFeature.properties.name || `Architectural Entity Block`;
-                let category = selectedFeature.properties.category_en || 'Urban Structure';
-                
+                let name = selectedFeature.properties.name || "Architectural Entity Block";
+                let address = `LAT: ${e.lngLat.lat.toFixed(5)} | LNG: ${e.lngLat.lng.toFixed(5)}`;
                 const targetCoords = [e.lngLat.lng, e.lngLat.lat];
-                const addr = `LAT: ${e.lngLat.lat.toFixed(5)}, LNG: ${e.lngLat.lng.toFixed(5)}`;
-                const profileData = generateStructuredBusinessData(name, category, addr);
                 
                 map.easeTo({ center: targetCoords, zoom: Math.max(map.getZoom(), 16) });
-                loadSpatialDestination(targetCoords, name, addr, profileData);
+                loadSpatialDestination(targetCoords, name, address, selectedFeature);
             });
         }
 
-        function loadSpatialDestination(coords, title, address, businessData = null) {
+        function loadSpatialDestination(coords, title, address, layerFeature = null) {
             selectedDestinationCoords = coords;
             globalDestinationMarker.setLngLat(coords).addTo(map);
 
@@ -681,17 +672,35 @@
             const profileContainer = document.getElementById('business-profile-box');
             profileContainer.innerHTML = ''; 
 
-            if (businessData) {
+            // Strict Identification Framework
+            const categoryMatch = layerFeature?.properties?.category || layerFeature?.properties?.poi_category?.[0] || layerFeature?.properties?.category_en;
+            const isGenericBlock = title.includes("Architectural Entity Block");
+            
+            if (categoryMatch && !isGenericBlock) {
+                // Populate verified telemetry strictly from Mapbox Core Layers without creating artificial metrics
+                profileContainer.dataset.isBusiness = 'true';
                 profileContainer.innerHTML = `
                     <div class="business-data-grid">
                         <div class="biz-row">
-                            <span class="biz-badge">${businessData.category}</span>
-                            <span class="biz-rating">★ ${businessData.rating} (${businessData.reviews})</span>
+                            <span class="biz-badge">${categoryMatch}</span>
+                            <span class="biz-val" style="color: var(--neon-blue);">Verified Commercial Node</span>
                         </div>
-                        <div class="biz-row"><span class="biz-label">Status:</span><span class="biz-val" style="color:var(--traffic-green);">${businessData.status}</span></div>
-                        <div class="biz-row"><span class="biz-label">Hours:</span><span class="biz-val">${businessData.hours}</span></div>
                     </div>
                 `;
+                // Inject the actual 3D model asset over the commercial location
+                inject3DModelAtLocation(coords);
+            } else {
+                // Non-commercial or architectural baseline blocks
+                profileContainer.dataset.isBusiness = 'false';
+                profileContainer.innerHTML = `
+                    <div class="business-data-grid" style="border-color: rgba(255,255,255,0.04); background: transparent;">
+                        <div class="biz-row">
+                            <span class="biz-label" style="font-size: 0.75rem;">Structure Tracking:</span>
+                            <span class="biz-val" style="color: var(--text-secondary); font-size: 0.75rem;">Generic / Residential Asset</span>
+                        </div>
+                    </div>
+                `;
+                clearActiveBusinessModel();
             }
 
             document.getElementById('destination-card').style.display = 'flex';
@@ -776,15 +785,14 @@
                 layers3DActive = !layers3DActive;
                 e.currentTarget.classList.toggle('active', layers3DActive);
                 if (map.getLayer('3d-buildings')) {
-                    map.setPaintProperty('3d-buildings', 'fill-extrusion-opacity', layers3DActive ? 0.85 : 0.0);
+                    map.setPaintProperty('3d-buildings', 'fill-extrusion-opacity', layers3DActive ? (isSatelliteActive ? 0.55 : 0.85) : 0.0);
                 }
             });
 
             document.getElementById('toggle-satellite').addEventListener('click', (e) => {
-                const currentStyle = map.getStyle().styleJson || map.getStyle();
-                const isSat = currentStyle.sprite && currentStyle.sprite.includes('satellite');
-                e.currentTarget.classList.toggle('active', !isSat);
-                map.setStyle(isSat ? mapStyles.vectorDark : mapStyles.satelliteHybrid);
+                isSatelliteActive = !isSatelliteActive;
+                e.currentTarget.classList.toggle('active', isSatelliteActive);
+                map.setStyle(isSatelliteActive ? mapStyles.satelliteHybrid : mapStyles.vectorDark);
             });
 
             document.getElementById('recenter-gps').addEventListener('click', () => {
@@ -804,6 +812,7 @@
             routeAlternatives = [];
             selectedDestinationCoords = null;
             globalDestinationMarker.remove();
+            clearActiveBusinessModel();
             document.getElementById('destination-card').style.display = 'none';
             if (geocoderInstance) geocoderInstance.value = '';
         }
@@ -832,15 +841,10 @@
             let isDragging = false, startY = 0, startHeight = 0, startTransformY = 0;
 
             handle.addEventListener('pointerdown', (e) => {
-                isDragging = true; 
-                startY = e.clientY;
-                deck.classList.add('is-dragging'); 
-                handle.setPointerCapture(e.pointerId);
-
+                isDragging = true; startY = e.clientY;
+                deck.classList.add('is-dragging'); handle.setPointerCapture(e.pointerId);
                 const isMobile = window.innerWidth <= 480;
-                if (isMobile) {
-                    startHeight = deck.offsetHeight;
-                } else {
+                if (isMobile) { startHeight = deck.offsetHeight; } else {
                     const matrix = new WebKitCSSMatrix(window.getComputedStyle(deck).transform);
                     startTransformY = matrix.m42 || 0;
                 }
@@ -852,14 +856,10 @@
                 const isMobile = window.innerWidth <= 480;
 
                 if (isMobile) {
-                    // Mobile view height tracking updates
                     const targetHeight = startHeight - deltaY;
-                    const minHeight = 120;
-                    const maxHeight = window.innerHeight * 0.85;
-                    deck.style.height = `${Math.max(minHeight, Math.min(maxHeight, targetHeight))}px`;
+                    deck.style.height = `${Math.max(120, Math.min(window.innerHeight * 0.85, targetHeight))}px`;
                     deck.style.transform = 'none'; 
                 } else {
-                    // Desktop view translation tracking updates
                     let targetY = startTransformY + deltaY;
                     if (targetY < 0) targetY *= 0.2; 
                     deck.style.transform = `translateY(${targetY}px)`;
@@ -867,19 +867,11 @@
             });
 
             window.addEventListener('pointerup', () => {
-                if (!isDragging) return; 
-                isDragging = false; 
-                deck.classList.remove('is-dragging');
-
-                const isMobile = window.innerWidth <= 480;
-                if (!isMobile) {
+                if (!isDragging) return; isDragging = false; deck.classList.remove('is-dragging');
+                if (window.innerWidth > 480) {
                     const matrix = new WebKitCSSMatrix(window.getComputedStyle(deck).transform);
-                    const currentY = matrix.m42 || 0;
-                    if (currentY > 180) {
-                        deck.style.transform = `translateY(calc(100vh - 120px))`; 
-                    } else {
-                        deck.style.transform = `translateY(0px)`;
-                    }
+                    if ((matrix.m42 || 0) > 180) { deck.style.transform = `translateY(calc(100vh - 120px))`; } 
+                    else { deck.style.transform = `translateY(0px)`; }
                 }
             });
         }
