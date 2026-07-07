@@ -7,11 +7,8 @@
     <meta name="theme-color" content="#050505" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-title" content="3d Earth" />
-    <link rel="manifest" href="./manifest.webmanifest" />
-    <link rel="icon" type="image/svg+xml" href="./assets/icon.svg" />
-    <link rel="apple-touch-icon" href="./assets/icon.svg" />
-    
+    <meta name="apple-mobile-web-app-title" content="GeoPro" />
+
     <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
 
@@ -177,7 +174,7 @@
             align-items: center;
             justify-content: center;
             border-bottom: 1px solid rgba(255, 51, 51, 0.1);
-            touch-action: none; 
+            touch-action: none;
         }
 
         #drag-handle::before {
@@ -299,6 +296,25 @@
             color: var(--text-muted);
             font-size: 0.78rem;
             line-height: 1.3;
+        }
+
+        #routing-mode-selector {
+            display: none;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: -4px;
+        }
+
+        .mode-btn {
+            padding: 10px 4px;
+            font-size: 0.75rem;
+        }
+
+        .mode-btn.active-mode {
+            background: rgba(255, 51, 51, 0.15);
+            color: var(--action-red);
+            border-color: var(--action-red);
+            box-shadow: 0 0 12px rgba(255, 51, 51, 0.2);
         }
 
         #route-variants-dashboard {
@@ -424,15 +440,440 @@
             border-radius: 50%;
             box-shadow: 0 0 16px var(--action-red-glow);
         }
+
+        /* ── Weather + Environment HUD ─────────────────────── */
+        #weather-env-hud {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 7px 14px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+            pointer-events: none;
+            white-space: nowrap;
+            font-family: var(--font-monospace);
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+        }
+        .wh-sep { width: 1px; height: 13px; background: var(--border-color); flex-shrink: 0; }
+        #wh-cond-icon { font-size: 0.92rem; line-height: 1; }
+        #wh-temp { color: var(--text-primary); font-weight: bold; margin-left: 1px; }
+        #wh-aqi-badge {
+            padding: 2px 7px;
+            border-radius: 4px;
+            border: 1px solid;
+            font-size: 0.63rem;
+            font-weight: bold;
+            display: none;
+        }
+
+        /* ── Speed Limit Beacon ─────────────────────────────── */
+        #speed-limit-beacon {
+            position: absolute;
+            bottom: 210px;
+            left: 16px;
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: #fff;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 12;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.7), inset 0 0 0 4px #cc0000;
+            box-sizing: border-box;
+            cursor: default;
+        }
+        #sl-value {
+            font-size: 1.1rem;
+            font-weight: 900;
+            color: #111;
+            line-height: 1;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        #sl-unit {
+            font-size: 0.4rem;
+            font-weight: 700;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── POI Explorer Panel ─────────────────────────────── */
+        #poi-explorer-panel {
+            position: absolute;
+            top: 80px;
+            right: 76px;
+            width: 292px;
+            max-height: calc(100vh - 140px);
+            background: rgba(6,6,12,0.94);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            z-index: 12;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.85);
+            animation: hudSlideIn 0.2s ease;
+        }
+        @keyframes hudSlideIn {
+            from { opacity: 0; transform: translateX(10px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        #poi-panel-hdr {
+            padding: 10px 12px 8px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        #poi-panel-hdr-title {
+            font-family: var(--font-monospace);
+            font-size: 0.6rem;
+            font-weight: bold;
+            color: var(--action-red);
+            letter-spacing: 1.2px;
+            margin-bottom: 8px;
+        }
+        .poi-cat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; }
+        .poi-cat-btn {
+            background: var(--bg-panel-solid);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 6px;
+            padding: 6px 2px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            transition: all 0.12s;
+        }
+        .poi-cat-btn:hover { background: rgba(255,51,51,0.1); border-color: rgba(255,51,51,0.3); }
+        .poi-cat-btn.poi-cat-active { background: rgba(255,51,51,0.15); border-color: var(--action-red); }
+        .poi-cat-ico { font-size: 0.95rem; line-height: 1; }
+        .poi-cat-lbl { font-size: 0.46rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+        .poi-cat-btn.poi-cat-active .poi-cat-lbl { color: var(--action-red); }
+        #poi-radius-bar {
+            display: flex;
+            gap: 4px;
+            padding: 6px 12px;
+            border-bottom: 1px solid var(--border-color);
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .poi-rad-lbl { font-size: 0.6rem; color: var(--text-muted); flex-shrink: 0; margin-right: 2px; }
+        .poi-rad-btn {
+            flex: 1;
+            background: var(--bg-panel-solid);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 4px;
+            padding: 4px 2px;
+            font-family: var(--font-monospace);
+            font-size: 0.58rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.12s;
+        }
+        .poi-rad-btn.poi-rad-active { background: rgba(255,51,51,0.12); color: var(--action-red); border-color: rgba(255,51,51,0.5); }
+        #poi-results-list {
+            overflow-y: auto;
+            flex: 1;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-height: 60px;
+        }
+        .poi-status-msg { text-align: center; color: var(--text-muted); font-size: 0.72rem; padding: 22px 12px; }
+        .poi-card {
+            width: 100%;
+            background: var(--bg-panel-solid);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 8px;
+            padding: 7px 9px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.12s;
+            text-align: left;
+        }
+        .poi-card:hover { background: rgba(255,51,51,0.08); border-color: rgba(255,51,51,0.35); }
+        .poi-card-ico { font-size: 1.05rem; flex-shrink: 0; width: 20px; text-align: center; }
+        .poi-card-body { flex: 1; overflow: hidden; }
+        .poi-card-name { color: var(--text-primary); font-size: 0.75rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .poi-card-meta { color: var(--text-muted); font-family: var(--font-monospace); font-size: 0.6rem; margin-top: 1px; }
+        .poi-card-nav {
+            background: none;
+            border: 1px solid rgba(255,51,51,0.35);
+            border-radius: 5px;
+            color: var(--action-red);
+            font-size: 0.6rem;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 3px 7px;
+            flex-shrink: 0;
+            transition: all 0.12s;
+        }
+        .poi-card-nav:hover { background: rgba(255,51,51,0.15); }
+
+        /* ── Elevation Profile ──────────────────────────────── */
+        #elevation-profile-wrap {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 10px 8px;
+        }
+        .elev-hdr { display: flex; justify-content: space-between; align-items: center; }
+        .elev-hdr-lbl { font-family: var(--font-monospace); font-size: 0.6rem; font-weight: bold; color: var(--action-red); letter-spacing: 1px; }
+        #elev-canvas { width: 100%; height: 68px; border-radius: 4px; display: block; }
+        #elev-loading-msg { text-align: center; color: var(--text-muted); font-size: 0.7rem; padding: 14px 0; }
+        .elev-stats { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px; margin-top: 2px; }
+        .elev-stat { text-align: center; }
+        .elev-stat-val { color: var(--text-primary); font-family: var(--font-monospace); font-size: 0.7rem; font-weight: bold; }
+        .elev-stat-key { color: var(--text-muted); font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.4px; }
+
+        /* ── Map Theme Picker ───────────────────────────────── */
+        #theme-picker-menu {
+            position: absolute;
+            right: 76px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(6,6,12,0.94);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 6px;
+            z-index: 12;
+            display: none;
+            flex-direction: column;
+            gap: 3px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.85);
+            animation: hudSlideIn 0.2s ease;
+        }
+        .theme-btn {
+            background: var(--bg-panel-solid);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 6px;
+            padding: 8px 14px;
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            cursor: pointer;
+            white-space: nowrap;
+            text-align: left;
+            transition: all 0.12s;
+        }
+        .theme-btn:hover { background: rgba(255,51,51,0.1); color: var(--text-primary); border-color: rgba(255,51,51,0.4); }
+        .theme-btn.theme-active { background: rgba(255,51,51,0.15); color: var(--action-red); border-color: var(--action-red); }
+
+        /* ── Route Alternative Chips ────────────────────────── */
+        .route-alt-row { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 2px; }
+        .route-alt-chip {
+            flex-shrink: 0;
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 7px 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+            min-width: 82px;
+        }
+        .route-alt-chip:hover { border-color: rgba(255,51,51,0.5); background: rgba(255,51,51,0.07); }
+        .route-alt-chip.alt-selected { background: rgba(255,51,51,0.14); border-color: var(--action-red); box-shadow: 0 0 10px rgba(255,51,51,0.2); }
+        .route-alt-badge { font-family: var(--font-monospace); font-size: 0.52rem; color: var(--action-red); margin-bottom: 3px; letter-spacing: 0.4px; }
+        .route-alt-time { color: var(--text-primary); font-weight: bold; font-size: 0.8rem; }
+        .route-alt-dist { color: var(--text-muted); font-size: 0.63rem; margin-top: 2px; }
+
+        /* ── 3D Lane Guidance HUD ─────────────────────────── */
+        #lane-guidance-hud {
+            position: absolute;
+            bottom: 24px;
+            left: 16px;
+            width: 248px;
+            background: rgba(6, 6, 12, 0.92);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 51, 51, 0.28);
+            border-radius: 14px;
+            overflow: hidden;
+            z-index: 11;
+            box-shadow: 0 8px 36px rgba(0, 0, 0, 0.85), 0 0 28px rgba(255, 51, 51, 0.07);
+            display: none;
+            flex-direction: column;
+            animation: lghFadeIn 0.3s ease;
+        }
+
+        @keyframes lghFadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        #lgh-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 11px 7px;
+        }
+
+        #lgh-label {
+            font-family: var(--font-monospace);
+            font-size: 0.6rem;
+            font-weight: bold;
+            color: var(--action-red);
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+        }
+
+        #lgh-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.68rem;
+            padding: 0 2px;
+            line-height: 1;
+            transition: color 0.15s;
+        }
+
+        #lgh-close:hover { color: var(--text-primary); }
+
+        #lane-3d-canvas {
+            display: block;
+            width: 248px;
+            height: 155px;
+        }
+
+        #lgh-footer {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 9px 11px 10px;
+            border-top: 1px solid rgba(255, 51, 51, 0.1);
+        }
+
+        #lgh-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 7px;
+            background: rgba(255, 51, 51, 0.12);
+            border: 1px solid rgba(255, 51, 51, 0.28);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: var(--action-red);
+        }
+
+        #lgh-text-col {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #lgh-instruction {
+            color: var(--text-primary);
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 1.25;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #lgh-distance {
+            color: var(--text-muted);
+            font-family: var(--font-monospace);
+            font-size: 0.62rem;
+            margin-top: 2px;
+        }
     </style>
 </head>
 <body>
 
     <div id="map"></div>
 
+    <!-- Weather + Environment HUD (top-center) -->
+    <div id="weather-env-hud">
+        <span id="wh-cond-icon">☀</span>
+        <span id="wh-temp">--°F</span>
+        <div class="wh-sep"></div>
+        <span id="wh-feels">--°</span>
+        <div class="wh-sep"></div>
+        <span id="wh-wind">-- mph</span>
+        <div class="wh-sep"></div>
+        <span id="wh-aqi-badge"></span>
+    </div>
+
+    <!-- Speed Limit Beacon (bottom-left, nav mode) -->
+    <div id="speed-limit-beacon">
+        <div id="sl-value">--</div>
+        <div id="sl-unit">mph</div>
+    </div>
+
+    <!-- Map Theme Picker Menu -->
+    <div id="theme-picker-menu"></div>
+
+    <!-- POI Explorer Panel -->
+    <div id="poi-explorer-panel">
+        <div id="poi-panel-hdr">
+            <div id="poi-panel-hdr-title">◈ NEARBY EXPLORER</div>
+            <div class="poi-cat-grid">
+                <button class="poi-cat-btn poi-cat-active" data-cat="food"><span class="poi-cat-ico">🍽</span><span class="poi-cat-lbl">Food</span></button>
+                <button class="poi-cat-btn" data-cat="fuel"><span class="poi-cat-ico">⛽</span><span class="poi-cat-lbl">Gas</span></button>
+                <button class="poi-cat-btn" data-cat="medical"><span class="poi-cat-ico">🏥</span><span class="poi-cat-lbl">Medical</span></button>
+                <button class="poi-cat-btn" data-cat="parking"><span class="poi-cat-ico">🅿</span><span class="poi-cat-lbl">Parking</span></button>
+                <button class="poi-cat-btn" data-cat="coffee"><span class="poi-cat-ico">☕</span><span class="poi-cat-lbl">Coffee</span></button>
+                <button class="poi-cat-btn" data-cat="atm"><span class="poi-cat-ico">💰</span><span class="poi-cat-lbl">ATM</span></button>
+                <button class="poi-cat-btn" data-cat="hotel"><span class="poi-cat-ico">🏨</span><span class="poi-cat-lbl">Hotel</span></button>
+                <button class="poi-cat-btn" data-cat="shopping"><span class="poi-cat-ico">🛒</span><span class="poi-cat-lbl">Shop</span></button>
+            </div>
+        </div>
+        <div id="poi-radius-bar">
+            <span class="poi-rad-lbl">Radius:</span>
+            <button class="poi-rad-btn" data-radius="300">300m</button>
+            <button class="poi-rad-btn poi-rad-active" data-radius="500">500m</button>
+            <button class="poi-rad-btn" data-radius="1000">1 km</button>
+            <button class="poi-rad-btn" data-radius="2000">2 km</button>
+        </div>
+        <div id="poi-results-list"><div class="poi-status-msg">Select a category to search nearby places.</div></div>
+    </div>
+
+    <!-- 3D Lane Guidance HUD -->
+    <div id="lane-guidance-hud">
+        <div id="lgh-header">
+            <span id="lgh-label">◈ LANE GUIDANCE</span>
+            <button id="lgh-close">✕</button>
+        </div>
+        <canvas id="lane-3d-canvas" width="496" height="310"></canvas>
+        <div id="lgh-footer">
+            <div id="lgh-icon">
+                <svg id="lgh-arrow-svg" width="18" height="18" viewBox="0 0 18 18" fill="none"></svg>
+            </div>
+            <div id="lgh-text-col">
+                <div id="lgh-instruction">Follow current road</div>
+                <div id="lgh-distance"></div>
+            </div>
+        </div>
+    </div>
+
     <div class="hud-system-header">
         <div class="hud-module">
-            <div class="brand-node">3d<span>EARTH</span></div>
+            <div class="brand-node">Geo<span>PRO</span></div>
             <div style="width: 1px; height: 14px; background: var(--border-color);"></div>
             <div id="telemetry-status-node">BOOTING NAVIGATION...</div>
         </div>
@@ -449,12 +890,18 @@
         <button id="compass-orientation-lock" class="side-btn" title="Reset North">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
         </button>
+        <button id="poi-radar-toggle" class="side-btn" title="Explore Nearby Places">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
+        </button>
+        <button id="theme-switcher-btn" class="side-btn" title="Map Style">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        </button>
     </div>
 
     <div id="control-panel-deck">
         <div id="drag-handle"></div>
         <div class="workspace-content-body">
-            
+
             <div class="search-engine-wrap">
                 <input type="text" id="osm-engine-input" placeholder="Search target location or city..." autocomplete="off"/>
                 <div id="osm-engine-dropdown" class="suggest-dropdown-matrix"></div>
@@ -470,7 +917,37 @@
                 </div>
             </div>
 
+            <div id="routing-mode-selector">
+                <button class="hud-btn mode-btn active-mode" data-mode="driving">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="8" rx="2"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/><path d="M5 11l2-5h10l2 5"/></svg>
+                    DRIVE
+                </button>
+                <button class="hud-btn mode-btn" data-mode="cycling">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="18" r="4"/><circle cx="19" cy="18" r="4"/><path d="M10 9l2.5-3 5 5 1.5-1.5"/><path d="M12 18v-5l-3-3 2-2 3 3"/></svg>
+                    CYCLE
+                </button>
+                <button class="hud-btn mode-btn" data-mode="walking">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M14 11l-2.5-3-2.5 3"/><path d="M10.5 14L9 22"/><path d="M13.5 14l1.5 8"/><path d="M12 8v6"/></svg>
+                    WALK
+                </button>
+            </div>
+
             <div id="route-variants-dashboard"></div>
+
+            <!-- Elevation Profile (shown after routing) -->
+            <div id="elevation-profile-wrap">
+                <div class="elev-hdr">
+                    <span class="elev-hdr-lbl">◈ ELEVATION PROFILE</span>
+                </div>
+                <div id="elev-loading-msg">Loading elevation data…</div>
+                <canvas id="elev-canvas"></canvas>
+                <div class="elev-stats">
+                    <div class="elev-stat"><div class="elev-stat-val" id="elev-gain">--</div><div class="elev-stat-key">↑ Gain</div></div>
+                    <div class="elev-stat"><div class="elev-stat-val" id="elev-loss">--</div><div class="elev-stat-key">↓ Loss</div></div>
+                    <div class="elev-stat"><div class="elev-stat-val" id="elev-max">--</div><div class="elev-stat-key">▲ Max</div></div>
+                    <div class="elev-stat"><div class="elev-stat-val" id="elev-min">--</div><div class="elev-stat-key">▼ Min</div></div>
+                </div>
+            </div>
 
             <div class="workspace-hardware-row">
                 <button id="flush-workspace-trigger" class="hud-btn">
@@ -486,19 +963,24 @@
 
     <script>
         let defaultUserCoordinates = [-122.084, 37.422];
-        let currentLiveGpsPosition = null; 
+        let currentLiveGpsPosition = null;
         let targetSelectedCoordinates = null;
         let querySearchDebounceTimer = null;
-         
-        let activeMapMarker = null; 
+
+        let currentRoutingProfile = 'driving';
+
+        let laneGuidance = null;
+
+        let activeMapMarker = null;
         let userLocationBeaconMarker = null;
-        let activeRouteDataStore = []; 
-        let cameraTrackingMode = true; 
-        
+        let activeRouteDataStore = [];
+        let selectedRouteIndex = 0;
+        let cameraTrackingMode = true;
+
         let lastGpsTimestamp = null;
         let currentVehicleHeading = 0;
         let lastCameraUpdateTimestamp = 0;
-        
+
         const HIGH_PERFORMANCE_DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
         const GPS_MAX_ACCEPTED_ACCURACY_METERS = 100;
         const GPS_MIN_CAMERA_INTERVAL_MS = 900;
@@ -508,9 +990,9 @@
 
         const map = new maplibregl.Map({
             container: 'map',
-            style: HIGH_PERFORMANCE_DARK_STYLE, 
-            center: defaultUserCoordinates, 
-            zoom: 3, 
+            style: HIGH_PERFORMANCE_DARK_STYLE,
+            center: defaultUserCoordinates,
+            zoom: 3,
             pitch: 65,
             maxPitch: 85,
             bearing: 0,
@@ -543,10 +1025,9 @@
                 && coords[1] <= 90;
         }
 
-        // Added missing calculateDistanceMeters function
         function calculateDistanceMeters(p1, p2) {
-            const R = 6371e3; // metres
-            const φ1 = p1[1] * Math.PI/180; // φ, λ in radians
+            const R = 6371e3;
+            const φ1 = p1[1] * Math.PI/180;
             const φ2 = p2[1] * Math.PI/180;
             const Δφ = (p2[1]-p1[1]) * Math.PI/180;
             const Δλ = (p2[0]-p1[0]) * Math.PI/180;
@@ -556,10 +1037,9 @@
                       Math.sin(Δλ/2) * Math.sin(Δλ/2);
             const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-            return R * c; 
+            return R * c;
         }
 
-        // Added missing smoothCoordinatePair function
         function smoothCoordinatePair(oldCoords, newCoords) {
             if (!oldCoords || !newCoords) return newCoords;
             return [
@@ -572,21 +1052,359 @@
             if (!isValidCoordinatePair(p1) || !isValidCoordinatePair(p2)) return fallbackBearing;
             const samePoint = Math.abs(p1[0] - p2[0]) < 0.000001 && Math.abs(p1[1] - p2[1]) < 0.000001;
             if (samePoint) return fallbackBearing;
-            
+
             const lng1 = p1[0] * Math.PI / 180;
             const lat1 = p1[1] * Math.PI / 180;
             const lng2 = p2[0] * Math.PI / 180;
             const lat2 = p2[1] * Math.PI / 180;
-            
+
             const dLng = lng2 - lng1;
             const y = Math.sin(dLng) * Math.cos(lat2);
             const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
-            
+
             const bearing = Math.atan2(y, x) * 180 / Math.PI;
             return Number.isFinite(bearing) ? (bearing + 360) % 360 : fallbackBearing;
         }
 
+        // ── 3D Lane Guidance System ──────────────────────────────────────────
+        class LaneGuidance3D {
+            constructor() {
+                this.hud     = document.getElementById('lane-guidance-hud');
+                this.canvas  = document.getElementById('lane-3d-canvas');
+                this.ctx     = this.canvas.getContext('2d');
+                this.instrEl = document.getElementById('lgh-instruction');
+                this.distEl  = document.getElementById('lgh-distance');
+                this.svgEl   = document.getElementById('lgh-arrow-svg');
+
+                // Canvas is 496×310 buffer → displayed at 248×155 CSS px (2× retina)
+                this.W = 248; this.H = 155;
+
+                this.phase          = 0;
+                this.animFrame      = null;
+                this.numLanes       = 3;
+                this.highlightedLanes = [1];
+                this.maneuverDir    = 'straight';
+
+                // Scale context so logical coords (248×155) fill the 2× buffer (496×310)
+                this.ctx.scale(2, 2);
+
+                document.getElementById('lgh-close')
+                    .addEventListener('click', () => this.hide());
+            }
+
+            // Public ─────────────────────────────────────────────────────────
+
+            show(step) {
+                const type = (step.maneuverType     || 'depart').toLowerCase();
+                const mod  = (step.maneuverModifier || 'straight').toLowerCase();
+
+                this._computeLanes(type, mod);
+                this._setIcon(type, mod);
+
+                this.instrEl.textContent = step.text || 'Follow current road';
+
+                const m = step.distance || 0;
+                if (m > 0) {
+                    const ft = Math.round(m * 3.28084);
+                    this.distEl.textContent = ft >= 5280
+                        ? `${(ft / 5280).toFixed(1)} mi away`
+                        : `${ft} ft away`;
+                } else {
+                    this.distEl.textContent = '';
+                }
+
+                this.hud.style.display = 'flex';
+                // re-trigger CSS animation on each update
+                this.hud.style.animation = 'none';
+                void this.hud.offsetWidth;
+                this.hud.style.animation = '';
+
+                if (!this.animFrame) this._startLoop();
+            }
+
+            hide() {
+                this.hud.style.display = 'none';
+                if (this.animFrame) {
+                    cancelAnimationFrame(this.animFrame);
+                    this.animFrame = null;
+                }
+            }
+
+            // Private ────────────────────────────────────────────────────────
+
+            _computeLanes(type, mod) {
+                const mid = Math.floor(this.numLanes / 2);
+
+                if (mod === 'uturn' || mod === 'u-turn') {
+                    this.highlightedLanes = [0];
+                    this.maneuverDir = 'uturn';
+                } else if (mod === 'sharp left' || mod === 'left') {
+                    this.highlightedLanes = [0];
+                    this.maneuverDir = 'left';
+                } else if (mod === 'slight left') {
+                    this.highlightedLanes = [0, mid];
+                    this.maneuverDir = 'slight-left';
+                } else if (mod === 'sharp right' || mod === 'right') {
+                    this.highlightedLanes = [this.numLanes - 1];
+                    this.maneuverDir = 'right';
+                } else if (mod === 'slight right') {
+                    this.highlightedLanes = [mid, this.numLanes - 1];
+                    this.maneuverDir = 'slight-right';
+                } else {
+                    this.highlightedLanes = [mid];
+                    this.maneuverDir = (type === 'arrive') ? 'arrive' : 'straight';
+                }
+            }
+
+            _setIcon(type, mod) {
+                // SVG icons for the footer pill
+                const icons = {
+                    left:         '<polyline points="14,4 4,9 14,14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><line x1="4" y1="9" x2="15" y2="9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+                    'slight-left':'<polyline points="14,4 6,9 14,14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+                    right:        '<polyline points="4,4 14,9 4,14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><line x1="14" y1="9" x2="3" y2="9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+                    'slight-right':'<polyline points="4,4 12,9 4,14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+                    uturn:        '<path d="M13,13 L13,6 Q13,3 10,3 Q7,3 7,6 L7,13 L4,10 M7,13 L10,10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+                    arrive:       '<circle cx="9" cy="9" r="4" stroke="currentColor" stroke-width="2.2" fill="none"/><circle cx="9" cy="9" r="1.5" fill="currentColor"/>',
+                    straight:     '<line x1="9" y1="15" x2="9" y2="5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><polyline points="5,8 9,4 13,8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+                };
+                this.svgEl.innerHTML = icons[this.maneuverDir] || icons.straight;
+            }
+
+            _startLoop() {
+                const tick = (ts) => {
+                    this.phase = ts / 1000;
+                    this._draw();
+                    this.animFrame = requestAnimationFrame(tick);
+                };
+                this.animFrame = requestAnimationFrame(tick);
+            }
+
+            _draw() {
+                const ctx = this.ctx;
+                const W = this.W, H = this.H;
+
+                ctx.clearRect(0, 0, W, H);
+
+                // Geometry: road trapezoid
+                const rbl = 0,    rbr = W;    // bottom left/right x
+                const rtl = 80,   rtr = 168;  // top left/right x at horizon
+                const vy  = 26;              // horizon y
+
+                // Perspective helpers
+                const lerpX = (t, d) => (rbl + (rbr - rbl) * t) * (1 - d) + (rtl + (rtr - rtl) * t) * d;
+                const lerpY = (d)    => H + (vy - H) * d;
+
+                // ── Background ────────────────────────────────────────────
+                const bg = ctx.createLinearGradient(0, 0, 0, H);
+                bg.addColorStop(0,        '#020208');
+                bg.addColorStop(vy / H,   '#06060f');
+                bg.addColorStop(1,        '#0c0c18');
+                ctx.fillStyle = bg;
+                ctx.fillRect(0, 0, W, H);
+
+                // Subtle side atmosphere
+                [[0, 0.22], [1, 0.78]].forEach(([side, stop]) => {
+                    const ag = ctx.createRadialGradient(side * W, H, 0, side * W, H, W * 0.55);
+                    ag.addColorStop(0,   'rgba(255,51,51,0.05)');
+                    ag.addColorStop(1,   'rgba(255,51,51,0)');
+                    ctx.fillStyle = ag;
+                    ctx.fillRect(0, 0, W, H);
+                });
+
+                // ── Road surface ──────────────────────────────────────────
+                const roadGrad = ctx.createLinearGradient(0, vy, 0, H);
+                roadGrad.addColorStop(0,    '#0d0d1c');
+                roadGrad.addColorStop(0.55, '#131322');
+                roadGrad.addColorStop(1,    '#191926');
+                ctx.beginPath();
+                ctx.moveTo(rbl, H); ctx.lineTo(rtl, vy);
+                ctx.lineTo(rtr, vy); ctx.lineTo(rbr, H);
+                ctx.closePath();
+                ctx.fillStyle = roadGrad;
+                ctx.fill();
+
+                // ── Highlighted lane fill ─────────────────────────────────
+                this.highlightedLanes.forEach(li => {
+                    const lf = li / this.numLanes, rf = (li + 1) / this.numLanes;
+                    const pulse = 0.22 + 0.11 * Math.sin(this.phase * 2.6);
+                    const lg = ctx.createLinearGradient(0, vy, 0, H);
+                    lg.addColorStop(0,    'rgba(255,51,51,0.02)');
+                    lg.addColorStop(0.55, `rgba(255,51,51,${pulse * 0.45})`);
+                    lg.addColorStop(1,    `rgba(255,51,51,${pulse})`);
+                    ctx.beginPath();
+                    ctx.moveTo(lerpX(lf, 0), H); ctx.lineTo(lerpX(lf, 1), vy);
+                    ctx.lineTo(lerpX(rf, 1), vy); ctx.lineTo(lerpX(rf, 0), H);
+                    ctx.closePath();
+                    ctx.fillStyle = lg;
+                    ctx.fill();
+                });
+
+                // ── Depth / perspective grid lines ────────────────────────
+                [0.18, 0.33, 0.50, 0.65, 0.79, 0.91].forEach(d => {
+                    const y = lerpY(d);
+                    ctx.beginPath();
+                    ctx.moveTo(lerpX(0, d), y);
+                    ctx.lineTo(lerpX(1, d), y);
+                    ctx.strokeStyle = `rgba(255,255,255,${0.025 + d * 0.038})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.setLineDash([]);
+                    ctx.stroke();
+                });
+
+                // ── Animated lane dividers (scrolling dashes = motion feel) ──
+                const dashLen = 20, gapLen = 14;
+                const scrollSpeed = 100; // px/s (logical coords projected)
+                const offset = -(this.phase * scrollSpeed % (dashLen + gapLen));
+
+                for (let i = 1; i < this.numLanes; i++) {
+                    const t = i / this.numLanes;
+                    const isCenter = (this.numLanes % 2 === 1) && (i === Math.floor(this.numLanes / 2));
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(lerpX(t, 0), H);
+                    ctx.lineTo(lerpX(t, 1), vy);
+                    ctx.strokeStyle = isCenter
+                        ? 'rgba(255,195,35,0.42)'
+                        : 'rgba(255,255,255,0.32)';
+                    ctx.lineWidth = 1.5;
+                    ctx.setLineDash([dashLen, gapLen]);
+                    ctx.lineDashOffset = offset;
+                    ctx.stroke();
+                    ctx.restore();
+                }
+                ctx.setLineDash([]);
+
+                // ── Road edges ────────────────────────────────────────────
+                [[rbl, H, rtl, vy], [rbr, H, rtr, vy]].forEach(([x1,y1,x2,y2]) => {
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.68)';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                });
+
+                // ── Highlighted lane edges (glowing) ──────────────────────
+                const ep = 0.48 + 0.3 * Math.sin(this.phase * 2.6);
+                this.highlightedLanes.forEach(li => {
+                    [li, li + 1].forEach(edge => {
+                        const t = edge / this.numLanes;
+                        ctx.beginPath();
+                        ctx.moveTo(lerpX(t, 0), H);
+                        ctx.lineTo(lerpX(t, 1), vy);
+                        ctx.strokeStyle = `rgba(255,51,51,${ep * 0.55})`;
+                        ctx.lineWidth = 1.8;
+                        ctx.shadowColor = '#ff3333';
+                        ctx.shadowBlur = 6;
+                        ctx.stroke();
+                        ctx.shadowBlur = 0;
+                    });
+                });
+
+                // ── Lane arrows ───────────────────────────────────────────
+                const arrowDepth = 0.40;
+                for (let i = 0; i < this.numLanes; i++) {
+                    const ct = (i + 0.5) / this.numLanes;
+                    const ax = lerpX(ct, arrowDepth);
+                    const ay = lerpY(arrowDepth);
+                    const scale = (1 - arrowDepth * 0.52) * 17;
+                    this._drawArrow(ctx, ax, ay, scale, this.highlightedLanes.includes(i));
+                }
+
+                // ── Horizon glow line ─────────────────────────────────────
+                const hg = ctx.createLinearGradient(0, vy - 12, 0, vy + 18);
+                hg.addColorStop(0,   'rgba(255,51,51,0)');
+                hg.addColorStop(0.45,'rgba(255,51,51,0.09)');
+                hg.addColorStop(1,   'rgba(255,51,51,0)');
+                ctx.fillStyle = hg;
+                ctx.fillRect(0, vy - 12, W, 30);
+            }
+
+            _drawArrow(ctx, x, y, s, isHighlighted) {
+                ctx.save();
+                ctx.translate(x, y);
+                const color = isHighlighted ? '#ff3333' : 'rgba(255,255,255,0.28)';
+                ctx.strokeStyle = color;
+                ctx.fillStyle   = color;
+                ctx.lineWidth   = isHighlighted ? 2.2 : 1.4;
+                ctx.lineCap     = 'round';
+                ctx.lineJoin    = 'round';
+                if (isHighlighted) {
+                    ctx.shadowColor = '#ff3333';
+                    ctx.shadowBlur  = 7;
+                }
+
+                const dir = isHighlighted ? this.maneuverDir : 'straight';
+
+                if (dir === 'left' || dir === 'slight-left') {
+                    // Curved left arrow
+                    ctx.beginPath();
+                    ctx.moveTo(s * 0.20,  s * 0.55);
+                    ctx.lineTo(s * 0.20,  0);
+                    ctx.quadraticCurveTo(s * 0.20, -s * 0.52, -s * 0.30, -s * 0.52);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(-s * 0.56, -s * 0.52);
+                    ctx.lineTo(-s * 0.10, -s * 0.24);
+                    ctx.lineTo(-s * 0.10, -s * 0.80);
+                    ctx.closePath(); ctx.fill();
+                } else if (dir === 'right' || dir === 'slight-right') {
+                    // Curved right arrow
+                    ctx.beginPath();
+                    ctx.moveTo(-s * 0.20,  s * 0.55);
+                    ctx.lineTo(-s * 0.20,  0);
+                    ctx.quadraticCurveTo(-s * 0.20, -s * 0.52, s * 0.30, -s * 0.52);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(s * 0.56, -s * 0.52);
+                    ctx.lineTo(s * 0.10, -s * 0.24);
+                    ctx.lineTo(s * 0.10, -s * 0.80);
+                    ctx.closePath(); ctx.fill();
+                } else if (dir === 'uturn') {
+                    // U-turn arrow
+                    ctx.beginPath();
+                    ctx.moveTo(s * 0.22,  s * 0.55);
+                    ctx.lineTo(s * 0.22, -s * 0.12);
+                    ctx.arc(-s * 0.04, -s * 0.12, s * 0.26, 0, Math.PI, true);
+                    ctx.lineTo(-s * 0.30,  s * 0.30);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(-s * 0.56,  s * 0.15);
+                    ctx.lineTo(-s * 0.30,  s * 0.00);
+                    ctx.lineTo(-s * 0.04,  s * 0.15);
+                    ctx.closePath(); ctx.fill();
+                } else if (dir === 'arrive') {
+                    // Filled circle (destination)
+                    ctx.beginPath();
+                    ctx.arc(0, 0, s * 0.38, 0, Math.PI * 2);
+                    ctx.fill();
+                    const inner = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 0.38);
+                    inner.addColorStop(0, 'rgba(255,255,255,0.6)');
+                    inner.addColorStop(1, 'rgba(255,51,51,0)');
+                    ctx.fillStyle = inner;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, s * 0.38, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Straight up arrow (default)
+                    ctx.beginPath();
+                    ctx.moveTo(0,  s * 0.55);
+                    ctx.lineTo(0, -s * 0.28);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(0,       -s * 0.60);
+                    ctx.lineTo(-s * 0.38, -s * 0.12);
+                    ctx.lineTo( s * 0.38, -s * 0.12);
+                    ctx.closePath(); ctx.fill();
+                }
+                ctx.restore();
+            }
+        }
+        // ── End LaneGuidance3D ─────────────────────────────────────────────
+
         map.on('load', () => {
+            laneGuidance = new LaneGuidance3D();
+            initPOIRadar();
+            initThemePicker();
             initTacticalPanelDraggingPhysics();
             initAutonomousSearchMatrix();
             initDirectMapInputListeners();
@@ -620,15 +1438,22 @@
             map.on('pitchstart', cancelTracking);
         });
 
+        // FIX #3: Added isStyleLoaded() guard so layers are only injected once
+        // the style is fully ready. style.data fires many times during loading,
+        // and attempting to add sources/layers before the style is ready throws.
         map.on('style.data', () => {
+            if (!map.isStyleLoaded()) return;
             inject3DEarthWorldAssets();
             redrawActiveRoutePipelines();
         });
 
         function inject3DEarthWorldAssets() {
+            // FIX #3 (also guards from load path in case style not yet settled)
+            if (!map.isStyleLoaded()) return;
+
             const styleSources = map.getStyle().sources;
             if (!styleSources) return;
-            
+
             const sourceKey = Object.keys(styleSources).find(key => styleSources[key].type === 'vector');
             if (!sourceKey || !map.getSource(sourceKey)) return;
 
@@ -701,7 +1526,7 @@
                     'source': sourceKey,
                     'source-layer': 'building',
                     'type': 'fill-extrusion',
-                    'minzoom': 15, 
+                    'minzoom': 15,
                     'paint': {
                         'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 14],
                         'fill-extrusion-base': ['coalesce', ['get', 'min_height'], ['get', 'render_min_height'], 0],
@@ -720,7 +1545,7 @@
             btn.innerText = "COMPUTING PATH TRAJECTORY...";
             btn.style.opacity = "0.6";
             btn.disabled = true;
-            
+
             let originCoords = isValidCoordinatePair(currentLiveGpsPosition) ? currentLiveGpsPosition : null;
             if (!originCoords) {
                 const mapCenter = map.getCenter();
@@ -732,9 +1557,9 @@
                 btn.disabled = false;
                 return;
             }
-             
-            const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&steps=true`;
-            
+
+            const routingQueryUrl = `https://router.project-osrm.org/route/v1/${currentRoutingProfile}/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&steps=true&alternatives=3`;
+
             try {
                 clearActiveRouteLayers();
                 activeRouteDataStore = [];
@@ -742,44 +1567,38 @@
                 const stream = await fetch(routingQueryUrl);
                 if (!stream.ok) throw new Error(`Routing service returned ${stream.status}`);
                 const results = await stream.json();
-                
+
                 if (results.code === 'Ok' && results.routes && results.routes.length > 0) {
-                    const primaryRoute = results.routes[0];
-                    let parsedInstructions = [];
-                    
-                    if (primaryRoute.legs && primaryRoute.legs[0].steps) {
-                        parsedInstructions = primaryRoute.legs[0].steps.map(step => {
-                            let modifier = step.maneuver.modifier ? ` ${step.maneuver.modifier}` : '';
-                            let type = step.maneuver.type === 'turn' ? 'Turn' : step.maneuver.type;
-                            let street = step.name ? ` onto ${step.name}` : '';
-                            let rawMessage = `${type}${modifier}${street}`;
-                            
-                            if (step.maneuver.type === 'depart') rawMessage = `Follow target vector from ${step.name || 'current coordinates'}`;
-                            if (step.maneuver.type === 'arrive') rawMessage = "Target location node reached";
-
-                            return {
-                                text: rawMessage.charAt(0).toUpperCase() + rawMessage.slice(1),
-                                distance: step.distance,
-                                coordinates: step.maneuver.location
-                            };
-                        }).filter(item => item.text);
-                    }
-
-                    activeRouteDataStore = [{
-                        index: 0,
-                        geometry: primaryRoute.geometry, 
-                        duration: primaryRoute.duration,
-                        distance: primaryRoute.distance,
-                        steps: parsedInstructions
-                    }];
+                    activeRouteDataStore = results.routes.slice(0, 3).map((route, idx) => {
+                        let parsedInstructions = [];
+                        if (route.legs && route.legs[0].steps) {
+                            parsedInstructions = route.legs[0].steps.map(step => {
+                                let modifier = step.maneuver.modifier ? ` ${step.maneuver.modifier}` : '';
+                                let type = step.maneuver.type === 'turn' ? 'Turn' : step.maneuver.type;
+                                let street = step.name ? ` onto ${step.name}` : '';
+                                let rawMessage = `${type}${modifier}${street}`;
+                                if (step.maneuver.type === 'depart') rawMessage = `Follow target vector from ${step.name || 'current coordinates'}`;
+                                if (step.maneuver.type === 'arrive') rawMessage = "Target location node reached";
+                                return {
+                                    text: rawMessage.charAt(0).toUpperCase() + rawMessage.slice(1),
+                                    distance: step.distance,
+                                    coordinates: step.maneuver.location,
+                                    maneuverType: step.maneuver.type,
+                                    maneuverModifier: step.maneuver.modifier || 'straight'
+                                };
+                            }).filter(item => item.text);
+                        }
+                        return { index: idx, geometry: route.geometry, duration: route.duration, distance: route.distance, steps: parsedInstructions };
+                    });
+                    selectedRouteIndex = 0;
                 }
-            } catch (err) { 
+            } catch (err) {
                 console.error("OSRM route fault.", err);
             }
 
             redrawActiveRoutePipelines();
             renderRouteDashboardUI();
-            
+
             if (activeRouteDataStore.length > 0) {
                 const coords = activeRouteDataStore[0].geometry.coordinates;
                 if (coords.length > 1) {
@@ -793,13 +1612,26 @@
                     });
                 }
                 document.getElementById('control-panel-deck').classList.add('minimized');
+                // Show 3D lane guidance starting from the first step of selected route
+                if (laneGuidance && activeRouteDataStore[selectedRouteIndex].steps.length > 0) {
+                    laneGuidance.show(activeRouteDataStore[selectedRouteIndex].steps[0]);
+                }
+                // Load elevation profile
+                loadElevationProfile(activeRouteDataStore[selectedRouteIndex].geometry.coordinates);
             } else {
                 btn.innerText = "ROUTE UNAVAILABLE - TRY AGAIN";
                 btn.style.display = "block";
             }
+
             btn.style.opacity = "1";
             btn.disabled = false;
-            if (activeRouteDataStore.length > 0) btn.style.display = "none";
+
+            // FIX #4: Reset button text before hiding so it shows correctly
+            // if the panel is re-expanded before the next destination is selected.
+            if (activeRouteDataStore.length > 0) {
+                btn.innerText = "GET DIRECTIONS";
+                btn.style.display = "none";
+            }
         }
 
         function redrawActiveRoutePipelines() {
@@ -807,13 +1639,14 @@
             if (!map.isStyleLoaded()) return;
 
             activeRouteDataStore.forEach((r) => {
+                const isSelected = r.index === selectedRouteIndex;
                 const baseCoords = r.geometry.coordinates;
                 const srcId = `src-active-route-${r.index}`;
 
                 if (!map.getSource(srcId)) {
-                    map.addSource(srcId, { 
-                        type: 'geojson', 
-                        data: { type: 'Feature', geometry: { type: 'LineString', coordinates: baseCoords } } 
+                    map.addSource(srcId, {
+                        type: 'geojson',
+                        data: { type: 'Feature', geometry: { type: 'LineString', coordinates: baseCoords } }
                     });
                 } else {
                     map.getSource(srcId).setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: baseCoords } });
@@ -826,9 +1659,9 @@
                         source: srcId,
                         layout: { 'line-join': 'round', 'line-cap': 'round' },
                         paint: {
-                            'line-color': '#ff3333',
+                            'line-color': isSelected ? '#ff3333' : '#666680',
                             'line-width': ['interpolate', ['linear'], ['zoom'], 12, 8, 16, 16, 20, 36],
-                            'line-opacity': 0.35,
+                            'line-opacity': isSelected ? 0.35 : 0.12,
                             'line-blur': 14,
                             'line-offset': ['interpolate', ['linear'], ['zoom'], 12, 1, 18, 5]
                         }
@@ -842,9 +1675,9 @@
                         source: srcId,
                         layout: { 'line-join': 'round', 'line-cap': 'round' },
                         paint: {
-                            'line-color': '#1b1b25',
+                            'line-color': isSelected ? '#1b1b25' : '#252535',
                             'line-width': ['interpolate', ['linear'], ['zoom'], 12, 6, 16, 12, 20, 28],
-                            'line-opacity': 0.96
+                            'line-opacity': isSelected ? 0.96 : 0.5
                         }
                     });
                 }
@@ -856,9 +1689,9 @@
                         source: srcId,
                         layout: { 'line-join': 'round', 'line-cap': 'round' },
                         paint: {
-                            'line-color': '#ff3333', 
+                            'line-color': isSelected ? '#ff3333' : '#4a4a6a',
                             'line-width': ['interpolate', ['linear'], ['zoom'], 12, 4, 16, 8, 20, 16],
-                            'line-opacity': 1.0
+                            'line-opacity': isSelected ? 1.0 : 0.55
                         }
                     });
                 }
@@ -869,71 +1702,97 @@
             const dashboard = document.getElementById('route-variants-dashboard');
             if (!dashboard) return;
             dashboard.innerHTML = '';
-            if (!activeRouteDataStore || activeRouteDataStore.length === 0) {
+            if (!activeRouteDataStore || !activeRouteDataStore.length) {
                 dashboard.style.display = 'none';
                 return;
             }
             dashboard.style.display = 'flex';
-            
-            activeRouteDataStore.forEach((r) => {
-                const mins = Math.max(1, Math.round(r.duration / 60));
-                const miles = (r.distance / 1609.34).toFixed(1);
-                 
-                const metricsRow = document.createElement('div');
-                metricsRow.className = 'route-badge-row';
-                metricsRow.innerHTML = `
-                    <div>
-                        <span class="badge-tag-label" style="color: var(--action-red); font-weight: bold; font-family: var(--font-monospace); font-size:0.7rem;">
-                            ★ ROAD-ALIGNED SYSTEM PATH
-                        </span>
-                        <div style="color: var(--text-primary); margin-top: 4px; font-size: 0.95rem; font-weight: bold;">
-                            ${mins} mins <span style="color: var(--text-muted); font-weight: normal; font-size: 0.8rem;">(${miles} mi)</span>
-                        </div>
-                    </div>
-                `;
-                dashboard.appendChild(metricsRow);
-                
-                if (r.steps && r.steps.length > 0) {
-                    const manifestContainer = document.createElement('div');
-                    manifestContainer.className = 'directions-manifest';
-                    
-                    r.steps.forEach((step, stepIndex) => {
-                        const stepEl = document.createElement('div');
-                        stepEl.className = 'direction-step';
-                        
-                        const stepMiles = (step.distance / 1609.34).toFixed(2);
-                        const distanceDisplay = step.distance > 0 ? `${stepMiles} mi` : '';
 
-                        stepEl.innerHTML = `
-                            <div class="step-index">${stepIndex + 1}</div>
-                            <div class="step-text">${step.text}</div>
-                            <div class="step-distance">${distanceDisplay}</div>
-                        `;
-
-                        stepEl.addEventListener('click', () => {
-                            cameraTrackingMode = false;
-                            document.getElementById('force-gps-recenter').classList.remove('active-state');
-                            let targetStepBearing = currentVehicleHeading;
-                            
-                            if (stepIndex < r.steps.length - 1) {
-                                targetStepBearing = calculateBearingAngle(step.coordinates, r.steps[stepIndex + 1].coordinates);
-                            }
-
-                            map.flyTo({
-                                center: step.coordinates,
-                                zoom: 18,
-                                pitch: 70,
-                                bearing: targetStepBearing,
-                                duration: 800
-                            });
-                        });
-
-                        manifestContainer.appendChild(stepEl);
+            // ── Alternative route selector chips ────────────────────────────
+            if (activeRouteDataStore.length > 1) {
+                const altRow = document.createElement('div');
+                altRow.className = 'route-alt-row';
+                activeRouteDataStore.forEach((r, idx) => {
+                    const mins = Math.max(1, Math.round(r.duration / 60));
+                    const miles = (r.distance / 1609.34).toFixed(1);
+                    const chip = document.createElement('button');
+                    chip.className = `route-alt-chip${idx === selectedRouteIndex ? ' alt-selected' : ''}`;
+                    chip.innerHTML = `
+                        <div class="route-alt-badge">ROUTE ${idx + 1}${idx === 0 ? ' ★' : ''}</div>
+                        <div class="route-alt-time">${mins} min</div>
+                        <div class="route-alt-dist">${miles} mi</div>
+                    `;
+                    chip.addEventListener('click', () => {
+                        // Guard against stale chip handlers during active rerouting
+                        if (!activeRouteDataStore.length || idx >= activeRouteDataStore.length) return;
+                        if (idx === selectedRouteIndex) return;
+                        selectedRouteIndex = idx;
+                        clearActiveRouteLayers();
+                        redrawActiveRoutePipelines();
+                        renderRouteDashboardUI();
+                        const coords = activeRouteDataStore[idx].geometry.coordinates;
+                        if (coords.length > 1) {
+                            map.flyTo({ center: coords[0], zoom: 17.5, pitch: 70, bearing: calculateBearingAngle(coords[0], coords[1]), duration: 800 });
+                        }
+                        if (laneGuidance && activeRouteDataStore[idx].steps.length > 0) {
+                            laneGuidance.show(activeRouteDataStore[idx].steps[0]);
+                        }
+                        loadElevationProfile(activeRouteDataStore[idx].geometry.coordinates);
                     });
-                    
-                    dashboard.appendChild(manifestContainer);
-                }
-            });
+                    altRow.appendChild(chip);
+                });
+                dashboard.appendChild(altRow);
+            }
+
+            // ── Selected route details ───────────────────────────────────────
+            const r = activeRouteDataStore[selectedRouteIndex];
+            if (!r) return;
+            const mins = Math.max(1, Math.round(r.duration / 60));
+            const miles = (r.distance / 1609.34).toFixed(1);
+
+            let modeBadgeText = "★ ROAD-ALIGNED SYSTEM PATH";
+            if (currentRoutingProfile === 'cycling') modeBadgeText = "★ CYCLE PATH TRAJECTORY";
+            if (currentRoutingProfile === 'walking') modeBadgeText = "★ PEDESTRIAN VECTOR PATH";
+
+            const metricsRow = document.createElement('div');
+            metricsRow.className = 'route-badge-row';
+            metricsRow.innerHTML = `
+                <div>
+                    <span style="color:var(--action-red);font-weight:bold;font-family:var(--font-monospace);font-size:0.7rem;">${modeBadgeText}</span>
+                    <div style="color:var(--text-primary);margin-top:4px;font-size:0.95rem;font-weight:bold;">
+                        ${mins} mins <span style="color:var(--text-muted);font-weight:normal;font-size:0.8rem;">(${miles} mi)</span>
+                    </div>
+                </div>
+            `;
+            dashboard.appendChild(metricsRow);
+
+            if (r.steps && r.steps.length > 0) {
+                const manifestContainer = document.createElement('div');
+                manifestContainer.className = 'directions-manifest';
+                r.steps.forEach((step, stepIndex) => {
+                    const stepEl = document.createElement('div');
+                    stepEl.className = 'direction-step';
+                    const stepMiles = (step.distance / 1609.34).toFixed(2);
+                    const distanceDisplay = step.distance > 0 ? `${stepMiles} mi` : '';
+                    stepEl.innerHTML = `
+                        <div class="step-index">${stepIndex + 1}</div>
+                        <div class="step-text">${step.text}</div>
+                        <div class="step-distance">${distanceDisplay}</div>
+                    `;
+                    stepEl.addEventListener('click', () => {
+                        cameraTrackingMode = false;
+                        document.getElementById('force-gps-recenter').classList.remove('active-state');
+                        let targetStepBearing = currentVehicleHeading;
+                        if (stepIndex < r.steps.length - 1) {
+                            targetStepBearing = calculateBearingAngle(step.coordinates, r.steps[stepIndex + 1].coordinates);
+                        }
+                        map.flyTo({ center: step.coordinates, zoom: 18, pitch: 70, bearing: targetStepBearing, duration: 800 });
+                        if (laneGuidance) laneGuidance.show(step);
+                    });
+                    manifestContainer.appendChild(stepEl);
+                });
+                dashboard.appendChild(manifestContainer);
+            }
         }
 
         function clearActiveRouteLayers() {
@@ -962,7 +1821,7 @@
             }
 
             let initialLockAcquired = false;
-            
+
             navigator.geolocation.watchPosition(
                 (position) => {
                     const rawFix = [position.coords.longitude, position.coords.latitude];
@@ -981,7 +1840,7 @@
                     const elapsedSecs = lastGpsTimestamp ? Math.max((now - lastGpsTimestamp) / 1000, 0.001) : 0;
                     const movementMeters = hasExistingFix ? calculateDistanceMeters(currentLiveGpsPosition, rawFix) : 0;
                     const impliedSpeed = elapsedSecs > 0 ? movementMeters / elapsedSecs : 0;
-                    
+
                     if (hasExistingFix && elapsedSecs < 10 && impliedSpeed > GPS_MAX_PLAUSIBLE_SPEED_MPS) {
                         diagnosticStatus.innerText = "GPS SPIKE FILTERED";
                         diagnosticStatus.style.color = "#ff9500";
@@ -991,7 +1850,7 @@
                     const stableFix = initialLockAcquired
                         ? smoothCoordinatePair(currentLiveGpsPosition, rawFix)
                         : rawFix;
-                        
+
                     let nextHeading = currentVehicleHeading;
                     if (Number.isFinite(position.coords.heading) && position.coords.heading >= 0) {
                         nextHeading = position.coords.heading;
@@ -1002,6 +1861,10 @@
                     currentLiveGpsPosition = stableFix;
                     currentVehicleHeading = nextHeading;
                     lastGpsTimestamp = now;
+
+                    // Throttled weather + speed limit side effects
+                    updateWeatherHUD(stableFix[1], stableFix[0]);
+                    if (activeRouteDataStore.length > 0) updateSpeedLimit(stableFix[1], stableFix[0]);
 
                     diagnosticStatus.innerText = accuracy === Infinity
                         ? "GPS TRACKING ACTIVE"
@@ -1051,25 +1914,38 @@
         }
 
         function initHardwareConsoleTriggers() {
+            const modeBtns = document.querySelectorAll('.mode-btn');
+            modeBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    modeBtns.forEach(b => b.classList.remove('active-mode'));
+                    e.currentTarget.classList.add('active-mode');
+                    currentRoutingProfile = e.currentTarget.dataset.mode;
+
+                    if (activeRouteDataStore.length > 0) {
+                        handleRoutingButtonClick();
+                    }
+                });
+            });
+
             const compassBtn = document.getElementById('compass-orientation-lock');
             if (compassBtn) {
                 compassBtn.addEventListener('click', () => {
                     map.easeTo({ bearing: 0 });
                 });
             }
-             
+
             const recenterBtn = document.getElementById('force-gps-recenter');
             if (recenterBtn) {
                 recenterBtn.addEventListener('click', () => {
-                    cameraTrackingMode = true; 
+                    cameraTrackingMode = true;
                     recenterBtn.classList.add('active-state');
                     if (isValidCoordinatePair(currentLiveGpsPosition)) {
                         lastCameraUpdateTimestamp = performance.now();
-                        map.flyTo({ 
-                            center: currentLiveGpsPosition, 
-                            zoom: 17.5, 
-                            pitch: 70, 
-                            bearing: currentVehicleHeading, 
+                        map.flyTo({
+                            center: currentLiveGpsPosition,
+                            zoom: 17.5,
+                            pitch: 70,
+                            bearing: currentVehicleHeading,
                             duration: 600,
                             essential: true
                         });
@@ -1081,7 +1957,7 @@
             if (routingBtn) {
                 routingBtn.addEventListener('click', handleRoutingButtonClick);
             }
-            
+
             const flushBtn = document.getElementById('flush-workspace-trigger');
             if (flushBtn) {
                 flushBtn.addEventListener('click', () => {
@@ -1089,11 +1965,16 @@
                     activeRouteDataStore = [];
                     if (activeMapMarker) { activeMapMarker.remove(); activeMapMarker = null; }
                     document.getElementById('context-destination-panel').style.display = 'none';
+                    document.getElementById('routing-mode-selector').style.display = 'none';
                     document.getElementById('osm-engine-input').value = '';
                     document.getElementById('launch-routing-action').style.display = 'none';
                     document.getElementById('route-variants-dashboard').style.display = 'none';
                     document.getElementById('control-panel-deck').classList.remove('minimized');
                     targetSelectedCoordinates = null;
+                    selectedRouteIndex = 0;
+                    if (laneGuidance) laneGuidance.hide();
+                    document.getElementById('elevation-profile-wrap').style.display = 'none';
+                    document.getElementById('speed-limit-beacon').style.display = 'none';
                 });
             }
         }
@@ -1102,33 +1983,62 @@
             const panel = document.getElementById('control-panel-deck');
             const handle = document.getElementById('drag-handle');
             if (!panel || !handle) return;
-            
-            let isDragging = false, startY = 0;
+
+            // FIX #1: Use dragOccurred to distinguish real drags from clicks.
+            // The bug was that isDragging is reset to false in endDrag (which
+            // fires on mouseup) BEFORE the 'click' event fires. This meant the
+            // !isDragging check in the click handler was always true, causing the
+            // panel to both snap via endDrag AND toggle again via click on every drag.
+            let isDragging = false, startY = 0, dragOccurred = false;
 
             handle.addEventListener('mousedown', startDrag);
-            window.addEventListener('mousemove', processDrag);
+            window.addEventListener('mousemove', processDragMouse);
             window.addEventListener('mouseup', endDrag);
             handle.addEventListener('touchstart', (e) => startDrag(e.touches[0]), { passive: true });
-            window.addEventListener('touchmove', (e) => processDrag(e.touches[0]), { passive: false });
+
+            // FIX #2: Call e.preventDefault() during touch drag so the page does
+            // not scroll while the user is dragging the panel on mobile.
+            // The listener was already registered as passive:false (enabling
+            // preventDefault) but never actually called it.
+            window.addEventListener('touchmove', (e) => {
+                if (isDragging) e.preventDefault();
+                processDragTouch(e.touches[0]);
+            }, { passive: false });
+
             window.addEventListener('touchend', endDrag);
-            
+
             handle.addEventListener('click', () => {
-                if (!isDragging) {
+                // Only toggle if the pointer didn't meaningfully move (i.e. it
+                // was a tap/click, not the end of a drag gesture).
+                if (!dragOccurred) {
                     panel.classList.toggle('minimized');
                     panel.style.transform = '';
                 }
+                dragOccurred = false;
             });
-            
-            function startDrag(e) { 
+
+            function startDrag(e) {
                 isDragging = true;
-                startY = e.clientY; 
-                panel.classList.add('dragging'); 
+                dragOccurred = false;
+                startY = e.clientY;
+                panel.classList.add('dragging');
             }
-            
-            function processDrag(e) {
+
+            function processDragMouse(e) {
                 if (!isDragging) return;
-                let deltaY = e.clientY - startY;
-                
+                applyDrag(e.clientY);
+            }
+
+            function processDragTouch(e) {
+                if (!isDragging) return;
+                applyDrag(e.clientY);
+            }
+
+            function applyDrag(clientY) {
+                const deltaY = clientY - startY;
+                // Only count as a drag if the pointer moved more than 5px.
+                if (Math.abs(deltaY) > 5) dragOccurred = true;
+
                 if (panel.classList.contains('minimized')) {
                     if (deltaY < 0) {
                         panel.style.transform = `translateX(-50%) translateY(calc(100% - 28px + ${deltaY}px))`;
@@ -1139,15 +2049,16 @@
                     }
                 }
             }
-            
+
             function endDrag(e) {
                 if (!isDragging) return;
-                isDragging = false; 
+                isDragging = false;
                 panel.classList.remove('dragging');
                 panel.style.transform = '';
 
-                let deltaY = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY) - startY;
-                
+                const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+                const deltaY = clientY - startY;
+
                 if (panel.classList.contains('minimized')) {
                     if (deltaY < -50) panel.classList.remove('minimized');
                 } else {
@@ -1165,18 +2076,18 @@
                 const queryVal = e.target.value.trim();
                 clearTimeout(querySearchDebounceTimer);
                 if (queryVal.length < 3) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
-                 
+
                 querySearchDebounceTimer = setTimeout(async () => {
                     try {
                         let searchApiUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`;
                         if (isValidCoordinatePair(currentLiveGpsPosition)) searchApiUrl += `&lon=${currentLiveGpsPosition[0]}&lat=${currentLiveGpsPosition[1]}`;
-                        
+
                         const response = await fetch(searchApiUrl);
                         if (!response.ok) throw new Error(`Search service returned ${response.status}`);
                         const payload = await response.json();
-                        
+
                         if (!payload.features || payload.features.length === 0) { dropdown.style.display = 'none'; return; }
-                         
+
                         dropdown.innerHTML = '';
                         payload.features.forEach(feature => {
                             const segmentItem = document.createElement('div');
@@ -1184,14 +2095,14 @@
                             const p = feature.properties;
                             const labeledLocation = [p.name, p.city, p.state, p.country].filter(Boolean).join(', ') || 'Unnamed location';
                             segmentItem.innerText = labeledLocation;
-                             
+
                             segmentItem.addEventListener('click', () => {
                                 const targetLoc = feature.geometry.coordinates;
                                 if (!isValidCoordinatePair(targetLoc)) return;
-                                
+
                                 dropdown.style.display = 'none';
                                 input.value = labeledLocation;
-                                
+
                                 cameraTrackingMode = false;
                                 document.getElementById('force-gps-recenter').classList.remove('active-state');
                                 map.flyTo({ center: targetLoc, zoom: 17, pitch: 65 });
@@ -1200,7 +2111,9 @@
                             dropdown.appendChild(segmentItem);
                         });
                         dropdown.style.display = 'block';
-                    } catch (err) {}
+                    } catch (err) {
+                        console.error("Search fault.", err);
+                    }
                 }, 250);
             });
         }
@@ -1216,22 +2129,316 @@
                     const lookup = await fetch(`https://photon.komoot.io/reverse?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
                     if (!lookup.ok) throw new Error(`Reverse geocoder returned ${lookup.status}`);
                     const details = await lookup.json();
-                    
+
                     if (details.features && details.features.length > 0) {
                         const p = details.features[0].properties;
                         const addressString = [p.name, p.street, p.city].filter(Boolean).join(', ');
                         triggerWorkspaceTargetDeck(pinpoint, p.name || "Identified Point", addressString || "Raw Matrix Grid Reference");
                     }
-                } catch(error){}
+                } catch(error) {
+                    console.error("Reverse geocode fault.", error);
+                }
             });
         }
 
-        if ('serviceWorker' in navigator && window.isSecureContext) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('./service-worker.js').catch((error) => {
-                    console.warn('3d Earth service worker registration failed.', error);
+        // ══════════════════════════════════════════════════════════════════════
+        // ── WEATHER + AQI  (Open-Meteo, zero API key) ─────────────────────────
+        // ══════════════════════════════════════════════════════════════════════
+        const WMO_CODES = {
+            0:{'i':'☀','l':'Clear'}, 1:{'i':'🌤','l':'Mainly Clear'}, 2:{'i':'⛅','l':'Partly Cloudy'},
+            3:{'i':'☁','l':'Overcast'}, 45:{'i':'🌫','l':'Foggy'}, 48:{'i':'🌫','l':'Icy Fog'},
+            51:{'i':'🌦','l':'Drizzle'}, 53:{'i':'🌦','l':'Drizzle'}, 55:{'i':'🌦','l':'Heavy Drizzle'},
+            61:{'i':'🌧','l':'Rain'}, 63:{'i':'🌧','l':'Rain'}, 65:{'i':'🌧','l':'Heavy Rain'},
+            71:{'i':'❄','l':'Snow'}, 73:{'i':'❄','l':'Snow'}, 75:{'i':'❄','l':'Heavy Snow'},
+            77:{'i':'❄','l':'Snow Grains'}, 80:{'i':'🌦','l':'Showers'}, 81:{'i':'🌦','l':'Showers'},
+            82:{'i':'🌦','l':'Heavy Showers'}, 85:{'i':'❄','l':'Snow Showers'}, 86:{'i':'❄','l':'Snow Showers'},
+            95:{'i':'⛈','l':'Thunderstorm'}, 96:{'i':'⛈','l':'Thunderstorm'}, 99:{'i':'⛈','l':'Thunderstorm'}
+        };
+        const AQI_SCALE = [
+            {max:50,  lbl:'Good',             col:'#22c55e'},
+            {max:100, lbl:'Moderate',         col:'#eab308'},
+            {max:150, lbl:'Unhealthy (Sens)', col:'#f97316'},
+            {max:200, lbl:'Unhealthy',        col:'#ef4444'},
+            {max:300, lbl:'Very Unhealthy',   col:'#a855f7'},
+            {max:9999,lbl:'Hazardous',        col:'#7f1d1d'}
+        ];
+        let _lastWeatherLoc = null, _weatherAt = 0;
+
+        async function updateWeatherHUD(lat, lon) {
+            const now = Date.now();
+            if (_lastWeatherLoc) {
+                const d = calculateDistanceMeters(_lastWeatherLoc, [lon, lat]);
+                if (d < 2000 && now - _weatherAt < 300000) return;
+            }
+            _lastWeatherLoc = [lon, lat]; _weatherAt = now;
+            try {
+                const [wRes, aRes] = await Promise.all([
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,apparent_temperature,windspeed_10m,weathercode&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=1`),
+                    fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=us_aqi`)
+                ]);
+                const wData = await wRes.json(), aData = await aRes.json();
+                const cur = wData.current;
+                const wmo = WMO_CODES[cur.weathercode] || {i:'?', l:'Unknown'};
+                document.getElementById('wh-cond-icon').textContent = wmo.i;
+                document.getElementById('wh-temp').textContent = `${Math.round(cur.temperature_2m)}°F`;
+                document.getElementById('wh-feels').textContent = `Feels ${Math.round(cur.apparent_temperature)}°`;
+                document.getElementById('wh-wind').textContent = `💨 ${Math.round(cur.windspeed_10m)} mph`;
+                const aqi = aData.current?.us_aqi;
+                const aqiBadge = document.getElementById('wh-aqi-badge');
+                if (aqi != null && aqiBadge) {
+                    const lvl = AQI_SCALE.find(l => aqi <= l.max) || AQI_SCALE[AQI_SCALE.length - 1];
+                    aqiBadge.textContent = `AQI ${aqi} · ${lvl.lbl}`;
+                    aqiBadge.style.cssText = `background:${lvl.col}28;border-color:${lvl.col}70;color:${lvl.col};display:inline-block;`;
+                }
+                document.getElementById('weather-env-hud').style.display = 'flex';
+            } catch(e) { console.warn('Weather fetch failed:', e.message); }
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // ── POI RADAR  (Overpass API, free) ───────────────────────────────────
+        // ══════════════════════════════════════════════════════════════════════
+        const POI_CATS = {
+            food:     {ico:'🍽',lbl:'Food',    q:`node["amenity"~"restaurant|cafe|fast_food|bar"]`},
+            fuel:     {ico:'⛽',lbl:'Gas',     q:`node["amenity"="fuel"]`},
+            medical:  {ico:'🏥',lbl:'Medical', q:`node["amenity"~"hospital|pharmacy|clinic|doctors"]`},
+            parking:  {ico:'🅿',lbl:'Parking', q:`node["amenity"="parking"]`},
+            coffee:   {ico:'☕',lbl:'Coffee',  q:`node["amenity"~"cafe|coffee_shop"]`},
+            atm:      {ico:'💰',lbl:'ATM',     q:`node["amenity"="atm"]`},
+            hotel:    {ico:'🏨',lbl:'Hotel',   q:`node["tourism"~"hotel|motel|hostel|guest_house"]`},
+            shopping: {ico:'🛒',lbl:'Shop',    q:`node["shop"~"supermarket|convenience|department_store"]`}
+        };
+        let _poiCat = 'food', _poiRadius = 500;
+
+        async function runPOISearch() {
+            const center = isValidCoordinatePair(currentLiveGpsPosition) ? currentLiveGpsPosition : (() => { const c = map.getCenter(); return [c.lng, c.lat]; })();
+            const list = document.getElementById('poi-results-list');
+            if (list) list.innerHTML = '<div class="poi-status-msg">Scanning area…</div>';
+            try {
+                const cat = POI_CATS[_poiCat];
+                const body = `[out:json][timeout:12];(${cat.q}(around:${_poiRadius},${center[1].toFixed(5)},${center[0].toFixed(5)}););out 20;`;
+                const res = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: `data=${encodeURIComponent(body)}`
                 });
-             });
+                if (!res.ok) throw new Error(`Overpass ${res.status}`);
+                const data = await res.json();
+                const pois = (data.elements || []).map(el => ({
+                    name: el.tags?.name || el.tags?.brand || cat.lbl,
+                    lat: el.lat, lon: el.lon,
+                    dist: calculateDistanceMeters([center[0], center[1]], [el.lon, el.lat])
+                })).sort((a,b) => a.dist - b.dist);
+
+                if (!list) return;
+                list.innerHTML = '';
+                if (!pois.length) { list.innerHTML = `<div class="poi-status-msg">No ${cat.lbl} found nearby.<br>Try a larger radius.</div>`; return; }
+                pois.slice(0, 18).forEach(p => {
+                    const ft = Math.round(p.dist * 3.28084);
+                    const distStr = ft >= 5280 ? `${(ft/5280).toFixed(1)} mi` : `${ft} ft`;
+                    const card = document.createElement('button');
+                    card.className = 'poi-card';
+                    card.innerHTML = `<span class="poi-card-ico">${cat.ico}</span><span class="poi-card-body"><div class="poi-card-name">${p.name}</div><div class="poi-card-meta">${distStr} away</div></span><span class="poi-card-nav">GO →</span>`;
+                    card.addEventListener('click', () => {
+                        const coords = [p.lon, p.lat];
+                        map.flyTo({ center: coords, zoom: 18, pitch: 65, duration: 800 });
+                        triggerWorkspaceTargetDeck(coords, p.name, `${distStr} away · ${cat.lbl}`);
+                        document.getElementById('poi-explorer-panel').style.display = 'none';
+                        document.getElementById('poi-radar-toggle').classList.remove('active-state');
+                    });
+                    list.appendChild(card);
+                });
+            } catch(e) {
+                if (list) list.innerHTML = '<div class="poi-status-msg">Search failed. Check connection.</div>';
+                console.warn('POI fetch failed:', e.message);
+            }
+        }
+
+        function initPOIRadar() {
+            const toggleBtn = document.getElementById('poi-radar-toggle');
+            const panel = document.getElementById('poi-explorer-panel');
+            if (!toggleBtn || !panel) return;
+            toggleBtn.addEventListener('click', () => {
+                const open = panel.style.display === 'flex';
+                panel.style.display = open ? 'none' : 'flex';
+                toggleBtn.classList.toggle('active-state', !open);
+                if (!open) runPOISearch();
+            });
+            panel.querySelectorAll('.poi-cat-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    panel.querySelectorAll('.poi-cat-btn').forEach(b => b.classList.remove('poi-cat-active'));
+                    btn.classList.add('poi-cat-active');
+                    _poiCat = btn.dataset.cat;
+                    runPOISearch();
+                });
+            });
+            panel.querySelectorAll('.poi-rad-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    panel.querySelectorAll('.poi-rad-btn').forEach(b => b.classList.remove('poi-rad-active'));
+                    btn.classList.add('poi-rad-active');
+                    _poiRadius = parseInt(btn.dataset.radius, 10);
+                    runPOISearch();
+                });
+            });
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // ── ELEVATION PROFILE  (OpenTopoData ASTER, free, no key) ─────────────
+        // ══════════════════════════════════════════════════════════════════════
+        let _elevReqId = 0;
+        async function loadElevationProfile(routeCoords) {
+            const reqId = ++_elevReqId; // version stamp — guard against stale out-of-order responses
+            const wrap = document.getElementById('elevation-profile-wrap');
+            const canvas = document.getElementById('elev-canvas');
+            const loadMsg = document.getElementById('elev-loading-msg');
+            if (!wrap || !canvas || !loadMsg || !routeCoords || routeCoords.length < 2) return;
+
+            wrap.style.display = 'flex';
+            loadMsg.style.display = 'block';
+            canvas.style.display = 'none';
+            ['elev-gain','elev-loss','elev-max','elev-min'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = '…'; });
+
+            try {
+                const MAX = 50;
+                const step = Math.max(1, Math.floor(routeCoords.length / MAX));
+                const sample = [];
+                for (let i = 0; i < routeCoords.length; i += step) sample.push(routeCoords[i]);
+                if (sample[sample.length-1] !== routeCoords[routeCoords.length-1]) sample.push(routeCoords[routeCoords.length-1]);
+
+                const locStr = sample.map(c => `${c[1].toFixed(5)},${c[0].toFixed(5)}`).join('|');
+                const res = await fetch(`https://api.opentopodata.org/v1/aster30m?locations=${locStr}`);
+                if (!res.ok) throw new Error(`OpenTopoData ${res.status}`);
+                const data = await res.json();
+                if (data.status !== 'OK') throw new Error('OpenTopoData error: ' + data.error);
+                if (reqId !== _elevReqId) return; // Stale — a newer selection supersedes this response
+
+                const elevFt = data.results.map(r => (r.elevation || 0) * 3.28084);
+                const cumDist = [0];
+                for (let i = 1; i < sample.length; i++) cumDist.push(cumDist[i-1] + calculateDistanceMeters(sample[i-1], sample[i]));
+
+                loadMsg.style.display = 'none';
+                canvas.style.display = 'block';
+
+                const dpr = window.devicePixelRatio || 1;
+                const dw = canvas.offsetWidth || 340;
+                canvas.width = dw * dpr; canvas.height = 68 * dpr;
+                const ctx = canvas.getContext('2d');
+                ctx.scale(dpr, dpr);
+
+                const W = dw, H = 68;
+                const minE = Math.min(...elevFt), maxE = Math.max(...elevFt);
+                const rangeE = Math.max(maxE - minE, 10);
+                const totalD = cumDist[cumDist.length - 1];
+                const tx = d => (d / totalD) * W;
+                const ty = e => H - ((e - minE) / rangeE) * (H * 0.80) - H * 0.08;
+
+                const grad = ctx.createLinearGradient(0, 0, 0, H);
+                grad.addColorStop(0, 'rgba(255,51,51,0.55)');
+                grad.addColorStop(0.6, 'rgba(255,51,51,0.15)');
+                grad.addColorStop(1, 'rgba(255,51,51,0.01)');
+
+                ctx.beginPath();
+                ctx.moveTo(tx(cumDist[0]), H);
+                elevFt.forEach((e, i) => ctx.lineTo(tx(cumDist[i]), ty(e)));
+                ctx.lineTo(tx(totalD), H); ctx.closePath();
+                ctx.fillStyle = grad; ctx.fill();
+
+                ctx.beginPath();
+                elevFt.forEach((e, i) => i === 0 ? ctx.moveTo(tx(cumDist[i]), ty(e)) : ctx.lineTo(tx(cumDist[i]), ty(e)));
+                ctx.strokeStyle = '#ff3333'; ctx.lineWidth = 1.8; ctx.lineJoin = 'round'; ctx.stroke();
+
+                ctx.setLineDash([2,4]); ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 0.5;
+                [0.25,0.5,0.75].forEach(t => { ctx.beginPath(); ctx.moveTo(0,t*H); ctx.lineTo(W,t*H); ctx.stroke(); });
+                ctx.setLineDash([]);
+
+                let gain = 0, loss = 0;
+                for (let i = 1; i < elevFt.length; i++) { const diff = elevFt[i] - elevFt[i-1]; if (diff > 0) gain += diff; else loss += Math.abs(diff); }
+                const fmt = v => v >= 1000 ? `${(v/1000).toFixed(1)}k ft` : `${Math.round(v)} ft`;
+                document.getElementById('elev-gain').textContent = '+' + fmt(gain);
+                document.getElementById('elev-loss').textContent = '-' + fmt(loss);
+                document.getElementById('elev-max').textContent  = fmt(Math.max(...elevFt));
+                document.getElementById('elev-min').textContent  = fmt(Math.min(...elevFt));
+            } catch(e) {
+                loadMsg.textContent = 'Elevation data unavailable';
+                canvas.style.display = 'none';
+                console.warn('Elevation fetch failed:', e.message);
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // ── MAP THEME SWITCHER  (free Carto styles, no key) ───────────────────
+        // ══════════════════════════════════════════════════════════════════════
+        const MAP_THEMES = [
+            {key:'dark',     lbl:'🌑 Dark Tactical',   url:'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'},
+            {key:'voyager',  lbl:'🗺 Voyager',          url:'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json'},
+            {key:'positron', lbl:'☀ Positron Light',   url:'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'},
+            {key:'nodark',   lbl:'🌒 Dark No Labels',  url:'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json'}
+        ];
+        let _currentTheme = 'dark';
+
+        function initThemePicker() {
+            const btn = document.getElementById('theme-switcher-btn');
+            const menu = document.getElementById('theme-picker-menu');
+            if (!btn || !menu) return;
+
+            const buildMenu = () => {
+                menu.innerHTML = MAP_THEMES.map(t =>
+                    `<button class="theme-btn${t.key===_currentTheme?' theme-active':''}" data-key="${t.key}">${t.lbl}</button>`
+                ).join('');
+            };
+            buildMenu();
+
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const open = menu.style.display === 'flex';
+                menu.style.display = open ? 'none' : 'flex';
+            });
+            menu.addEventListener('click', e => {
+                const themeBtn = e.target.closest('.theme-btn');
+                if (!themeBtn) return;
+                const key = themeBtn.dataset.key;
+                if (key === _currentTheme) { menu.style.display='none'; return; }
+                const theme = MAP_THEMES.find(t => t.key === key);
+                if (!theme) return;
+                _currentTheme = key;
+                buildMenu();
+                menu.style.display = 'none';
+                map.setStyle(theme.url);
+            });
+            document.addEventListener('click', e => {
+                if (!btn.contains(e.target) && !menu.contains(e.target)) menu.style.display = 'none';
+            });
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // ── SPEED LIMIT BADGE  (Overpass, near GPS position, no key) ──────────
+        // ══════════════════════════════════════════════════════════════════════
+        let _slAt = 0, _slLoc = null;
+
+        async function updateSpeedLimit(lat, lon) {
+            const now = Date.now();
+            if (now - _slAt < 15000) return;
+            if (_slLoc && calculateDistanceMeters(_slLoc, [lon, lat]) < 80) return;
+            _slAt = now; _slLoc = [lon, lat];
+            try {
+                const q = `[out:json][timeout:8];way["maxspeed"](around:40,${lat.toFixed(5)},${lon.toFixed(5)});out 3;`;
+                const res = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: `data=${encodeURIComponent(q)}`
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const ways = data.elements || [];
+                if (!ways.length) return;
+                const raw = ways[0].tags?.maxspeed || '';
+                const match = raw.match(/(\d+)/);
+                if (!match) return;
+                let spd = parseInt(match[1], 10);
+                if (!raw.toLowerCase().includes('mph')) spd = Math.round(spd * 0.621371);
+                const badge = document.getElementById('speed-limit-beacon');
+                const valEl = document.getElementById('sl-value');
+                if (badge && valEl) { valEl.textContent = spd; badge.style.display = 'flex'; }
+            } catch(e) { /* non-critical */ }
         }
 
         function triggerWorkspaceTargetDeck(coords, title, details) {
@@ -1239,11 +2446,13 @@
             clearActiveRouteLayers();
             activeRouteDataStore = [];
             targetSelectedCoordinates = coords;
-            
+
             document.getElementById('node-panel-title').innerText = title;
             document.getElementById('node-panel-address').innerText = details;
             document.getElementById('context-destination-panel').style.display = 'flex';
-            
+
+            document.getElementById('routing-mode-selector').style.display = 'grid';
+
             const routingBtn = document.getElementById('launch-routing-action');
             routingBtn.style.display = 'block';
             routingBtn.innerText = "GET DIRECTIONS";
