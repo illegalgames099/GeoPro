@@ -485,7 +485,7 @@
     </div>
 
     <script>
-        let defaultUserCoordinates = [-122.084, 37.422]; 
+        let defaultUserCoordinates = [-122.084, 37.422];
         let currentLiveGpsPosition = null; 
         let targetSelectedCoordinates = null;
         let querySearchDebounceTimer = null;
@@ -498,7 +498,7 @@
         let lastGpsTimestamp = null;
         let currentVehicleHeading = 0;
         let lastCameraUpdateTimestamp = 0;
-
+        
         const HIGH_PERFORMANCE_DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
         const GPS_MAX_ACCEPTED_ACCURACY_METERS = 100;
         const GPS_MIN_CAMERA_INTERVAL_MS = 900;
@@ -543,19 +543,45 @@
                 && coords[1] <= 90;
         }
 
+        // Added missing calculateDistanceMeters function
+        function calculateDistanceMeters(p1, p2) {
+            const R = 6371e3; // metres
+            const φ1 = p1[1] * Math.PI/180; // φ, λ in radians
+            const φ2 = p2[1] * Math.PI/180;
+            const Δφ = (p2[1]-p1[1]) * Math.PI/180;
+            const Δλ = (p2[0]-p1[0]) * Math.PI/180;
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+            return R * c; 
+        }
+
+        // Added missing smoothCoordinatePair function
+        function smoothCoordinatePair(oldCoords, newCoords) {
+            if (!oldCoords || !newCoords) return newCoords;
+            return [
+                oldCoords[0] + (newCoords[0] - oldCoords[0]) * GPS_SMOOTHING_FACTOR,
+                oldCoords[1] + (newCoords[1] - oldCoords[1]) * GPS_SMOOTHING_FACTOR
+            ];
+        }
+
         function calculateBearingAngle(p1, p2, fallbackBearing = currentVehicleHeading) {
             if (!isValidCoordinatePair(p1) || !isValidCoordinatePair(p2)) return fallbackBearing;
-
             const samePoint = Math.abs(p1[0] - p2[0]) < 0.000001 && Math.abs(p1[1] - p2[1]) < 0.000001;
             if (samePoint) return fallbackBearing;
-
+            
             const lng1 = p1[0] * Math.PI / 180;
             const lat1 = p1[1] * Math.PI / 180;
             const lng2 = p2[0] * Math.PI / 180;
             const lat2 = p2[1] * Math.PI / 180;
+            
             const dLng = lng2 - lng1;
             const y = Math.sin(dLng) * Math.cos(lat2);
             const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+            
             const bearing = Math.atan2(y, x) * 180 / Math.PI;
             return Number.isFinite(bearing) ? (bearing + 360) % 360 : fallbackBearing;
         }
@@ -694,7 +720,7 @@
             btn.innerText = "COMPUTING PATH TRAJECTORY...";
             btn.style.opacity = "0.6";
             btn.disabled = true;
-             
+            
             let originCoords = isValidCoordinatePair(currentLiveGpsPosition) ? currentLiveGpsPosition : null;
             if (!originCoords) {
                 const mapCenter = map.getCenter();
@@ -708,7 +734,7 @@
             }
              
             const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&steps=true`;
-             
+            
             try {
                 clearActiveRouteLayers();
                 activeRouteDataStore = [];
@@ -719,8 +745,8 @@
                 
                 if (results.code === 'Ok' && results.routes && results.routes.length > 0) {
                     const primaryRoute = results.routes[0];
-                    
                     let parsedInstructions = [];
+                    
                     if (primaryRoute.legs && primaryRoute.legs[0].steps) {
                         parsedInstructions = primaryRoute.legs[0].steps.map(step => {
                             let modifier = step.maneuver.modifier ? ` ${step.maneuver.modifier}` : '';
@@ -848,7 +874,7 @@
                 return;
             }
             dashboard.style.display = 'flex';
-
+            
             activeRouteDataStore.forEach((r) => {
                 const mins = Math.max(1, Math.round(r.duration / 60));
                 const miles = (r.distance / 1609.34).toFixed(1);
@@ -866,7 +892,7 @@
                     </div>
                 `;
                 dashboard.appendChild(metricsRow);
-
+                
                 if (r.steps && r.steps.length > 0) {
                     const manifestContainer = document.createElement('div');
                     manifestContainer.className = 'directions-manifest';
@@ -936,7 +962,7 @@
             }
 
             let initialLockAcquired = false;
-
+            
             navigator.geolocation.watchPosition(
                 (position) => {
                     const rawFix = [position.coords.longitude, position.coords.latitude];
@@ -955,7 +981,7 @@
                     const elapsedSecs = lastGpsTimestamp ? Math.max((now - lastGpsTimestamp) / 1000, 0.001) : 0;
                     const movementMeters = hasExistingFix ? calculateDistanceMeters(currentLiveGpsPosition, rawFix) : 0;
                     const impliedSpeed = elapsedSecs > 0 ? movementMeters / elapsedSecs : 0;
-
+                    
                     if (hasExistingFix && elapsedSecs < 10 && impliedSpeed > GPS_MAX_PLAUSIBLE_SPEED_MPS) {
                         diagnosticStatus.innerText = "GPS SPIKE FILTERED";
                         diagnosticStatus.style.color = "#ff9500";
@@ -965,7 +991,7 @@
                     const stableFix = initialLockAcquired
                         ? smoothCoordinatePair(currentLiveGpsPosition, rawFix)
                         : rawFix;
-
+                        
                     let nextHeading = currentVehicleHeading;
                     if (Number.isFinite(position.coords.heading) && position.coords.heading >= 0) {
                         nextHeading = position.coords.heading;
@@ -1085,16 +1111,16 @@
             handle.addEventListener('touchstart', (e) => startDrag(e.touches[0]), { passive: true });
             window.addEventListener('touchmove', (e) => processDrag(e.touches[0]), { passive: false });
             window.addEventListener('touchend', endDrag);
-
+            
             handle.addEventListener('click', () => {
                 if (!isDragging) {
                     panel.classList.toggle('minimized');
                     panel.style.transform = '';
                 }
             });
-
+            
             function startDrag(e) { 
-                isDragging = true; 
+                isDragging = true;
                 startY = e.clientY; 
                 panel.classList.add('dragging'); 
             }
@@ -1115,13 +1141,13 @@
             }
             
             function endDrag(e) {
-                if (!isDragging) return; 
+                if (!isDragging) return;
                 isDragging = false; 
                 panel.classList.remove('dragging');
                 panel.style.transform = '';
 
                 let deltaY = (e.changedTouches ? e.changedTouches[0].clientY : e.clientY) - startY;
-
+                
                 if (panel.classList.contains('minimized')) {
                     if (deltaY < -50) panel.classList.remove('minimized');
                 } else {
@@ -1144,9 +1170,11 @@
                     try {
                         let searchApiUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`;
                         if (isValidCoordinatePair(currentLiveGpsPosition)) searchApiUrl += `&lon=${currentLiveGpsPosition[0]}&lat=${currentLiveGpsPosition[1]}`;
+                        
                         const response = await fetch(searchApiUrl);
                         if (!response.ok) throw new Error(`Search service returned ${response.status}`);
                         const payload = await response.json();
+                        
                         if (!payload.features || payload.features.length === 0) { dropdown.style.display = 'none'; return; }
                          
                         dropdown.innerHTML = '';
@@ -1160,12 +1188,12 @@
                             segmentItem.addEventListener('click', () => {
                                 const targetLoc = feature.geometry.coordinates;
                                 if (!isValidCoordinatePair(targetLoc)) return;
+                                
                                 dropdown.style.display = 'none';
                                 input.value = labeledLocation;
                                 
                                 cameraTrackingMode = false;
                                 document.getElementById('force-gps-recenter').classList.remove('active-state');
-
                                 map.flyTo({ center: targetLoc, zoom: 17, pitch: 65 });
                                 triggerWorkspaceTargetDeck(targetLoc, p.name || "Target Vector", labeledLocation);
                             });
@@ -1188,6 +1216,7 @@
                     const lookup = await fetch(`https://photon.komoot.io/reverse?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
                     if (!lookup.ok) throw new Error(`Reverse geocoder returned ${lookup.status}`);
                     const details = await lookup.json();
+                    
                     if (details.features && details.features.length > 0) {
                         const p = details.features[0].properties;
                         const addressString = [p.name, p.street, p.city].filter(Boolean).join(', ');
@@ -1202,7 +1231,7 @@
                 navigator.serviceWorker.register('./service-worker.js').catch((error) => {
                     console.warn('3d Earth service worker registration failed.', error);
                 });
-            });
+             });
         }
 
         function triggerWorkspaceTargetDeck(coords, title, details) {
