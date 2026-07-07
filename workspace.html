@@ -2,8 +2,15 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>GeoPro</title>
-    <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>3d Earth</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+    <meta name="theme-color" content="#050505" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="3d Earth" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/svg+xml" href="./assets/icon.svg" />
+    <link rel="apple-touch-icon" href="./assets/icon.svg" />
     
     <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
     <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
@@ -425,7 +432,7 @@
 
     <div class="hud-system-header">
         <div class="hud-module">
-            <div class="brand-node">GEO<span>PRO</span></div>
+            <div class="brand-node">3d<span>EARTH</span></div>
             <div style="width: 1px; height: 14px; background: var(--border-color);"></div>
             <div id="telemetry-status-node">BOOTING NAVIGATION...</div>
         </div>
@@ -465,6 +472,7 @@
 
             <div id="route-variants-dashboard"></div>
 
+            <div class="workspace-hardware-row">
                 <button id="flush-workspace-trigger" class="hud-btn">
                     CLEAR WORKSPACE
                 </button>
@@ -473,7 +481,6 @@
                     GET DIRECTIONS
                 </button>
             </div>
-
         </div>
     </div>
 
@@ -489,10 +496,15 @@
         let cameraTrackingMode = true; 
         
         let lastGpsTimestamp = null;
-        let gpsVelocityVector = { lng: 0, lat: 0 };
         let currentVehicleHeading = 0;
+        let lastCameraUpdateTimestamp = 0;
 
         const HIGH_PERFORMANCE_DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+        const GPS_MAX_ACCEPTED_ACCURACY_METERS = 100;
+        const GPS_MIN_CAMERA_INTERVAL_MS = 900;
+        const GPS_MIN_HEADING_DISTANCE_METERS = 4;
+        const GPS_SMOOTHING_FACTOR = 0.35;
+        const GPS_MAX_PLAUSIBLE_SPEED_MPS = 85;
 
         const map = new maplibregl.Map({
             container: 'map',
@@ -520,7 +532,46 @@
             return el;
         }
 
-        function calculateBearingAngle(p1, p2) {
+        function isValidCoordinatePair(coords) {
+            return Array.isArray(coords)
+                && coords.length === 2
+                && Number.isFinite(coords[0])
+                && Number.isFinite(coords[1])
+                && coords[0] >= -180
+                && coords[0] <= 180
+                && coords[1] >= -90
+                && coords[1] <= 90;
+        }
+
+        function calculateDistanceMeters(p1, p2) {
+            if (!isValidCoordinatePair(p1) || !isValidCoordinatePair(p2)) return 0;
+
+            const earthRadiusMeters = 6371000;
+            const lat1 = p1[1] * Math.PI / 180;
+            const lat2 = p2[1] * Math.PI / 180;
+            const deltaLat = (p2[1] - p1[1]) * Math.PI / 180;
+            const deltaLng = (p2[0] - p1[0]) * Math.PI / 180;
+            const a = Math.sin(deltaLat / 2) ** 2
+                + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
+            return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+
+        function smoothCoordinatePair(previousCoords, incomingCoords, factor = GPS_SMOOTHING_FACTOR) {
+            if (!isValidCoordinatePair(previousCoords)) return incomingCoords;
+            if (!isValidCoordinatePair(incomingCoords)) return previousCoords;
+
+            return [
+                previousCoords[0] + ((incomingCoords[0] - previousCoords[0]) * factor),
+                previousCoords[1] + ((incomingCoords[1] - previousCoords[1]) * factor)
+            ];
+        }
+
+        function calculateBearingAngle(p1, p2, fallbackBearing = currentVehicleHeading) {
+            if (!isValidCoordinatePair(p1) || !isValidCoordinatePair(p2)) return fallbackBearing;
+
+            const samePoint = Math.abs(p1[0] - p2[0]) < 0.000001 && Math.abs(p1[1] - p2[1]) < 0.000001;
+            if (samePoint) return fallbackBearing;
+
             const lng1 = p1[0] * Math.PI / 180;
             const lat1 = p1[1] * Math.PI / 180;
             const lng2 = p2[0] * Math.PI / 180;
@@ -529,7 +580,7 @@
             const y = Math.sin(dLng) * Math.cos(lat2);
             const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
             const bearing = Math.atan2(y, x) * 180 / Math.PI;
-            return (bearing + 360) % 360;
+            return Number.isFinite(bearing) ? (bearing + 360) % 360 : fallbackBearing;
         }
 
         map.on('load', () => {
@@ -537,7 +588,7 @@
             initAutonomousSearchMatrix();
             initDirectMapInputListeners();
             initHardwareConsoleTriggers();
-            injectRealtime3DWorldAssets();
+            inject3DEarthWorldAssets();
             establishLiveHardwarePositioningStream();
 
             map.setFog({
@@ -567,11 +618,11 @@
         });
 
         map.on('style.data', () => {
-            injectRealtime3DWorldAssets();
+            inject3DEarthWorldAssets();
             redrawActiveRoutePipelines();
         });
 
-        function injectRealtime3DWorldAssets() {
+        function inject3DEarthWorldAssets() {
             const styleSources = map.getStyle().sources;
             if (!styleSources) return;
             
@@ -587,9 +638,63 @@
                 }
             }
 
-            if (!map.getLayer('spatial-3d-buildings')) {
+            if (!map.getLayer('earth-3d-lanes-shadow')) {
                 map.addLayer({
-                    'id': 'spatial-3d-buildings',
+                    id: 'earth-3d-lanes-shadow',
+                    source: sourceKey,
+                    'source-layer': 'transportation',
+                    type: 'line',
+                    minzoom: 12,
+                    filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary']]],
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: {
+                        'line-color': '#000000',
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 16, 12, 20, 34],
+                        'line-opacity': 0.55,
+                        'line-blur': ['interpolate', ['linear'], ['zoom'], 12, 2, 18, 8],
+                        'line-offset': ['interpolate', ['linear'], ['zoom'], 12, 1, 18, 4]
+                    }
+                }, labelLayerId);
+            }
+
+            if (!map.getLayer('earth-3d-lanes-deck')) {
+                map.addLayer({
+                    id: 'earth-3d-lanes-deck',
+                    source: sourceKey,
+                    'source-layer': 'transportation',
+                    type: 'line',
+                    minzoom: 12,
+                    filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary']]],
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: {
+                        'line-color': ['interpolate', ['linear'], ['zoom'], 12, '#15151c', 17, '#24242f'],
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 2, 16, 9, 20, 28],
+                        'line-opacity': 0.9
+                    }
+                }, labelLayerId);
+            }
+
+            if (!map.getLayer('earth-3d-lanes-highlight')) {
+                map.addLayer({
+                    id: 'earth-3d-lanes-highlight',
+                    source: sourceKey,
+                    'source-layer': 'transportation',
+                    type: 'line',
+                    minzoom: 14,
+                    filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary']]],
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: {
+                        'line-color': '#ff3333',
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 18, 2, 20, 4],
+                        'line-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.15, 18, 0.45],
+                        'line-offset': ['interpolate', ['linear'], ['zoom'], 14, -0.5, 18, -2]
+                    }
+                }, labelLayerId);
+            }
+
+            if (!map.getLayer('earth-3d-buildings')) {
+                map.addLayer({
+                    'id': 'earth-3d-buildings',
                     'source': sourceKey,
                     'source-layer': 'building',
                     'type': 'fill-extrusion',
@@ -597,6 +702,7 @@
                     'paint': {
                         'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 14],
                         'fill-extrusion-base': ['coalesce', ['get', 'min_height'], ['get', 'render_min_height'], 0],
+                        'fill-extrusion-color': '#161620',
                         'fill-extrusion-opacity': 0.85,
                         'fill-extrusion-vertical-gradient': true
                     }
@@ -606,15 +712,22 @@
 
         async function handleRoutingButtonClick() {
             const btn = document.getElementById('launch-routing-action');
-            if (!btn) return;
+            if (!btn || !isValidCoordinatePair(targetSelectedCoordinates)) return;
 
             btn.innerText = "COMPUTING PATH TRAJECTORY...";
             btn.style.opacity = "0.6";
+            btn.disabled = true;
              
-            let originCoords = currentLiveGpsPosition;
+            let originCoords = isValidCoordinatePair(currentLiveGpsPosition) ? currentLiveGpsPosition : null;
             if (!originCoords) {
                 const mapCenter = map.getCenter();
                 originCoords = [mapCenter.lng, mapCenter.lat];
+            }
+            if (!isValidCoordinatePair(originCoords)) {
+                btn.innerText = "GPS ORIGIN UNAVAILABLE";
+                btn.style.opacity = "1";
+                btn.disabled = false;
+                return;
             }
              
             const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&steps=true`;
@@ -624,6 +737,7 @@
                 activeRouteDataStore = [];
 
                 const stream = await fetch(routingQueryUrl);
+                if (!stream.ok) throw new Error(`Routing service returned ${stream.status}`);
                 const results = await stream.json();
                 
                 if (results.code === 'Ok' && results.routes && results.routes.length > 0) {
@@ -676,8 +790,13 @@
                     });
                 }
                 document.getElementById('control-panel-deck').classList.add('minimized');
+            } else {
+                btn.innerText = "ROUTE UNAVAILABLE - TRY AGAIN";
+                btn.style.display = "block";
             }
-            btn.style.display = "none"; 
+            btn.style.opacity = "1";
+            btn.disabled = false;
+            if (activeRouteDataStore.length > 0) btn.style.display = "none";
         }
 
         function redrawActiveRoutePipelines() {
@@ -693,32 +812,49 @@
                         type: 'geojson', 
                         data: { type: 'Feature', geometry: { type: 'LineString', coordinates: baseCoords } } 
                     });
+                } else {
+                    map.getSource(srcId).setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: baseCoords } });
                 }
 
-                if (!map.getLayer(`layer-route-casing-${r.index}`)) {
+                if (!map.getLayer(`layer-route-lane-shadow-${r.index}`)) {
                     map.addLayer({
-                        id: `layer-route-casing-${r.index}`,
+                        id: `layer-route-lane-shadow-${r.index}`,
                         type: 'line',
                         source: srcId,
                         layout: { 'line-join': 'round', 'line-cap': 'round' },
                         paint: {
                             'line-color': '#ff3333',
                             'line-width': ['interpolate', ['linear'], ['zoom'], 12, 8, 16, 16, 20, 36],
-                            'line-opacity': 0.25,
-                            'line-blur': 12
+                            'line-opacity': 0.35,
+                            'line-blur': 14,
+                            'line-offset': ['interpolate', ['linear'], ['zoom'], 12, 1, 18, 5]
                         }
                     });
                 }
 
-                if (!map.getLayer(`layer-route-core-${r.index}`)) {
+                if (!map.getLayer(`layer-route-lane-deck-${r.index}`)) {
                     map.addLayer({
-                        id: `layer-route-core-${r.index}`,
+                        id: `layer-route-lane-deck-${r.index}`,
+                        type: 'line',
+                        source: srcId,
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: {
+                            'line-color': '#1b1b25',
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 6, 16, 12, 20, 28],
+                            'line-opacity': 0.96
+                        }
+                    });
+                }
+
+                if (!map.getLayer(`layer-route-lane-core-${r.index}`)) {
+                    map.addLayer({
+                        id: `layer-route-lane-core-${r.index}`,
                         type: 'line',
                         source: srcId,
                         layout: { 'line-join': 'round', 'line-cap': 'round' },
                         paint: {
                             'line-color': '#ff3333', 
-                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 16, 6, 20, 12],
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 4, 16, 8, 20, 16],
                             'line-opacity': 1.0
                         }
                     });
@@ -730,6 +866,10 @@
             const dashboard = document.getElementById('route-variants-dashboard');
             if (!dashboard) return;
             dashboard.innerHTML = '';
+            if (!activeRouteDataStore || activeRouteDataStore.length === 0) {
+                dashboard.style.display = 'none';
+                return;
+            }
             dashboard.style.display = 'flex';
 
             activeRouteDataStore.forEach((r) => {
@@ -795,7 +935,7 @@
 
         function clearActiveRouteLayers() {
             for (let idx = 0; idx < 10; idx++) {
-                const elements = [`layer-route-casing-${idx}`, `layer-route-core-${idx}`];
+                const elements = [`layer-route-lane-shadow-${idx}`, `layer-route-lane-deck-${idx}`, `layer-route-lane-core-${idx}`];
                 elements.forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
                 const sources = [`src-active-route-${idx}`];
                 sources.forEach(id => { if (map.getSource(id)) map.removeSource(id); });
@@ -805,100 +945,106 @@
         function establishLiveHardwarePositioningStream() {
             const diagnosticStatus = document.getElementById('telemetry-status-node');
             if (!diagnosticStatus) return;
-            if (!navigator.geolocation) { diagnosticStatus.innerText = "SENSOR FAULT"; return; }
+
+            if (!window.isSecureContext) {
+                diagnosticStatus.innerText = "GPS REQUIRES HTTPS";
+                diagnosticStatus.style.color = "#ff9500";
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                diagnosticStatus.innerText = "SENSOR FAULT";
+                diagnosticStatus.style.color = "#ff9500";
+                return;
+            }
 
             let initialLockAcquired = false;
 
             navigator.geolocation.watchPosition(
                 (position) => {
-                    const lon = position.coords.longitude;
-                    const lat = position.coords.latitude;
-                    const incomingLoc = [lon, lat];
+                    const rawFix = [position.coords.longitude, position.coords.latitude];
+                    if (!isValidCoordinatePair(rawFix)) return;
+
                     const now = performance.now();
-                    
-                    diagnosticStatus.innerText = "GPS TRACKING ACTIVE";
-                    diagnosticStatus.style.color = "var(--action-red)";
+                    const accuracy = Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : Infinity;
+                    const hasExistingFix = isValidCoordinatePair(currentLiveGpsPosition);
 
-                    // Fixed: Eliminate GPS rubber-banding glitch on boot
-                    if (!initialLockAcquired) {
-                        initialLockAcquired = true;
-                        currentLiveGpsPosition = incomingLoc;
-                        lastGpsTimestamp = now;
-
-                        if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
-                            currentVehicleHeading = position.coords.heading;
-                        }
-
-                        if (!userLocationBeaconMarker) {
-                            const beaconEl = document.createElement('div');
-                            beaconEl.className = 'live-gps-beacon-node';
-                            userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })
-                                .setLngLat(currentLiveGpsPosition)
-                                .addTo(map);
-                        }
-
-                        // JUMP instantly instead of easing across the map
-                        map.jumpTo({ center: currentLiveGpsPosition, zoom: 17.5, pitch: 70, bearing: currentVehicleHeading });
-                        return; 
+                    if (hasExistingFix && accuracy > GPS_MAX_ACCEPTED_ACCURACY_METERS) {
+                        diagnosticStatus.innerText = `GPS WEAK (${Math.round(accuracy)}M)`;
+                        diagnosticStatus.style.color = "#ff9500";
+                        return;
                     }
 
-                    if (lastGpsTimestamp && currentLiveGpsPosition) {
-                        const elapsedSecs = (now - lastGpsTimestamp) / 1000;
-                        if (elapsedSecs > 0) {
-                            gpsVelocityVector.lng = (lon - currentLiveGpsPosition[0]) / elapsedSecs;
-                            gpsVelocityVector.lat = (lat - currentLiveGpsPosition[1]) / elapsedSecs;
-                        }
+                    const elapsedSecs = lastGpsTimestamp ? Math.max((now - lastGpsTimestamp) / 1000, 0.001) : 0;
+                    const movementMeters = hasExistingFix ? calculateDistanceMeters(currentLiveGpsPosition, rawFix) : 0;
+                    const impliedSpeed = elapsedSecs > 0 ? movementMeters / elapsedSecs : 0;
+
+                    if (hasExistingFix && elapsedSecs < 10 && impliedSpeed > GPS_MAX_PLAUSIBLE_SPEED_MPS) {
+                        diagnosticStatus.innerText = "GPS SPIKE FILTERED";
+                        diagnosticStatus.style.color = "#ff9500";
+                        return;
                     }
 
-                    if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
-                        currentVehicleHeading = position.coords.heading;
-                    } else if (currentLiveGpsPosition) {
-                        currentVehicleHeading = calculateBearingAngle(currentLiveGpsPosition, incomingLoc);
+                    const stableFix = initialLockAcquired
+                        ? smoothCoordinatePair(currentLiveGpsPosition, rawFix)
+                        : rawFix;
+
+                    let nextHeading = currentVehicleHeading;
+                    if (Number.isFinite(position.coords.heading) && position.coords.heading >= 0) {
+                        nextHeading = position.coords.heading;
+                    } else if (movementMeters >= GPS_MIN_HEADING_DISTANCE_METERS) {
+                        nextHeading = calculateBearingAngle(currentLiveGpsPosition, rawFix, currentVehicleHeading);
                     }
 
-                    currentLiveGpsPosition = incomingLoc;
+                    currentLiveGpsPosition = stableFix;
+                    currentVehicleHeading = nextHeading;
                     lastGpsTimestamp = now;
 
-                    if (userLocationBeaconMarker) {
+                    diagnosticStatus.innerText = accuracy === Infinity
+                        ? "GPS TRACKING ACTIVE"
+                        : `GPS TRACKING ACTIVE ±${Math.round(accuracy)}M`;
+                    diagnosticStatus.style.color = "var(--action-red)";
+
+                    if (!userLocationBeaconMarker) {
+                        const beaconEl = document.createElement('div');
+                        beaconEl.className = 'live-gps-beacon-node';
+                        userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })
+                            .setLngLat(currentLiveGpsPosition)
+                            .addTo(map);
+                    } else {
                         userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
                     }
 
-                    if (cameraTrackingMode) {
+                    if (!initialLockAcquired) {
+                        initialLockAcquired = true;
+                        lastCameraUpdateTimestamp = now;
+                        map.jumpTo({ center: currentLiveGpsPosition, zoom: 17.5, pitch: 70, bearing: currentVehicleHeading });
+                        return;
+                    }
+
+                    if (cameraTrackingMode && now - lastCameraUpdateTimestamp >= GPS_MIN_CAMERA_INTERVAL_MS) {
+                        lastCameraUpdateTimestamp = now;
                         map.easeTo({
                             center: currentLiveGpsPosition,
                             pitch: 70,
                             bearing: currentVehicleHeading,
-                            zoom: 17.5,
-                            duration: 500
+                            zoom: Math.max(map.getZoom(), 17.5),
+                            duration: 650,
+                            essential: true
                         });
                     }
                 },
-                (error) => { 
-                    diagnosticStatus.innerText = "LOCAL SIMULATION ACTIVE"; 
+                (error) => {
+                    const messageByCode = {
+                        [error.PERMISSION_DENIED]: "GPS PERMISSION DENIED",
+                        [error.POSITION_UNAVAILABLE]: "GPS POSITION UNAVAILABLE",
+                        [error.TIMEOUT]: "GPS TIMEOUT - RETRYING"
+                    };
+                    diagnosticStatus.innerText = messageByCode[error.code] || "GPS SENSOR ERROR";
                     diagnosticStatus.style.color = "#ff9500";
                 },
-                { enableHighAccuracy: true, timeout: 6000, maximumAge: 0 }
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
             );
-
-            function executePredictiveTrackingFrame() {
-                if (cameraTrackingMode && currentLiveGpsPosition && lastGpsTimestamp && initialLockAcquired) {
-                    const frameTime = performance.now();
-                    const deltaSec = (frameTime - lastGpsTimestamp) / 1000;
-                    
-                    // Fixed: Only predict if the time gap is realistic to prevent infinite scrolling
-                    if (deltaSec > 0.3 && deltaSec < 2.0) {
-                        const predictedLng = currentLiveGpsPosition[0] + (gpsVelocityVector.lng * 0.016);
-                        const predictedLat = currentLiveGpsPosition[1] + (gpsVelocityVector.lat * 0.016);
-                        
-                        currentLiveGpsPosition = [predictedLng, predictedLat];
-                        if (userLocationBeaconMarker) userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
-                        
-                        map.setCenter(currentLiveGpsPosition);
-                    }
-                }
-                requestAnimationFrame(executePredictiveTrackingFrame);
-            }
-            requestAnimationFrame(executePredictiveTrackingFrame);
         }
 
         function initHardwareConsoleTriggers() {
@@ -914,13 +1060,15 @@
                 recenterBtn.addEventListener('click', () => {
                     cameraTrackingMode = true; 
                     recenterBtn.classList.add('active-state');
-                    if (currentLiveGpsPosition) {
+                    if (isValidCoordinatePair(currentLiveGpsPosition)) {
+                        lastCameraUpdateTimestamp = performance.now();
                         map.flyTo({ 
                             center: currentLiveGpsPosition, 
                             zoom: 17.5, 
                             pitch: 70, 
                             bearing: currentVehicleHeading, 
-                            duration: 600 
+                            duration: 600,
+                            essential: true
                         });
                     }
                 });
@@ -1013,13 +1161,14 @@
             input.addEventListener('input', (e) => {
                 const queryVal = e.target.value.trim();
                 clearTimeout(querySearchDebounceTimer);
-                if (queryVal.length < 3) { dropdown.style.display = 'none'; return; }
+                if (queryVal.length < 3) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
                  
                 querySearchDebounceTimer = setTimeout(async () => {
                     try {
                         let searchApiUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`;
-                        if (currentLiveGpsPosition) searchApiUrl += `&lon=${currentLiveGpsPosition[0]}&lat=${currentLiveGpsPosition[1]}`;
+                        if (isValidCoordinatePair(currentLiveGpsPosition)) searchApiUrl += `&lon=${currentLiveGpsPosition[0]}&lat=${currentLiveGpsPosition[1]}`;
                         const response = await fetch(searchApiUrl);
+                        if (!response.ok) throw new Error(`Search service returned ${response.status}`);
                         const payload = await response.json();
                         if (!payload.features || payload.features.length === 0) { dropdown.style.display = 'none'; return; }
                          
@@ -1028,11 +1177,12 @@
                             const segmentItem = document.createElement('div');
                             segmentItem.className = 'osm-suggest-item';
                             const p = feature.properties;
-                            const labeledLocation = [p.name, p.city, p.state].filter(Boolean).join(', ');
+                            const labeledLocation = [p.name, p.city, p.state, p.country].filter(Boolean).join(', ') || 'Unnamed location';
                             segmentItem.innerText = labeledLocation;
                              
                             segmentItem.addEventListener('click', () => {
                                 const targetLoc = feature.geometry.coordinates;
+                                if (!isValidCoordinatePair(targetLoc)) return;
                                 dropdown.style.display = 'none';
                                 input.value = labeledLocation;
                                 
@@ -1053,11 +1203,13 @@
         function initDirectMapInputListeners() {
             map.on('click', async (e) => {
                 const pinpoint = [e.lngLat.lng, e.lngLat.lat];
+                if (!isValidCoordinatePair(pinpoint)) return;
                 document.getElementById('control-panel-deck').classList.remove('minimized');
 
                 triggerWorkspaceTargetDeck(pinpoint, "Target Spatial Vector", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
                 try {
-                    const lookup = await fetch(`https://photon.komoot.io/api/?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
+                    const lookup = await fetch(`https://photon.komoot.io/reverse?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
+                    if (!lookup.ok) throw new Error(`Reverse geocoder returned ${lookup.status}`);
                     const details = await lookup.json();
                     if (details.features && details.features.length > 0) {
                         const p = details.features[0].properties;
@@ -1068,7 +1220,16 @@
             });
         }
 
+        if ('serviceWorker' in navigator && window.isSecureContext) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js').catch((error) => {
+                    console.warn('3d Earth service worker registration failed.', error);
+                });
+            });
+        }
+
         function triggerWorkspaceTargetDeck(coords, title, details) {
+            if (!isValidCoordinatePair(coords)) return;
             clearActiveRouteLayers();
             activeRouteDataStore = [];
             targetSelectedCoordinates = coords;

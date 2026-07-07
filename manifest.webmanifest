@@ -1,0 +1,20 @@
+{
+  "name": "3d Earth",
+  "short_name": "3d Earth",
+  "description": "3D earth navigation workspace with stabilized GPS tracking, search, and route guidance.",
+  "start_url": "./workspace.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#050505",
+  "theme_color": "#050505",
+  "categories": ["navigation", "maps", "productivity"],
+  "icons": [
+    {
+      "src": "./assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
