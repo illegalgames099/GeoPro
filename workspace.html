@@ -543,29 +543,6 @@
                 && coords[1] <= 90;
         }
 
-        function calculateDistanceMeters(p1, p2) {
-            if (!isValidCoordinatePair(p1) || !isValidCoordinatePair(p2)) return 0;
-
-            const earthRadiusMeters = 6371000;
-            const lat1 = p1[1] * Math.PI / 180;
-            const lat2 = p2[1] * Math.PI / 180;
-            const deltaLat = (p2[1] - p1[1]) * Math.PI / 180;
-            const deltaLng = (p2[0] - p1[0]) * Math.PI / 180;
-            const a = Math.sin(deltaLat / 2) ** 2
-                + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLng / 2) ** 2;
-            return earthRadiusMeters * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        }
-
-        function smoothCoordinatePair(previousCoords, incomingCoords, factor = GPS_SMOOTHING_FACTOR) {
-            if (!isValidCoordinatePair(previousCoords)) return incomingCoords;
-            if (!isValidCoordinatePair(incomingCoords)) return previousCoords;
-
-            return [
-                previousCoords[0] + ((incomingCoords[0] - previousCoords[0]) * factor),
-                previousCoords[1] + ((incomingCoords[1] - previousCoords[1]) * factor)
-            ];
-        }
-
         function calculateBearingAngle(p1, p2, fallbackBearing = currentVehicleHeading) {
             if (!isValidCoordinatePair(p1) || !isValidCoordinatePair(p2)) return fallbackBearing;
 
