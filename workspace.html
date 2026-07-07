@@ -465,6 +465,7 @@
 
             <div id="route-variants-dashboard"></div>
 
+            <div class="workspace-hardware-row">
                 <button id="flush-workspace-trigger" class="hud-btn">
                     CLEAR WORKSPACE
                 </button>
@@ -473,7 +474,6 @@
                     GET DIRECTIONS
                 </button>
             </div>
-
         </div>
     </div>
 
@@ -520,7 +520,23 @@
             return el;
         }
 
-        function calculateBearingAngle(p1, p2) {
+        function isValidCoordinatePair(coords) {
+            return Array.isArray(coords)
+                && coords.length === 2
+                && Number.isFinite(coords[0])
+                && Number.isFinite(coords[1])
+                && coords[0] >= -180
+                && coords[0] <= 180
+                && coords[1] >= -90
+                && coords[1] <= 90;
+        }
+
+        function calculateBearingAngle(p1, p2, fallbackBearing = currentVehicleHeading) {
+            if (!isValidCoordinatePair(p1) || !isValidCoordinatePair(p2)) return fallbackBearing;
+
+            const samePoint = Math.abs(p1[0] - p2[0]) < 0.000001 && Math.abs(p1[1] - p2[1]) < 0.000001;
+            if (samePoint) return fallbackBearing;
+
             const lng1 = p1[0] * Math.PI / 180;
             const lat1 = p1[1] * Math.PI / 180;
             const lng2 = p2[0] * Math.PI / 180;
@@ -529,7 +545,7 @@
             const y = Math.sin(dLng) * Math.cos(lat2);
             const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
             const bearing = Math.atan2(y, x) * 180 / Math.PI;
-            return (bearing + 360) % 360;
+            return Number.isFinite(bearing) ? (bearing + 360) % 360 : fallbackBearing;
         }
 
         map.on('load', () => {
@@ -606,15 +622,22 @@
 
         async function handleRoutingButtonClick() {
             const btn = document.getElementById('launch-routing-action');
-            if (!btn) return;
+            if (!btn || !isValidCoordinatePair(targetSelectedCoordinates)) return;
 
             btn.innerText = "COMPUTING PATH TRAJECTORY...";
             btn.style.opacity = "0.6";
+            btn.disabled = true;
              
-            let originCoords = currentLiveGpsPosition;
+            let originCoords = isValidCoordinatePair(currentLiveGpsPosition) ? currentLiveGpsPosition : null;
             if (!originCoords) {
                 const mapCenter = map.getCenter();
                 originCoords = [mapCenter.lng, mapCenter.lat];
+            }
+            if (!isValidCoordinatePair(originCoords)) {
+                btn.innerText = "GPS ORIGIN UNAVAILABLE";
+                btn.style.opacity = "1";
+                btn.disabled = false;
+                return;
             }
              
             const routingQueryUrl = `https://router.project-osrm.org/route/v1/driving/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&steps=true`;
@@ -624,6 +647,7 @@
                 activeRouteDataStore = [];
 
                 const stream = await fetch(routingQueryUrl);
+                if (!stream.ok) throw new Error(`Routing service returned ${stream.status}`);
                 const results = await stream.json();
                 
                 if (results.code === 'Ok' && results.routes && results.routes.length > 0) {
@@ -676,8 +700,13 @@
                     });
                 }
                 document.getElementById('control-panel-deck').classList.add('minimized');
+            } else {
+                btn.innerText = "ROUTE UNAVAILABLE - TRY AGAIN";
+                btn.style.display = "block";
             }
-            btn.style.display = "none"; 
+            btn.style.opacity = "1";
+            btn.disabled = false;
+            if (activeRouteDataStore.length > 0) btn.style.display = "none";
         }
 
         function redrawActiveRoutePipelines() {
@@ -693,6 +722,8 @@
                         type: 'geojson', 
                         data: { type: 'Feature', geometry: { type: 'LineString', coordinates: baseCoords } } 
                     });
+                } else {
+                    map.getSource(srcId).setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: baseCoords } });
                 }
 
                 if (!map.getLayer(`layer-route-casing-${r.index}`)) {
@@ -730,6 +761,10 @@
             const dashboard = document.getElementById('route-variants-dashboard');
             if (!dashboard) return;
             dashboard.innerHTML = '';
+            if (!activeRouteDataStore || activeRouteDataStore.length === 0) {
+                dashboard.style.display = 'none';
+                return;
+            }
             dashboard.style.display = 'flex';
 
             activeRouteDataStore.forEach((r) => {
@@ -814,6 +849,7 @@
                     const lon = position.coords.longitude;
                     const lat = position.coords.latitude;
                     const incomingLoc = [lon, lat];
+                    if (!isValidCoordinatePair(incomingLoc)) return;
                     const now = performance.now();
                     
                     diagnosticStatus.innerText = "GPS TRACKING ACTIVE";
@@ -853,7 +889,7 @@
                     if (position.coords.heading !== null && !isNaN(position.coords.heading)) {
                         currentVehicleHeading = position.coords.heading;
                     } else if (currentLiveGpsPosition) {
-                        currentVehicleHeading = calculateBearingAngle(currentLiveGpsPosition, incomingLoc);
+                        currentVehicleHeading = calculateBearingAngle(currentLiveGpsPosition, incomingLoc, currentVehicleHeading);
                     }
 
                     currentLiveGpsPosition = incomingLoc;
@@ -885,15 +921,20 @@
                     const frameTime = performance.now();
                     const deltaSec = (frameTime - lastGpsTimestamp) / 1000;
                     
-                    // Fixed: Only predict if the time gap is realistic to prevent infinite scrolling
+                    // Render a short-lived prediction without mutating the real GPS fix.
+                    // Mutating currentLiveGpsPosition here made the next GPS delta compound,
+                    // which caused drifting/rubber-banding between hardware updates.
                     if (deltaSec > 0.3 && deltaSec < 2.0) {
-                        const predictedLng = currentLiveGpsPosition[0] + (gpsVelocityVector.lng * 0.016);
-                        const predictedLat = currentLiveGpsPosition[1] + (gpsVelocityVector.lat * 0.016);
-                        
-                        currentLiveGpsPosition = [predictedLng, predictedLat];
-                        if (userLocationBeaconMarker) userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
-                        
-                        map.setCenter(currentLiveGpsPosition);
+                        const predictionWindow = Math.min(deltaSec, 1);
+                        const predictedPosition = [
+                            currentLiveGpsPosition[0] + (gpsVelocityVector.lng * predictionWindow),
+                            currentLiveGpsPosition[1] + (gpsVelocityVector.lat * predictionWindow)
+                        ];
+
+                        if (isValidCoordinatePair(predictedPosition)) {
+                            if (userLocationBeaconMarker) userLocationBeaconMarker.setLngLat(predictedPosition);
+                            map.setCenter(predictedPosition);
+                        }
                     }
                 }
                 requestAnimationFrame(executePredictiveTrackingFrame);
@@ -1013,13 +1054,14 @@
             input.addEventListener('input', (e) => {
                 const queryVal = e.target.value.trim();
                 clearTimeout(querySearchDebounceTimer);
-                if (queryVal.length < 3) { dropdown.style.display = 'none'; return; }
+                if (queryVal.length < 3) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
                  
                 querySearchDebounceTimer = setTimeout(async () => {
                     try {
                         let searchApiUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`;
-                        if (currentLiveGpsPosition) searchApiUrl += `&lon=${currentLiveGpsPosition[0]}&lat=${currentLiveGpsPosition[1]}`;
+                        if (isValidCoordinatePair(currentLiveGpsPosition)) searchApiUrl += `&lon=${currentLiveGpsPosition[0]}&lat=${currentLiveGpsPosition[1]}`;
                         const response = await fetch(searchApiUrl);
+                        if (!response.ok) throw new Error(`Search service returned ${response.status}`);
                         const payload = await response.json();
                         if (!payload.features || payload.features.length === 0) { dropdown.style.display = 'none'; return; }
                          
@@ -1028,11 +1070,12 @@
                             const segmentItem = document.createElement('div');
                             segmentItem.className = 'osm-suggest-item';
                             const p = feature.properties;
-                            const labeledLocation = [p.name, p.city, p.state].filter(Boolean).join(', ');
+                            const labeledLocation = [p.name, p.city, p.state, p.country].filter(Boolean).join(', ') || 'Unnamed location';
                             segmentItem.innerText = labeledLocation;
                              
                             segmentItem.addEventListener('click', () => {
                                 const targetLoc = feature.geometry.coordinates;
+                                if (!isValidCoordinatePair(targetLoc)) return;
                                 dropdown.style.display = 'none';
                                 input.value = labeledLocation;
                                 
@@ -1053,11 +1096,13 @@
         function initDirectMapInputListeners() {
             map.on('click', async (e) => {
                 const pinpoint = [e.lngLat.lng, e.lngLat.lat];
+                if (!isValidCoordinatePair(pinpoint)) return;
                 document.getElementById('control-panel-deck').classList.remove('minimized');
 
                 triggerWorkspaceTargetDeck(pinpoint, "Target Spatial Vector", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
                 try {
-                    const lookup = await fetch(`https://photon.komoot.io/api/?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
+                    const lookup = await fetch(`https://photon.komoot.io/reverse?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
+                    if (!lookup.ok) throw new Error(`Reverse geocoder returned ${lookup.status}`);
                     const details = await lookup.json();
                     if (details.features && details.features.length > 0) {
                         const p = details.features[0].properties;
@@ -1069,6 +1114,7 @@
         }
 
         function triggerWorkspaceTargetDeck(coords, title, details) {
+            if (!isValidCoordinatePair(coords)) return;
             clearActiveRouteLayers();
             activeRouteDataStore = [];
             targetSelectedCoordinates = coords;
