@@ -572,9 +572,13 @@
             map.on('pitchstart', cancelTracking);
         });
 
-        map.on('style.data', () => {
+        map.on('styledata', () => {
             injectRealtime3DWorldAssets();
             redrawActiveRoutePipelines();
+        });
+
+        map.on('error', (e) => {
+            console.error('MapLibre error:', e && e.error ? e.error : e);
         });
 
         function injectRealtime3DWorldAssets() {
@@ -954,13 +958,10 @@
                                 },
                                 'terrain-dem-mesh': {
                                     'type': 'raster-dem',
-                                    'tiles': ['https://demotiles.maplibre.org/terrain-tiles/{z}/{x}/{y}.png'],
+                                    'tiles': ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
                                     'tileSize': 256,
-                                    'maxzoom': 14
-                                },
-                                'openfreemap': {
-                                    'type': 'vector',
-                                    'url': 'https://tiles.openfreemap.org/styles/liberty'
+                                    'encoding': 'terrarium',
+                                    'maxzoom': 15
                                 }
                             },
                             'layers': [
