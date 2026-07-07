@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8" />
-    <title>GeoPro - 3D World Navigation Engine</title>
+    <title>GeoPro</title>
     <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
     
     <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
@@ -465,11 +465,6 @@
 
             <div id="route-variants-dashboard"></div>
 
-            <div class="workspace-hardware-row">
-                <button id="toggle-satellite-view" class="hud-btn">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
-                    3D SATELLITE
-                </button>
                 <button id="flush-workspace-trigger" class="hud-btn">
                     CLEAR WORKSPACE
                 </button>
@@ -491,7 +486,6 @@
         let activeMapMarker = null; 
         let userLocationBeaconMarker = null;
         let activeRouteDataStore = []; 
-        let satelliteModeActive = false;
         let cameraTrackingMode = true; 
         
         let lastGpsTimestamp = null;
@@ -572,13 +566,9 @@
             map.on('pitchstart', cancelTracking);
         });
 
-        map.on('styledata', () => {
+        map.on('style.data', () => {
             injectRealtime3DWorldAssets();
             redrawActiveRoutePipelines();
-        });
-
-        map.on('error', (e) => {
-            console.error('MapLibre error:', e && e.error ? e.error : e);
         });
 
         function injectRealtime3DWorldAssets() {
@@ -605,7 +595,6 @@
                     'type': 'fill-extrusion',
                     'minzoom': 15, 
                     'paint': {
-                        'fill-extrusion-color': satelliteModeActive ? '#1a1a20' : '#111115',
                         'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 14],
                         'fill-extrusion-base': ['coalesce', ['get', 'min_height'], ['get', 'render_min_height'], 0],
                         'fill-extrusion-opacity': 0.85,
@@ -933,54 +922,6 @@
                             bearing: currentVehicleHeading, 
                             duration: 600 
                         });
-                    }
-                });
-            }
-
-            const satelliteBtn = document.getElementById('toggle-satellite-view');
-            if (satelliteBtn) {
-                satelliteBtn.addEventListener('click', () => {
-                    satelliteModeActive = !satelliteModeActive;
-                    clearActiveRouteLayers(); 
-
-                    if (satelliteModeActive) {
-                        satelliteBtn.style.borderColor = 'var(--action-red)';
-                        satelliteBtn.style.color = 'var(--action-red)';
-
-                        map.setStyle({
-                            'version': 8,
-                            'sources': {
-                                'satellite-imagery-tiles': {
-                                    'type': 'raster',
-                                    'tiles': ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-                                    'tileSize': 256,
-                                    'attribution': 'Esri'
-                                },
-                                'terrain-dem-mesh': {
-                                    'type': 'raster-dem',
-                                    'tiles': ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
-                                    'tileSize': 256,
-                                    'encoding': 'terrarium',
-                                    'maxzoom': 15
-                                }
-                            },
-                            'layers': [
-                                {
-                                    'id': 'satellite-reality-layer',
-                                    'type': 'raster',
-                                    'source': 'satellite-imagery-tiles'
-                                }
-                            ],
-                            'terrain': {
-                                'source': 'terrain-dem-mesh',
-                                'exaggeration': 1.6
-                            }
-                        });
-                    } else {
-                        satelliteBtn.style.borderColor = '';
-                        satelliteBtn.style.color = '';
-                        if (map.getTerrain()) map.setTerrain(null);
-                        map.setStyle(HIGH_PERFORMANCE_DARK_STYLE);
                     }
                 });
             }
