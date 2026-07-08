@@ -801,6 +801,77 @@
             font-size: 0.62rem;
             margin-top: 2px;
         }
+        /* ── Route Progress Bar ──────────────────────────────────────────── */
+        #route-progress-bar {
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 3px;
+            z-index: 20;
+            display: none;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        #route-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ff3333 0%, #ff7700 60%, #ffb020 100%);
+            transition: width 0.6s ease;
+            box-shadow: 0 0 8px rgba(255, 80, 0, 0.7);
+        }
+
+        /* ── Surface Warning Banner ──────────────────────────────────────── */
+        #surface-warn-banner {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(140, 72, 0, 0.94);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: #ffe8b0;
+            font-family: var(--font-monospace);
+            font-size: 0.68rem;
+            font-weight: bold;
+            letter-spacing: 0.6px;
+            padding: 6px 16px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 180, 0, 0.35);
+            z-index: 15;
+            display: none;
+            pointer-events: none;
+            white-space: nowrap;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6);
+            animation: surface-warn-fade 0.3s ease;
+        }
+        @keyframes surface-warn-fade {
+            from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+            to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+
+        /* ── Search History Items ────────────────────────────────────────── */
+        .osm-history-section-label {
+            padding: 6px 14px 3px;
+            font-family: var(--font-monospace);
+            font-size: 0.62rem;
+            color: var(--text-muted);
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            pointer-events: none;
+            user-select: none;
+        }
+        .osm-history-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            border-bottom: 1px solid rgba(255, 51, 51, 0.05);
+            transition: background 0.15s;
+        }
+        .osm-history-item:hover { background: rgba(255, 51, 51, 0.07); color: var(--text-primary); }
+        .osm-history-item-icon { font-size: 0.75rem; opacity: 0.5; flex-shrink: 0; }
     </style>
 </head>
 <body>
@@ -871,6 +942,12 @@
         </div>
     </div>
 
+    <!-- Route progress bar (shows % of route completed during navigation) -->
+    <div id="route-progress-bar"><div id="route-progress-fill"></div></div>
+
+    <!-- Unpaved / poor surface warning -->
+    <div id="surface-warn-banner">⚠ UNPAVED SURFACE ON ROUTE</div>
+
     <div class="hud-system-header">
         <div class="hud-module">
             <div class="brand-node">Geo<span>PRO</span></div>
@@ -895,6 +972,9 @@
         </button>
         <button id="theme-switcher-btn" class="side-btn" title="Map Style">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        </button>
+        <button id="voice-guidance-toggle" class="side-btn active-state" title="Voice Guidance On/Off">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/></svg>
         </button>
     </div>
 
@@ -970,6 +1050,13 @@
         let currentRoutingProfile = 'driving';
 
         let laneGuidance = null;
+        let _voiceEnabled = true;           // voice guidance on/off
+        let _sunriseSec   = null;           // today's sunrise (seconds since midnight, local)
+        let _sunsetSec    = null;           // today's sunset  (seconds since midnight, local)
+        let _sunLastLoc   = null;           // location where sunrise/sunset was last fetched
+        let _preTurnAnnounced = false;      // guards the 300m pre-announcement per step
+        const SEARCH_HISTORY_KEY = 'geopro_search_history';
+        const SEARCH_HISTORY_MAX = 6;
 
         let activeMapMarker = null;
         let userLocationBeaconMarker = null;
@@ -1139,14 +1226,13 @@
             }
 
             _detectNight() {
-                // Prefer an explicit app theme signal, fall back to clock.
+                // Prefer an explicit app theme signal, then solar data, fall back to clock.
                 const b = document.body;
                 if (b && (b.classList.contains('theme-night') ||
                           b.classList.contains('theme-dark')))  return true;
                 if (b && (b.classList.contains('theme-day')  ||
                           b.classList.contains('theme-light'))) return false;
-                const h = new Date().getHours();
-                return h >= 19 || h < 6;
+                return isSolarNight();
             }
 
             // ── Public API ───────────────────────────────────────────────
@@ -2152,11 +2238,25 @@
                 const d = metersBetween(fix, cur.coordinates);
                 if (d < 20 && activeStepIndex < r.steps.length - 1) {
                     activeStepIndex++;
+                    _preTurnAnnounced = false;  // reset pre-turn flag for new step
                     const s = r.steps[activeStepIndex];
                     laneGuidance.show(s, r.steps[activeStepIndex + 1] || null);
                     updateMapLaneGuidance();
+                    updateRouteProgressBar();
+                    // Announce the new instruction via voice
+                    speakInstruction(voiceStepText(s));
                 } else {
                     laneGuidance.updateDistance(d);
+                    updateRouteProgressBar();
+                    // Pre-turn announcement at ~300m — fires once per step
+                    if (!_preTurnAnnounced && d > 20 && d < 320) {
+                        _preTurnAnnounced = true;
+                        const distMi = (d / 1609.34).toFixed(1);
+                        const distStr = d < 200
+                            ? `In ${Math.round(d / 10) * 10} meters`
+                            : `In ${distMi} miles`;
+                        speakInstruction(`${distStr}, ${voiceStepText(cur)}`);
+                    }
                 }
             }
             pushMapCameraDelta();
@@ -2290,12 +2390,202 @@
             map.getSource('lane-guidance').setData({ type: 'FeatureCollection', features: [feature] });
         }
 
+        // ══════════════════════════════════════════════════════════════════════
+        // ── SOLAR NIGHT MODE  (Open-Meteo sunrise/sunset, no API key) ─────────
+        // ══════════════════════════════════════════════════════════════════════
+        function isSolarNight() {
+            if (_sunriseSec === null || _sunsetSec === null) {
+                const h = new Date().getHours();
+                return h >= 19 || h < 6;
+            }
+            const now = new Date();
+            const sec = now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds();
+            // Night = before sunrise or after sunset (10-min grace buffer each side)
+            return sec < (_sunriseSec - 600) || sec > (_sunsetSec + 600);
+        }
+
+        async function fetchSunriseSunset(lat, lon) {
+            // Only re-fetch if position moved more than 5 km
+            if (_sunLastLoc && calculateDistanceMeters(_sunLastLoc, [lon, lat]) < 5000) return;
+            _sunLastLoc = [lon, lat];
+            try {
+                const res = await fetch(
+                    `https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&daily=sunrise,sunset&timezone=auto&forecast_days=1`
+                );
+                if (!res.ok) return;
+                const data = await res.json();
+                const srISO = data.daily?.sunrise?.[0];
+                const ssISO = data.daily?.sunset?.[0];
+                if (!srISO || !ssISO) return;
+                const toSec = iso => {
+                    const d = new Date(iso);
+                    return d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds();
+                };
+                _sunriseSec = toSec(srISO);
+                _sunsetSec  = toSec(ssISO);
+                // Push updated night state to the 3D HUD immediately
+                if (laneGuidance) laneGuidance.nightMode = isSolarNight();
+            } catch(e) { /* non-critical */ }
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // ── VOICE GUIDANCE  (Web Speech API, zero external deps) ──────────────
+        // ══════════════════════════════════════════════════════════════════════
+        function speakInstruction(text) {
+            if (!_voiceEnabled) return;
+            if (!('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();   // interrupt any pending speech
+            const utt = new SpeechSynthesisUtterance(text);
+            utt.rate   = 0.95;
+            utt.volume = 1.0;
+            utt.pitch  = 1.0;
+            // Use a local US-English voice when available for lower latency
+            const voices = window.speechSynthesis.getVoices();
+            const preferred = voices.find(v => v.lang === 'en-US' && v.localService)
+                           || voices.find(v => v.lang.startsWith('en'));
+            if (preferred) utt.voice = preferred;
+            window.speechSynthesis.speak(utt);
+        }
+
+        function voiceStepText(step) {
+            if (!step) return '';
+            // Convert internal "Turn left onto Main St" style to a spoken phrase
+            let t = step.text || '';
+            if (step.maneuverType === 'arrive') return 'You have arrived at your destination.';
+            if (step.maneuverType === 'depart') return `Start on ${step.name || 'the road'}.`;
+            return t;
+        }
+
+        function initVoiceToggle() {
+            const btn = document.getElementById('voice-guidance-toggle');
+            if (!btn) return;
+            if (!('speechSynthesis' in window)) { btn.style.display = 'none'; return; }
+            btn.addEventListener('click', () => {
+                _voiceEnabled = !_voiceEnabled;
+                btn.classList.toggle('active-state', _voiceEnabled);
+                if (_voiceEnabled) {
+                    speakInstruction('Voice guidance enabled.');
+                } else {
+                    window.speechSynthesis.cancel();
+                }
+            });
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // ── SEARCH HISTORY  (localStorage, recent destinations) ───────────────
+        // ══════════════════════════════════════════════════════════════════════
+        function getSearchHistory() {
+            try { return JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]'); } catch { return []; }
+        }
+
+        function saveToSearchHistory(label, coords) {
+            if (!label || !isValidCoordinatePair(coords)) return;
+            try {
+                let hist = getSearchHistory().filter(h => h.label !== label);
+                hist.unshift({ label, coords, ts: Date.now() });
+                hist = hist.slice(0, SEARCH_HISTORY_MAX);
+                localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(hist));
+            } catch { /* storage quota — silently skip */ }
+        }
+
+        function renderSearchHistory(dropdown, input) {
+            const hist = getSearchHistory();
+            if (!hist.length) return false;
+            dropdown.innerHTML = '';
+            const lbl = document.createElement('div');
+            lbl.className = 'osm-history-section-label';
+            lbl.textContent = '⏱ Recent';
+            dropdown.appendChild(lbl);
+            hist.forEach(h => {
+                const item = document.createElement('div');
+                item.className = 'osm-suggest-item osm-history-item';
+                item.innerHTML = `<span class="osm-history-item-icon">🕐</span>${h.label}`;
+                item.addEventListener('click', () => {
+                    dropdown.style.display = 'none';
+                    input.value = h.label;
+                    cameraTrackingMode = false;
+                    document.getElementById('force-gps-recenter').classList.remove('active-state');
+                    map.flyTo({ center: h.coords, zoom: 17, pitch: 65 });
+                    triggerWorkspaceTargetDeck(h.coords, h.label, h.label);
+                });
+                dropdown.appendChild(item);
+            });
+            dropdown.style.display = 'block';
+            return true;
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // ── ROUTE PROGRESS BAR ────────────────────────────────────────────────
+        // ══════════════════════════════════════════════════════════════════════
+        function updateRouteProgressBar() {
+            const bar  = document.getElementById('route-progress-bar');
+            const fill = document.getElementById('route-progress-fill');
+            if (!bar || !fill) return;
+            const r = activeRouteDataStore[selectedRouteIndex];
+            if (!r || !r.steps.length) { bar.style.display = 'none'; return; }
+
+            // Cumulative distance up to the current step boundary
+            let totalDist = 0;
+            let completedDist = 0;
+            r.steps.forEach((s, i) => {
+                const d = s.distance || 0;
+                if (i < activeStepIndex) completedDist += d;
+                totalDist += d;
+            });
+            if (totalDist === 0) { bar.style.display = 'none'; return; }
+
+            const pct = Math.max(0, Math.min(100, (completedDist / totalDist) * 100));
+            bar.style.display = 'block';
+            fill.style.width  = pct.toFixed(1) + '%';
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // ── ROAD SURFACE CHECK  (Overpass, warns of unpaved segments) ─────────
+        // ══════════════════════════════════════════════════════════════════════
+        const UNPAVED_SURFACES = new Set([
+            'unpaved','gravel','dirt','grass','sand','ground','earth',
+            'mud','compacted','fine_gravel','woodchips','pebblestone','rock'
+        ]);
+
+        async function checkRouteSurface(routeCoords) {
+            if (!routeCoords || routeCoords.length < 2) return;
+            const warn = document.getElementById('surface-warn-banner');
+            if (warn) warn.style.display = 'none';
+            try {
+                // Sample up to 12 evenly-spaced points along the route geometry
+                const stride = Math.max(1, Math.floor(routeCoords.length / 12));
+                const samples = routeCoords.filter((_, i) => i % stride === 0).slice(0, 12);
+                const radius  = 35; // metres
+                const union   = samples.map(c =>
+                    `way["surface"](around:${radius},${c[1].toFixed(5)},${c[0].toFixed(5)})`
+                ).join(';');
+                const q = `[out:json][timeout:12];(${union};);out tags 30;`;
+                const res = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: `data=${encodeURIComponent(q)}`
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const bad = (data.elements || []).find(el => UNPAVED_SURFACES.has(el.tags?.surface));
+                if (bad && warn) {
+                    const tag = bad.tags.surface;
+                    warn.textContent = `⚠ UNPAVED SURFACE ON ROUTE (${tag})`;
+                    warn.style.display = 'block';
+                    // Auto-dismiss after 14s; user can re-check via route reload
+                    setTimeout(() => { if (warn) warn.style.display = 'none'; }, 14000);
+                    if (_voiceEnabled) speakInstruction(`Warning: unpaved ${tag} surface detected on route.`);
+                }
+            } catch(e) { /* non-critical — surface data is advisory */ }
+        }
+
         map.on('load', () => {
             laneGuidance = new LaneGuidance3D();
             wireLaneGuidanceMapSync();
             installMapLaneGuidance();
             initPOIRadar();
             initThemePicker();
+            initVoiceToggle();
             initTacticalPanelDraggingPhysics();
             initAutonomousSearchMatrix();
             initDirectMapInputListeners();
@@ -2555,6 +2845,14 @@
                 }
                 // Load elevation profile
                 loadElevationProfile(activeRouteDataStore[selectedRouteIndex].geometry.coordinates);
+                // Check for unpaved/poor surface segments along the route
+                checkRouteSurface(activeRouteDataStore[selectedRouteIndex].geometry.coordinates);
+                // Initialise progress bar at 0%
+                updateRouteProgressBar();
+                // Announce first instruction
+                const firstStep = activeRouteDataStore[selectedRouteIndex].steps[0];
+                if (firstStep) speakInstruction(`Route found. ${voiceStepText(firstStep)}`);
+                _preTurnAnnounced = false;
             } else {
                 btn.innerText = "ROUTE UNAVAILABLE - TRY AGAIN";
                 btn.style.display = "block";
@@ -2801,8 +3099,9 @@
                     currentVehicleHeading = nextHeading;
                     lastGpsTimestamp = now;
 
-                    // Throttled weather + speed limit side effects
+                    // Throttled weather + speed limit + solar time side effects
                     updateWeatherHUD(stableFix[1], stableFix[0]);
+                    fetchSunriseSunset(stableFix[1], stableFix[0]);
                     if (activeRouteDataStore.length > 0) updateSpeedLimit(stableFix[1], stableFix[0]);
                     syncLaneGuidanceLive(stableFix);
 
@@ -2917,6 +3216,10 @@
                     updateMapLaneGuidance();
                     document.getElementById('elevation-profile-wrap').style.display = 'none';
                     document.getElementById('speed-limit-beacon').style.display = 'none';
+                    document.getElementById('route-progress-bar').style.display = 'none';
+                    document.getElementById('surface-warn-banner').style.display = 'none';
+                    if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+                    _preTurnAnnounced = false;
                 });
             }
         }
@@ -3014,10 +3317,21 @@
             const dropdown = document.getElementById('osm-engine-dropdown');
             if (!input || !dropdown) return;
 
+            // Show recent history when user focuses an empty input
+            input.addEventListener('focus', () => {
+                if (input.value.trim().length === 0) renderSearchHistory(dropdown, input);
+            });
+
             input.addEventListener('input', (e) => {
                 const queryVal = e.target.value.trim();
                 clearTimeout(querySearchDebounceTimer);
-                if (queryVal.length < 3) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+                if (queryVal.length < 3) {
+                    dropdown.innerHTML = '';
+                    // Re-show history instead of just hiding
+                    const shown = renderSearchHistory(dropdown, input);
+                    if (!shown) dropdown.style.display = 'none';
+                    return;
+                }
 
                 querySearchDebounceTimer = setTimeout(async () => {
                     try {
@@ -3044,6 +3358,8 @@
 
                                 dropdown.style.display = 'none';
                                 input.value = labeledLocation;
+                                // Persist to search history
+                                saveToSearchHistory(labeledLocation, targetLoc);
 
                                 cameraTrackingMode = false;
                                 document.getElementById('force-gps-recenter').classList.remove('active-state');
@@ -3057,6 +3373,11 @@
                         console.error("Search fault.", err);
                     }
                 }, 250);
+            });
+
+            // Hide dropdown on outside click
+            document.addEventListener('click', (e) => {
+                if (!input.contains(e.target) && !dropdown.contains(e.target)) dropdown.style.display = 'none';
             });
         }
 
