@@ -1,0 +1,3411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>GeoPro</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+    <meta name="theme-color" content="#050505" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="GeoPro" />
+
+    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #050505;
+            --bg-panel: rgba(10, 10, 12, 0.75);
+            --bg-panel-solid: #0f0f13;
+            --border-color: rgba(255, 51, 51, 0.25);
+            --action-red: #ff3333;
+            --action-red-glow: rgba(255, 51, 51, 0.4);
+            --text-primary: #f5f5f7;
+            --text-secondary: #c5c5ca;
+            --text-muted: #62626e;
+            --font-monospace: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .hud-system-header {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .hud-module {
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 16px;
+            pointer-events: auto;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-node {
+            font-family: var(--font-monospace);
+            font-weight: 900;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        .brand-node span {
+            color: var(--action-red);
+        }
+
+        #coordinate-overlay-tracker {
+            font-family: var(--font-monospace);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        #telemetry-status-node {
+            font-family: var(--font-monospace);
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: var(--action-red);
+            text-transform: uppercase;
+        }
+
+        .floating-side-actions {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 10;
+        }
+
+        .side-btn {
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+            transition: all 0.2s ease;
+        }
+
+        .side-btn:hover {
+            background: #1a1a22;
+            border-color: var(--action-red);
+        }
+
+        .side-btn.active-state {
+            color: var(--action-red);
+            border-color: rgba(255, 51, 51, 0.6);
+            box-shadow: 0 0 16px rgba(255, 51, 51, 0.25);
+        }
+
+        #control-panel-deck {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(0px);
+            width: 440px;
+            max-width: calc(100vw - 32px);
+            background: var(--bg-panel);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        #control-panel-deck.dragging {
+            transition: none;
+        }
+
+        #control-panel-deck.minimized {
+            transform: translateX(-50%) translateY(calc(100% - 28px));
+        }
+
+        #drag-handle {
+            width: 100%;
+            height: 28px;
+            background: transparent;
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid rgba(255, 51, 51, 0.1);
+            touch-action: none;
+        }
+
+        #drag-handle::before {
+            content: '';
+            width: 42px;
+            height: 5px;
+            background: #3a3a45;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+
+        #drag-handle:hover::before {
+            background: var(--action-red);
+        }
+
+        .workspace-content-body {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 75vh;
+            overflow-y: auto;
+            opacity: 1;
+            transition: opacity 0.2s ease;
+        }
+
+        #control-panel-deck.minimized .workspace-content-body {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .search-engine-wrap {
+            position: relative;
+            display: flex;
+            width: 100%;
+        }
+
+        .search-engine-wrap input {
+            width: 100%;
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: var(--text-primary);
+            font-size: 0.88rem;
+            outline: none;
+            transition: border-color 0.15s ease;
+        }
+
+        .search-engine-wrap input:focus {
+            border-color: var(--action-red);
+            box-shadow: 0 0 8px rgba(255, 51, 51, 0.2);
+        }
+
+        .suggest-dropdown-matrix {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+        }
+
+        .osm-suggest-item {
+            padding: 10px 14px;
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .osm-suggest-item:hover {
+            background: rgba(255, 51, 51, 0.1);
+            color: var(--text-primary);
+        }
+
+        #context-destination-panel {
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            display: none;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .meta-vector-icon {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .meta-vector-info-stack {
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        #node-panel-title {
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #node-panel-address {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            line-height: 1.3;
+        }
+
+        #routing-mode-selector {
+            display: none;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: -4px;
+        }
+
+        .mode-btn {
+            padding: 10px 4px;
+            font-size: 0.75rem;
+        }
+
+        .mode-btn.active-mode {
+            background: rgba(255, 51, 51, 0.15);
+            color: var(--action-red);
+            border-color: var(--action-red);
+            box-shadow: 0 0 12px rgba(255, 51, 51, 0.2);
+        }
+
+        #route-variants-dashboard {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .route-badge-row {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px;
+            background: rgba(255, 51, 51, 0.05);
+            border-radius: 6px;
+            font-size: 0.78rem;
+        }
+
+        .directions-manifest {
+            margin-top: 10px;
+            border-top: 1px solid var(--border-color);
+            padding-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .direction-step {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+            padding: 6px 4px;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .direction-step:hover {
+            background: rgba(255, 51, 51, 0.08);
+            color: var(--text-primary);
+        }
+
+        .step-index {
+            background: var(--action-red);
+            color: #ffffff;
+            font-family: var(--font-monospace);
+            font-size: 0.7rem;
+            min-width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            flex-grow: 1;
+            line-height: 1.3;
+        }
+
+        .workspace-hardware-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .hud-btn {
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .hud-btn:hover {
+            background: #1a1a22;
+            color: var(--text-primary);
+            border-color: var(--action-red);
+        }
+
+        #launch-routing-action {
+            grid-column: span 2;
+            background: var(--action-red);
+            color: #ffffff;
+            border: none;
+            padding: 14px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            box-shadow: 0 4px 12px var(--action-red-glow);
+        }
+
+        #launch-routing-action:hover {
+            background: #ff4d4d;
+        }
+
+        .custom-spatial-marker {
+            transform: translate(-50%, -100%);
+        }
+
+        .live-gps-beacon-node {
+            width: 18px;
+            height: 18px;
+            background: var(--action-red);
+            border: 3px solid #050505;
+            border-radius: 50%;
+            box-shadow: 0 0 16px var(--action-red-glow);
+        }
+
+        /* ── Weather + Environment HUD ─────────────────────── */
+        #weather-env-hud {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 7px 14px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+            pointer-events: none;
+            white-space: nowrap;
+            font-family: var(--font-monospace);
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+        }
+        .wh-sep { width: 1px; height: 13px; background: var(--border-color); flex-shrink: 0; }
+        #wh-cond-icon { font-size: 0.92rem; line-height: 1; }
+        #wh-temp { color: var(--text-primary); font-weight: bold; margin-left: 1px; }
+        #wh-aqi-badge {
+            padding: 2px 7px;
+            border-radius: 4px;
+            border: 1px solid;
+            font-size: 0.63rem;
+            font-weight: bold;
+            display: none;
+        }
+
+        /* ── Speed Limit Beacon ─────────────────────────────── */
+        #speed-limit-beacon {
+            position: absolute;
+            bottom: 210px;
+            left: 16px;
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: #fff;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 12;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.7), inset 0 0 0 4px #cc0000;
+            box-sizing: border-box;
+            cursor: default;
+        }
+        #sl-value {
+            font-size: 1.1rem;
+            font-weight: 900;
+            color: #111;
+            line-height: 1;
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        #sl-unit {
+            font-size: 0.4rem;
+            font-weight: 700;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        /* ── POI Explorer Panel ─────────────────────────────── */
+        #poi-explorer-panel {
+            position: absolute;
+            top: 80px;
+            right: 76px;
+            width: 292px;
+            max-height: calc(100vh - 140px);
+            background: rgba(6,6,12,0.94);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            z-index: 12;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.85);
+            animation: hudSlideIn 0.2s ease;
+        }
+        @keyframes hudSlideIn {
+            from { opacity: 0; transform: translateX(10px); }
+            to   { opacity: 1; transform: translateX(0); }
+        }
+        #poi-panel-hdr {
+            padding: 10px 12px 8px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+        #poi-panel-hdr-title {
+            font-family: var(--font-monospace);
+            font-size: 0.6rem;
+            font-weight: bold;
+            color: var(--action-red);
+            letter-spacing: 1.2px;
+            margin-bottom: 8px;
+        }
+        .poi-cat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; }
+        .poi-cat-btn {
+            background: var(--bg-panel-solid);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 6px;
+            padding: 6px 2px;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            transition: all 0.12s;
+        }
+        .poi-cat-btn:hover { background: rgba(255,51,51,0.1); border-color: rgba(255,51,51,0.3); }
+        .poi-cat-btn.poi-cat-active { background: rgba(255,51,51,0.15); border-color: var(--action-red); }
+        .poi-cat-ico { font-size: 0.95rem; line-height: 1; }
+        .poi-cat-lbl { font-size: 0.46rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+        .poi-cat-btn.poi-cat-active .poi-cat-lbl { color: var(--action-red); }
+        #poi-radius-bar {
+            display: flex;
+            gap: 4px;
+            padding: 6px 12px;
+            border-bottom: 1px solid var(--border-color);
+            align-items: center;
+            flex-shrink: 0;
+        }
+        .poi-rad-lbl { font-size: 0.6rem; color: var(--text-muted); flex-shrink: 0; margin-right: 2px; }
+        .poi-rad-btn {
+            flex: 1;
+            background: var(--bg-panel-solid);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 4px;
+            padding: 4px 2px;
+            font-family: var(--font-monospace);
+            font-size: 0.58rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.12s;
+        }
+        .poi-rad-btn.poi-rad-active { background: rgba(255,51,51,0.12); color: var(--action-red); border-color: rgba(255,51,51,0.5); }
+        #poi-results-list {
+            overflow-y: auto;
+            flex: 1;
+            padding: 6px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-height: 60px;
+        }
+        .poi-status-msg { text-align: center; color: var(--text-muted); font-size: 0.72rem; padding: 22px 12px; }
+        .poi-card {
+            width: 100%;
+            background: var(--bg-panel-solid);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 8px;
+            padding: 7px 9px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.12s;
+            text-align: left;
+        }
+        .poi-card:hover { background: rgba(255,51,51,0.08); border-color: rgba(255,51,51,0.35); }
+        .poi-card-ico { font-size: 1.05rem; flex-shrink: 0; width: 20px; text-align: center; }
+        .poi-card-body { flex: 1; overflow: hidden; }
+        .poi-card-name { color: var(--text-primary); font-size: 0.75rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .poi-card-meta { color: var(--text-muted); font-family: var(--font-monospace); font-size: 0.6rem; margin-top: 1px; }
+        .poi-card-nav {
+            background: none;
+            border: 1px solid rgba(255,51,51,0.35);
+            border-radius: 5px;
+            color: var(--action-red);
+            font-size: 0.6rem;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 3px 7px;
+            flex-shrink: 0;
+            transition: all 0.12s;
+        }
+        .poi-card-nav:hover { background: rgba(255,51,51,0.15); }
+
+        /* ── Elevation Profile ──────────────────────────────── */
+        #elevation-profile-wrap {
+            display: none;
+            flex-direction: column;
+            gap: 6px;
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 10px 8px;
+        }
+        .elev-hdr { display: flex; justify-content: space-between; align-items: center; }
+        .elev-hdr-lbl { font-family: var(--font-monospace); font-size: 0.6rem; font-weight: bold; color: var(--action-red); letter-spacing: 1px; }
+        #elev-canvas { width: 100%; height: 68px; border-radius: 4px; display: block; }
+        #elev-loading-msg { text-align: center; color: var(--text-muted); font-size: 0.7rem; padding: 14px 0; }
+        .elev-stats { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px; margin-top: 2px; }
+        .elev-stat { text-align: center; }
+        .elev-stat-val { color: var(--text-primary); font-family: var(--font-monospace); font-size: 0.7rem; font-weight: bold; }
+        .elev-stat-key { color: var(--text-muted); font-size: 0.52rem; text-transform: uppercase; letter-spacing: 0.4px; }
+
+        /* ── Map Theme Picker ───────────────────────────────── */
+        #theme-picker-menu {
+            position: absolute;
+            right: 76px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(6,6,12,0.94);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 6px;
+            z-index: 12;
+            display: none;
+            flex-direction: column;
+            gap: 3px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.85);
+            animation: hudSlideIn 0.2s ease;
+        }
+        .theme-btn {
+            background: var(--bg-panel-solid);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 6px;
+            padding: 8px 14px;
+            color: var(--text-secondary);
+            font-size: 0.72rem;
+            cursor: pointer;
+            white-space: nowrap;
+            text-align: left;
+            transition: all 0.12s;
+        }
+        .theme-btn:hover { background: rgba(255,51,51,0.1); color: var(--text-primary); border-color: rgba(255,51,51,0.4); }
+        .theme-btn.theme-active { background: rgba(255,51,51,0.15); color: var(--action-red); border-color: var(--action-red); }
+
+        /* ── Route Alternative Chips ────────────────────────── */
+        .route-alt-row { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 2px; margin-bottom: 2px; }
+        .route-alt-chip {
+            flex-shrink: 0;
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 7px 10px;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.15s;
+            min-width: 82px;
+        }
+        .route-alt-chip:hover { border-color: rgba(255,51,51,0.5); background: rgba(255,51,51,0.07); }
+        .route-alt-chip.alt-selected { background: rgba(255,51,51,0.14); border-color: var(--action-red); box-shadow: 0 0 10px rgba(255,51,51,0.2); }
+        .route-alt-badge { font-family: var(--font-monospace); font-size: 0.52rem; color: var(--action-red); margin-bottom: 3px; letter-spacing: 0.4px; }
+        .route-alt-time { color: var(--text-primary); font-weight: bold; font-size: 0.8rem; }
+        .route-alt-dist { color: var(--text-muted); font-size: 0.63rem; margin-top: 2px; }
+
+        /* ── 3D Lane Guidance HUD ─────────────────────────── */
+        #lane-guidance-hud {
+            position: absolute;
+            bottom: 24px;
+            left: 16px;
+            width: 248px;
+            background: rgba(6, 6, 12, 0.92);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 51, 51, 0.28);
+            border-radius: 14px;
+            overflow: hidden;
+            z-index: 11;
+            box-shadow: 0 8px 36px rgba(0, 0, 0, 0.85), 0 0 28px rgba(255, 51, 51, 0.07);
+            display: none;
+            flex-direction: column;
+            animation: lghFadeIn 0.3s ease;
+        }
+
+        @keyframes lghFadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        #lgh-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 11px 7px;
+        }
+
+        #lgh-label {
+            font-family: var(--font-monospace);
+            font-size: 0.6rem;
+            font-weight: bold;
+            color: var(--action-red);
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+        }
+
+        #lgh-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.68rem;
+            padding: 0 2px;
+            line-height: 1;
+            transition: color 0.15s;
+        }
+
+        #lgh-close:hover { color: var(--text-primary); }
+
+        #lane-3d-canvas {
+            display: block;
+            width: 248px;
+            height: 155px;
+        }
+
+        #lgh-footer {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 9px 11px 10px;
+            border-top: 1px solid rgba(255, 51, 51, 0.1);
+        }
+
+        #lgh-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 7px;
+            background: rgba(255, 51, 51, 0.12);
+            border: 1px solid rgba(255, 51, 51, 0.28);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: var(--action-red);
+        }
+
+        #lgh-text-col {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        #lgh-instruction {
+            color: var(--text-primary);
+            font-size: 0.75rem;
+            font-weight: 600;
+            line-height: 1.25;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #lgh-distance {
+            color: var(--text-muted);
+            font-family: var(--font-monospace);
+            font-size: 0.62rem;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <!-- Weather + Environment HUD (top-center) -->
+    <div id="weather-env-hud">
+        <span id="wh-cond-icon">☀</span>
+        <span id="wh-temp">--°F</span>
+        <div class="wh-sep"></div>
+        <span id="wh-feels">--°</span>
+        <div class="wh-sep"></div>
+        <span id="wh-wind">-- mph</span>
+        <div class="wh-sep"></div>
+        <span id="wh-aqi-badge"></span>
+    </div>
+
+    <!-- Speed Limit Beacon (bottom-left, nav mode) -->
+    <div id="speed-limit-beacon">
+        <div id="sl-value">--</div>
+        <div id="sl-unit">mph</div>
+    </div>
+
+    <!-- Map Theme Picker Menu -->
+    <div id="theme-picker-menu"></div>
+
+    <!-- POI Explorer Panel -->
+    <div id="poi-explorer-panel">
+        <div id="poi-panel-hdr">
+            <div id="poi-panel-hdr-title">◈ NEARBY EXPLORER</div>
+            <div class="poi-cat-grid">
+                <button class="poi-cat-btn poi-cat-active" data-cat="food"><span class="poi-cat-ico">🍽</span><span class="poi-cat-lbl">Food</span></button>
+                <button class="poi-cat-btn" data-cat="fuel"><span class="poi-cat-ico">⛽</span><span class="poi-cat-lbl">Gas</span></button>
+                <button class="poi-cat-btn" data-cat="medical"><span class="poi-cat-ico">🏥</span><span class="poi-cat-lbl">Medical</span></button>
+                <button class="poi-cat-btn" data-cat="parking"><span class="poi-cat-ico">🅿</span><span class="poi-cat-lbl">Parking</span></button>
+                <button class="poi-cat-btn" data-cat="coffee"><span class="poi-cat-ico">☕</span><span class="poi-cat-lbl">Coffee</span></button>
+                <button class="poi-cat-btn" data-cat="atm"><span class="poi-cat-ico">💰</span><span class="poi-cat-lbl">ATM</span></button>
+                <button class="poi-cat-btn" data-cat="hotel"><span class="poi-cat-ico">🏨</span><span class="poi-cat-lbl">Hotel</span></button>
+                <button class="poi-cat-btn" data-cat="shopping"><span class="poi-cat-ico">🛒</span><span class="poi-cat-lbl">Shop</span></button>
+            </div>
+        </div>
+        <div id="poi-radius-bar">
+            <span class="poi-rad-lbl">Radius:</span>
+            <button class="poi-rad-btn" data-radius="300">300m</button>
+            <button class="poi-rad-btn poi-rad-active" data-radius="500">500m</button>
+            <button class="poi-rad-btn" data-radius="1000">1 km</button>
+            <button class="poi-rad-btn" data-radius="2000">2 km</button>
+        </div>
+        <div id="poi-results-list"><div class="poi-status-msg">Select a category to search nearby places.</div></div>
+    </div>
+
+    <!-- 3D Lane Guidance HUD -->
+    <div id="lane-guidance-hud">
+        <div id="lgh-header">
+            <span id="lgh-label">◈ LANE GUIDANCE</span>
+            <button id="lgh-close">✕</button>
+        </div>
+        <canvas id="lane-3d-canvas" width="496" height="310"></canvas>
+        <div id="lgh-footer">
+            <div id="lgh-icon">
+                <svg id="lgh-arrow-svg" width="18" height="18" viewBox="0 0 18 18" fill="none"></svg>
+            </div>
+            <div id="lgh-text-col">
+                <div id="lgh-instruction">Follow current road</div>
+                <div id="lgh-distance"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="hud-system-header">
+        <div class="hud-module">
+            <div class="brand-node">Geo<span>PRO</span></div>
+            <div style="width: 1px; height: 14px; background: var(--border-color);"></div>
+            <div id="telemetry-status-node">BOOTING NAVIGATION...</div>
+        </div>
+
+        <div id="coordinate-overlay-tracker" class="hud-module">
+            X: --.----- | Y: --.-----
+        </div>
+    </div>
+
+    <div class="floating-side-actions">
+        <button id="force-gps-recenter" class="side-btn active-state" title="Recenter & Follow GPS">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+        </button>
+        <button id="compass-orientation-lock" class="side-btn" title="Reset North">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+        </button>
+        <button id="poi-radar-toggle" class="side-btn" title="Explore Nearby Places">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
+        </button>
+        <button id="theme-switcher-btn" class="side-btn" title="Map Style">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        </button>
+    </div>
+
+    <div id="control-panel-deck">
+        <div id="drag-handle"></div>
+        <div class="workspace-content-body">
+
+            <div class="search-engine-wrap">
+                <input type="text" id="osm-engine-input" placeholder="Search target location or city..." autocomplete="off"/>
+                <div id="osm-engine-dropdown" class="suggest-dropdown-matrix"></div>
+            </div>
+
+            <div id="context-destination-panel">
+                <svg class="meta-vector-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ff3333"/>
+                </svg>
+                <div class="meta-vector-info-stack">
+                    <div id="node-panel-title">Selected Matrix Node</div>
+                    <div id="node-panel-address">Tracking calculations offline...</div>
+                </div>
+            </div>
+
+            <div id="routing-mode-selector">
+                <button class="hud-btn mode-btn active-mode" data-mode="driving">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="8" rx="2"/><circle cx="7" cy="19" r="2"/><circle cx="17" cy="19" r="2"/><path d="M5 11l2-5h10l2 5"/></svg>
+                    DRIVE
+                </button>
+                <button class="hud-btn mode-btn" data-mode="cycling">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="5" cy="18" r="4"/><circle cx="19" cy="18" r="4"/><path d="M10 9l2.5-3 5 5 1.5-1.5"/><path d="M12 18v-5l-3-3 2-2 3 3"/></svg>
+                    CYCLE
+                </button>
+                <button class="hud-btn mode-btn" data-mode="walking">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4z"/><path d="M14 11l-2.5-3-2.5 3"/><path d="M10.5 14L9 22"/><path d="M13.5 14l1.5 8"/><path d="M12 8v6"/></svg>
+                    WALK
+                </button>
+            </div>
+
+            <div id="route-variants-dashboard"></div>
+
+            <!-- Elevation Profile (shown after routing) -->
+            <div id="elevation-profile-wrap">
+                <div class="elev-hdr">
+                    <span class="elev-hdr-lbl">◈ ELEVATION PROFILE</span>
+                </div>
+                <div id="elev-loading-msg">Loading elevation data…</div>
+                <canvas id="elev-canvas"></canvas>
+                <div class="elev-stats">
+                    <div class="elev-stat"><div class="elev-stat-val" id="elev-gain">--</div><div class="elev-stat-key">↑ Gain</div></div>
+                    <div class="elev-stat"><div class="elev-stat-val" id="elev-loss">--</div><div class="elev-stat-key">↓ Loss</div></div>
+                    <div class="elev-stat"><div class="elev-stat-val" id="elev-max">--</div><div class="elev-stat-key">▲ Max</div></div>
+                    <div class="elev-stat"><div class="elev-stat-val" id="elev-min">--</div><div class="elev-stat-key">▼ Min</div></div>
+                </div>
+            </div>
+
+            <div class="workspace-hardware-row">
+                <button id="flush-workspace-trigger" class="hud-btn">
+                    CLEAR WORKSPACE
+                </button>
+
+                <button id="launch-routing-action" class="hud-btn" style="display:none;">
+                    GET DIRECTIONS
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let defaultUserCoordinates = [-122.084, 37.422];
+        let currentLiveGpsPosition = null;
+        let targetSelectedCoordinates = null;
+        let querySearchDebounceTimer = null;
+
+        let currentRoutingProfile = 'driving';
+
+        let laneGuidance = null;
+
+        let activeMapMarker = null;
+        let userLocationBeaconMarker = null;
+        let activeRouteDataStore = [];
+        let selectedRouteIndex = 0;
+        let cameraTrackingMode = true;
+
+        let lastGpsTimestamp = null;
+        let currentVehicleHeading = 0;
+        let lastCameraUpdateTimestamp = 0;
+
+        const HIGH_PERFORMANCE_DARK_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+        const GPS_MAX_ACCEPTED_ACCURACY_METERS = 100;
+        const GPS_MIN_CAMERA_INTERVAL_MS = 900;
+        const GPS_MIN_HEADING_DISTANCE_METERS = 4;
+        const GPS_SMOOTHING_FACTOR = 0.35;
+        const GPS_MAX_PLAUSIBLE_SPEED_MPS = 85;
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: HIGH_PERFORMANCE_DARK_STYLE,
+            center: defaultUserCoordinates,
+            zoom: 3,
+            pitch: 65,
+            maxPitch: 85,
+            bearing: 0,
+            antialias: true,
+            fadeDuration: 50,
+            crossSourceCollisions: false
+        });
+
+        function createCustomMarkerElement() {
+            const el = document.createElement('div');
+            el.className = 'custom-spatial-marker';
+            el.innerHTML = `
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="12" cy="12" r="8" fill="#ff3333" fill-opacity="0.3"/>
+                    <circle cx="12" cy="12" r="4" fill="#ff3333"/>
+                    <circle cx="12" cy="12" r="3.5" stroke="#050505" stroke-width="1"/>
+                </svg>
+            `;
+            return el;
+        }
+
+        function isValidCoordinatePair(coords) {
+            return Array.isArray(coords)
+                && coords.length === 2
+                && Number.isFinite(coords[0])
+                && Number.isFinite(coords[1])
+                && coords[0] >= -180
+                && coords[0] <= 180
+                && coords[1] >= -90
+                && coords[1] <= 90;
+        }
+
+        function calculateDistanceMeters(p1, p2) {
+            const R = 6371e3;
+            const φ1 = p1[1] * Math.PI/180;
+            const φ2 = p2[1] * Math.PI/180;
+            const Δφ = (p2[1]-p1[1]) * Math.PI/180;
+            const Δλ = (p2[0]-p1[0]) * Math.PI/180;
+
+            const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+                      Math.cos(φ1) * Math.cos(φ2) *
+                      Math.sin(Δλ/2) * Math.sin(Δλ/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+            return R * c;
+        }
+
+        function smoothCoordinatePair(oldCoords, newCoords) {
+            if (!oldCoords || !newCoords) return newCoords;
+            return [
+                oldCoords[0] + (newCoords[0] - oldCoords[0]) * GPS_SMOOTHING_FACTOR,
+                oldCoords[1] + (newCoords[1] - oldCoords[1]) * GPS_SMOOTHING_FACTOR
+            ];
+        }
+
+        function calculateBearingAngle(p1, p2, fallbackBearing = currentVehicleHeading) {
+            if (!isValidCoordinatePair(p1) || !isValidCoordinatePair(p2)) return fallbackBearing;
+            const samePoint = Math.abs(p1[0] - p2[0]) < 0.000001 && Math.abs(p1[1] - p2[1]) < 0.000001;
+            if (samePoint) return fallbackBearing;
+
+            const lng1 = p1[0] * Math.PI / 180;
+            const lat1 = p1[1] * Math.PI / 180;
+            const lng2 = p2[0] * Math.PI / 180;
+            const lat2 = p2[1] * Math.PI / 180;
+
+            const dLng = lng2 - lng1;
+            const y = Math.sin(dLng) * Math.cos(lat2);
+            const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLng);
+
+            const bearing = Math.atan2(y, x) * 180 / Math.PI;
+            return Number.isFinite(bearing) ? (bearing + 360) % 360 : fallbackBearing;
+        }
+
+        // ── 3D Lane Guidance System v3 ──────────────────────────────────────
+        // v3 adds:
+        //   • Interactive lane chooser (tap a lane to lock your pick)
+        //   • Camera sync with the main map (bearing + pitch → horizon/curve)
+        //   • Distance-based pre-turn easing that starts the bend early
+        //   • Next-maneuver blend-in (ghost chevrons + sign preview)
+        //   • Automatic night mode (fog, headlights, chevrons, gantry)
+        //   • Multi-exit ramps: diverging fork geometry + EXIT number
+        class LaneGuidance3D {
+            constructor() {
+                this.hud     = document.getElementById('lane-guidance-hud');
+                this.canvas  = document.getElementById('lane-3d-canvas');
+                this.ctx     = this.canvas.getContext('2d');
+                this.instrEl = document.getElementById('lgh-instruction');
+                this.distEl  = document.getElementById('lgh-distance');
+                this.svgEl   = document.getElementById('lgh-arrow-svg');
+
+                this.W = 248; this.H = 155;
+                this._resize();
+                window.addEventListener('resize', () => this._resize());
+
+                this.phase        = 0;
+                this.lastTs       = 0;
+                this.animFrame    = null;
+                this.chevronPhase = 0;
+
+                this.numLanes         = 3;
+                this.lanes            = [];   // {dirs, active, userPicked}
+                this.userPickedLane   = null; // index or null
+                this.maneuverDir      = 'straight';
+                this.maneuverType     = 'depart';
+                this.nextStreet       = '';
+                this.exitNumber       = '';
+                this.isRamp           = false;      // multi-exit / fork
+                this.rampLanes        = 0;          // # lanes on the exit branch
+
+                this.distanceMeters   = 0;
+                this.initialDistance  = 0;
+
+                // Curve state (eased). Base target is where the maneuver
+                // wants to end up; blend adds a distance-based ramp-up.
+                this.curveBase   = 0;   // final magnitude after the turn
+                this.curve       = 0;   // current eased value
+                this.mapBearingOffset = 0; // radians; shifts horizon
+
+                // Next maneuver for pre-turn blend
+                this.nextManeuver = null; // {dir, previewStreet, previewExit}
+
+                // Night mode
+                this.nightMode = this._detectNight();
+                setInterval(() => this.nightMode = this._detectNight(), 60 * 1000);
+
+                document.getElementById('lgh-close')
+                    .addEventListener('click', () => this.hide());
+
+                // Interactive lane chooser
+                this.canvas.style.cursor = 'pointer';
+                this.canvas.addEventListener('click', (e) => this._onCanvasClick(e));
+                this.canvas.addEventListener('mousemove', (e) => this._onCanvasHover(e));
+                this.hoverLane = null;
+            }
+
+            _resize() {
+                const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+                this.dpr = dpr;
+                this.canvas.width  = this.W * dpr;
+                this.canvas.height = this.H * dpr;
+                this.canvas.style.width  = this.W + 'px';
+                this.canvas.style.height = this.H + 'px';
+                this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            }
+
+            _detectNight() {
+                // Prefer an explicit app theme signal, fall back to clock.
+                const b = document.body;
+                if (b && (b.classList.contains('theme-night') ||
+                          b.classList.contains('theme-dark')))  return true;
+                if (b && (b.classList.contains('theme-day')  ||
+                          b.classList.contains('theme-light'))) return false;
+                const h = new Date().getHours();
+                return h >= 19 || h < 6;
+            }
+
+            // ── Public API ───────────────────────────────────────────────
+
+            show(step, nextStep) {
+                const type = (step.maneuverType     || 'depart').toLowerCase();
+                const mod  = (step.maneuverModifier || 'straight').toLowerCase();
+
+                this.maneuverType = type;
+                this._computeManeuver(type, mod);
+
+                // Multi-exit / fork detection
+                this.isRamp = (type === 'fork' ||
+                               type === 'off ramp' || type === 'off_ramp' ||
+                               type === 'on ramp'  || type === 'on_ramp'  ||
+                               type === 'exit roundabout' ||
+                               (step.exit || step.exitNumber));
+                this.exitNumber = step.exit || step.exitNumber || '';
+
+                this._computeLanes(step, type, mod);
+                this._setIcon(type, mod);
+
+                this.instrEl.textContent = step.text || 'Follow current road';
+                this.nextStreet = step.nextName || step.name || '';
+
+                const m = step.distance || 0;
+                this.distanceMeters  = m;
+                this.initialDistance = Math.max(m, 1);
+
+                // Base curvature magnitude for THIS maneuver
+                this.curveBase =
+                    this.maneuverDir === 'left'         ? -0.55 :
+                    this.maneuverDir === 'sharp-left'   ? -0.85 :
+                    this.maneuverDir === 'slight-left'  ? -0.28 :
+                    this.maneuverDir === 'right'        ?  0.55 :
+                    this.maneuverDir === 'sharp-right'  ?  0.85 :
+                    this.maneuverDir === 'slight-right' ?  0.28 :
+                    this.maneuverDir === 'uturn'        ? -0.95 : 0;
+
+                // Next maneuver info (for pre-turn blend at horizon)
+                if (nextStep) {
+                    const nType = (nextStep.maneuverType     || '').toLowerCase();
+                    const nMod  = (nextStep.maneuverModifier || 'straight').toLowerCase();
+                    this.nextManeuver = {
+                        dir:           this._dirFor(nType, nMod),
+                        previewStreet: nextStep.name || '',
+                        previewExit:   nextStep.exit || ''
+                    };
+                } else {
+                    this.nextManeuver = null;
+                }
+
+                // Reset user pick when the maneuver changes
+                this.userPickedLane = null;
+
+                this.hud.style.display = 'flex';
+                this.hud.style.animation = 'none';
+                void this.hud.offsetWidth;
+                this.hud.style.animation = '';
+
+                if (!this.animFrame) this._startLoop();
+            }
+
+            // Live distance countdown from the tracker — drives pre-turn blend
+            updateDistance(m) {
+                this.distanceMeters = Math.max(0, m || 0);
+                if (this.distanceMeters > 0) {
+                    const ft = Math.round(this.distanceMeters * 3.28084);
+                    this.distEl.textContent = ft >= 5280
+                        ? `${(ft / 5280).toFixed(1)} mi away`
+                        : `${ft} ft away`;
+                }
+            }
+
+            // Called by the map rotate/pitch listener. deltaRad is the signed
+            // difference between the map bearing and the step's target
+            // bearing; positive = map is rotated right of the turn.
+            setMapCameraDelta(deltaRad) {
+                if (typeof deltaRad !== 'number' || isNaN(deltaRad)) return;
+                // Clamp so extreme rotations don't break the projection
+                this.mapBearingOffset = Math.max(-0.9, Math.min(0.9, deltaRad));
+            }
+
+            hide() {
+                this.hud.style.display = 'none';
+                if (this.animFrame) {
+                    cancelAnimationFrame(this.animFrame);
+                    this.animFrame = null;
+                }
+                this.initialDistance = 0;
+                this.userPickedLane  = null;
+                this.nextManeuver    = null;
+                this.mapBearingOffset = 0;
+            }
+
+            // ── Interaction ──────────────────────────────────────────────
+
+            _laneAtEvent(e) {
+                const rect = this.canvas.getBoundingClientRect();
+                const x = (e.clientX - rect.left) * (this.W / rect.width);
+                const y = (e.clientY - rect.top)  * (this.H / rect.height);
+                // Cast the point to road coordinates at its depth
+                const t = Math.max(0, Math.min(0.9, (this.H - y) / (this.H - 30)));
+                // Approximate inverse of _project on x
+                const baseHalf = this.W * 0.62;
+                const topHalf  = this.W * 0.13;
+                const halfW = baseHalf + (topHalf - baseHalf) * t;
+                const bend  = this._effectiveCurve() * t * t * (this.W * 0.55);
+                const cx = this.W / 2 + bend + this.mapBearingOffset * 40;
+                const u = ((x - cx) / (2 * halfW)) + 0.5;
+                if (u < 0 || u > 1) return null;
+                return Math.floor(u * this.numLanes);
+            }
+
+            _onCanvasClick(e) {
+                const i = this._laneAtEvent(e);
+                if (i == null || i < 0 || i >= this.numLanes) return;
+                this.userPickedLane = (this.userPickedLane === i) ? null : i;
+            }
+
+            _onCanvasHover(e) {
+                this.hoverLane = this._laneAtEvent(e);
+            }
+
+            // ── Maneuver / lane computation ─────────────────────────────
+
+            _dirFor(type, mod) {
+                if (mod === 'uturn' || mod === 'u-turn') return 'uturn';
+                if (mod === 'sharp left')                return 'sharp-left';
+                if (mod === 'slight left')               return 'slight-left';
+                if (mod === 'left')                      return 'left';
+                if (mod === 'sharp right')               return 'sharp-right';
+                if (mod === 'slight right')              return 'slight-right';
+                if (mod === 'right')                     return 'right';
+                if (type === 'arrive')                   return 'arrive';
+                return 'straight';
+            }
+
+            _computeManeuver(type, mod) {
+                this.maneuverDir = this._dirFor(type, mod);
+            }
+
+            _computeLanes(step, type, mod) {
+                // 1) Prefer real router lane data when present
+                if (Array.isArray(step.lanes) && step.lanes.length) {
+                    this.numLanes = step.lanes.length;
+                    this.lanes = step.lanes.map(l => ({
+                        dirs:   Array.isArray(l.indications) ? l.indications : [l.direction || 'straight'],
+                        active: !!l.valid
+                    }));
+                    return;
+                }
+
+                // 2) Geometry-driven heuristic fallback.
+                //    Combines: turn angle, step length, maneuver type,
+                //    road class inference, and whether we're on a ramp/fork.
+
+                // ── Turn angle from actual coordinates (fallback: modifier)
+                const turnDeg = this._estimateTurnDeg(step);
+
+                // ── Guess how many lanes this road plausibly has.
+                // Motorways / long straight steps → 3-4 lanes.
+                // Trunk / arterial / medium steps → 3 lanes.
+                // Short urban steps → 2 lanes.
+                const km = (step.distance || 0) / 1000;
+                let n;
+                if (this.isRamp)                          n = 2;
+                else if (step.roadClass === 'motorway')   n = 4;
+                else if (step.roadClass === 'trunk')      n = 3;
+                else if (step.roadClass === 'primary')    n = 3;
+                else if (km > 1.5)                        n = 3;
+                else if (km > 0.4)                        n = 2 + (turnDeg < 25 ? 1 : 0);
+                else                                      n = 2;
+                n = Math.max(2, Math.min(5, n));
+                this.numLanes = n;
+
+                // ── Multi-exit ramp: dedicated exit lanes on the side.
+                if (this.isRamp) {
+                    const rightSide = !/left/.test(this.maneuverDir);
+                    this.rampLanes = /motorway|trunk/.test(step.roadClass || '') ? 2 : 1;
+                    this.lanes = Array.from({length: n}, () => ({ dirs: ['straight'], active: false }));
+                    for (let k = 0; k < this.rampLanes; k++) {
+                        const i = rightSide ? n - 1 - k : k;
+                        this.lanes[i] = { dirs: [this.maneuverDir === 'straight' ? (rightSide ? 'slight-right' : 'slight-left') : this.maneuverDir], active: true };
+                    }
+                    return;
+                }
+
+                // ── Default: build lanes with straight direction.
+                this.lanes = Array.from({length: n}, () => ({ dirs: ['straight'], active: false }));
+                const mid = Math.floor(n / 2);
+                const md  = this.maneuverDir;
+
+                // Sharp turn (>60°) → single dedicated lane, edge only.
+                // Slight turn (<20°) → the through lane is also valid.
+                const isSharp  = turnDeg >= 60;
+                const isSlight = turnDeg > 0 && turnDeg < 20;
+
+                if (md === 'uturn') {
+                    this.lanes[0] = { dirs: ['uturn'], active: true };
+                } else if (md === 'sharp-left' || (md === 'left' && isSharp)) {
+                    this.lanes[0] = { dirs: ['left'], active: true };
+                } else if (md === 'left' || md === 'slight-left') {
+                    this.lanes[0] = { dirs: ['left'], active: true };
+                    if (isSlight && n >= 3) this.lanes[1] = { dirs: ['slight-left'], active: true };
+                } else if (md === 'sharp-right' || (md === 'right' && isSharp)) {
+                    this.lanes[n - 1] = { dirs: ['right'], active: true };
+                } else if (md === 'right' || md === 'slight-right') {
+                    this.lanes[n - 1] = { dirs: ['right'], active: true };
+                    if (isSlight && n >= 3) this.lanes[n - 2] = { dirs: ['slight-right'], active: true };
+                } else if (md === 'arrive') {
+                    // Prefer the side matching the destination (right in RHT countries)
+                    this.lanes[n - 1] = { dirs: ['arrive'], active: true };
+                } else {
+                    // Straight: middle lane; on wide roads middle + through-right.
+                    this.lanes[mid] = { dirs: ['straight'], active: true };
+                    if (n >= 4) this.lanes[mid + 1] = { dirs: ['straight'], active: true };
+                }
+            }
+
+            // Turn angle in degrees using bearings from OSRM when available,
+            // otherwise derived from the first two step-geometry vertices vs
+            // the previous step's tail direction.
+            _estimateTurnDeg(step) {
+                let before = step.bearingBefore, after = step.bearing;
+                if (typeof before !== 'number' || typeof after !== 'number') {
+                    // Fallback from modifier when no geometry to work with
+                    if (!step.geometry || !step.geometry.coordinates ||
+                        step.geometry.coordinates.length < 2) {
+                        const md = this.maneuverDir;
+                        if (md === 'sharp-left' || md === 'sharp-right' || md === 'uturn') return 90;
+                        if (md === 'left' || md === 'right')                                return 55;
+                        if (md === 'slight-left' || md === 'slight-right')                  return 15;
+                        return 0;
+                    }
+                    const c = step.geometry.coordinates;
+                    after = this._bearingRad(c[0], c[1]);
+                    before = after; // no prev info; return 0
+                    return 0;
+                }
+                let d = Math.abs(((after - before + 540) % 360) - 180);
+                return d;
+            }
+
+            _bearingRad(a, b) {
+                const φ1 = a[1] * Math.PI / 180, φ2 = b[1] * Math.PI / 180;
+                const λ1 = a[0] * Math.PI / 180, λ2 = b[0] * Math.PI / 180;
+                const y = Math.sin(λ2 - λ1) * Math.cos(φ2);
+                const x = Math.cos(φ1) * Math.sin(φ2) - Math.sin(φ1) * Math.cos(φ2) * Math.cos(λ2 - λ1);
+                return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+            }
+
+            _setIcon() {
+                const icons = {
+                    left:          '<polyline points="14,4 4,9 14,14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><line x1="4" y1="9" x2="15" y2="9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+                    'sharp-left':  '<polyline points="14,3 4,8 12,15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+                    'slight-left': '<polyline points="14,4 6,9 14,14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+                    right:         '<polyline points="4,4 14,9 4,14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/><line x1="14" y1="9" x2="3" y2="9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>',
+                    'sharp-right': '<polyline points="4,3 14,8 6,15" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+                    'slight-right':'<polyline points="4,4 12,9 4,14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+                    uturn:         '<path d="M13,13 L13,6 Q13,3 10,3 Q7,3 7,6 L7,13 L4,10 M7,13 L10,10" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>',
+                    arrive:        '<circle cx="9" cy="9" r="4" stroke="currentColor" stroke-width="2.2" fill="none"/><circle cx="9" cy="9" r="1.5" fill="currentColor"/>',
+                    straight:      '<line x1="9" y1="15" x2="9" y2="5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><polyline points="5,8 9,4 13,8" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>'
+                };
+                this.svgEl.innerHTML = icons[this.maneuverDir] || icons.straight;
+            }
+
+            // ── Loop ─────────────────────────────────────────────────────
+
+            _startLoop() {
+                // Throttle to ~40fps (25ms min). The scene is smooth enough
+                // at 40 and this halves work on high-refresh displays.
+                const minDt = 1 / 40;
+                if (!this._visHooked) {
+                    this._visHooked = true;
+                    document.addEventListener('visibilitychange', () => {
+                        // Reset lastTs so we don't inject a huge dt after resume
+                        this.lastTs = 0;
+                    });
+                }
+                const tick = (ts) => {
+                    this.animFrame = requestAnimationFrame(tick);
+                    if (document.hidden || this.hud.style.display === 'none') return;
+                    const rawDt = this.lastTs ? (ts - this.lastTs) / 1000 : 0.016;
+                    if (rawDt < minDt) return;               // FPS throttle
+                    const dt = Math.min(0.05, rawDt);
+                    this.lastTs = ts;
+                    this.phase        += dt;
+                    this.chevronPhase += dt;
+                    const target = this._effectiveCurve();
+                    this.curve += (target - this.curve) * Math.min(1, dt * 4.5);
+                    this._draw();
+                };
+                this.animFrame = requestAnimationFrame(tick);
+            }
+
+            // Distance-based pre-turn easing: at 300m out, blend already
+            // starts (0.15); at 30m, we're at full magnitude.
+            _preTurnFactor() {
+                const d = this.distanceMeters;
+                if (!d) return 1;
+                if (d <= 30)   return 1;
+                if (d >= 300)  return 0.15;
+                // smoothstep from 300 → 30
+                const t = 1 - (d - 30) / 270;
+                return 0.15 + (t * t * (3 - 2 * t)) * 0.85;
+            }
+
+            _effectiveCurve() {
+                return this.curveBase * this._preTurnFactor();
+            }
+
+            // ── Projection ───────────────────────────────────────────────
+
+            _horizonY() {
+                // Bearing offset also shifts the horizon a little for a
+                // "camera tilt / yaw" feel. Slight parallax only.
+                return 30 + this.mapBearingOffset * 6;
+            }
+
+            _project(u, t) {
+                const W = this.W, H = this.H;
+                const vy = this._horizonY();
+                const baseHalf = W * 0.62;
+                const topHalf  = W * 0.13;
+                const halfW = baseHalf + (topHalf - baseHalf) * t;
+                const bend = this.curve * t * t * (W * 0.55);
+                const yaw  = this.mapBearingOffset * 40; // pixel shift near cam
+                const cx = W / 2 + bend + yaw * (1 - t);
+                const x  = cx + (u - 0.5) * 2 * halfW;
+                const y  = H + (vy - H) * t;
+                return [x, y];
+            }
+
+            // ── Draw ─────────────────────────────────────────────────────
+
+            _palette() {
+                // Memoize — palette object shape doesn't change per frame,
+                // only when nightMode flips.
+                if (this._paletteCache && this._paletteNight === this.nightMode)
+                    return this._paletteCache;
+                this._paletteNight = this.nightMode;
+                this._paletteCache = this.nightMode ? {
+                    skyTop:'#01010a', skyMid:'#03030d', skyBot:'#08081a',
+                    star: true, headlights: true,
+                    chevron:'#ffb020', chevronGlow:'#ffb020',
+                    edge:'rgba(255,240,180,0.72)',
+                    edgeActive:'rgba(255,80,80,0.9)',
+                    laneFillMid:'rgba(255,176,32,0.20)',
+                    laneFillBot:'rgba(255,176,32,0.42)',
+                    dividerCenter:'rgba(255,204,90,0.65)',
+                    dividerSide:'rgba(230,235,255,0.42)',
+                    signBg:'rgba(10,12,22,0.92)',
+                    signText:'#8fd8ff',
+                    signBorder:'rgba(140,200,255,0.55)',
+                    fog:'rgba(140,180,255,0.10)',
+                    streetlight:true
+                } : {
+                    skyTop:'#02020a', skyMid:'#06060f', skyBot:'#0e0e1c',
+                    star: false, headlights:false,
+                    chevron:'#ff5252', chevronGlow:'#ff3333',
+                    edge:'rgba(240,245,255,0.75)',
+                    edgeActive:'rgba(255,80,80,0.75)',
+                    laneFillMid:'rgba(255,51,51,0.22)',
+                    laneFillBot:'rgba(255,51,51,0.46)',
+                    dividerCenter:'rgba(255,195,45,0.55)',
+                    dividerSide:'rgba(230,235,255,0.45)',
+                    signBg:'rgba(10,10,16,0.92)',
+                    signText:'#ff8f8f',
+                    signBorder:'rgba(255,80,80,0.55)',
+                    fog:'rgba(255,51,51,0.11)',
+                    streetlight:false
+                };
+                this._backdropBmp = null; // invalidate baked backdrop
+                return this._paletteCache;
+            }
+
+            // Backdrop bakes the non-animated pixels (sky, stars, side
+            // atmosphere, ground band below horizon) into an offscreen
+            // canvas we blit each frame. Only rebuilds when palette / size
+            // changes, cutting several gradient/fill ops per frame.
+            _ensureBackdrop(P) {
+                if (this._backdropBmp && this._backdropW === this.W && this._backdropH === this.H)
+                    return this._backdropBmp;
+                const W = this.W, H = this.H;
+                const off = document.createElement('canvas');
+                off.width = W * this.dpr; off.height = H * this.dpr;
+                const octx = off.getContext('2d');
+                octx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+
+                const bg = octx.createLinearGradient(0, 0, 0, H);
+                bg.addColorStop(0,    P.skyTop);
+                bg.addColorStop(0.20, P.skyMid);
+                bg.addColorStop(1,    P.skyBot);
+                octx.fillStyle = bg; octx.fillRect(0, 0, W, H);
+
+                if (P.star) {
+                    for (let i = 0; i < 32; i++) {
+                        const sx = (i * 53.7) % W;
+                        const sy = 4 + ((i * 17) % 22);
+                        octx.fillStyle = `rgba(200,220,255,${0.30 + ((i * 7) % 5) * 0.05})`;
+                        octx.fillRect(sx, sy, 1, 1);
+                    }
+                }
+                for (let side = 0; side <= 1; side++) {
+                    const ag = octx.createRadialGradient(side * W, H, 0, side * W, H, W * 0.6);
+                    ag.addColorStop(0, P.fog);
+                    ag.addColorStop(1, 'rgba(0,0,0,0)');
+                    octx.fillStyle = ag; octx.fillRect(0, 0, W, H);
+                }
+                // Ground band under a nominal horizon
+                octx.fillStyle = '#05050f';
+                octx.fillRect(0, 30, W, H - 30);
+
+                this._backdropBmp = off;
+                this._backdropW = W; this._backdropH = H;
+                return off;
+            }
+
+            _draw() {
+                const ctx = this.ctx;
+                const W = this.W, H = this.H;
+                const P = this._palette();
+
+                // Blit the baked backdrop instead of rebuilding gradients.
+                const bd = this._ensureBackdrop(P);
+                ctx.drawImage(bd, 0, 0, W, H);
+
+                this._fillRoad(P);
+                if (this.isRamp) this._fillExitFork(P);
+                this._drawDepthLines(P);
+                this._drawActiveLaneFills(P);
+                this._drawLaneDividers(P);
+                this._drawEdge(0, P);
+                this._drawEdge(1, P);
+                if (P.streetlight) this._drawStreetlights(P);
+                this._drawGroundChevrons(P);
+                this._drawLaneChooser(P);
+                if (this.maneuverType === 'arrive') this._drawBeacon(P);
+                if (this.nextStreet || this.exitNumber) this._drawSignGantry(P);
+                if (P.headlights) this._drawHeadlightCones();
+
+                const vy = this._horizonY();
+                const hg = ctx.createLinearGradient(0, vy - 14, 0, vy + 24);
+                hg.addColorStop(0,    'rgba(0,0,0,0)');
+                hg.addColorStop(0.45, P.fog);
+                hg.addColorStop(1,    'rgba(0,0,0,0)');
+                ctx.fillStyle = hg;
+                ctx.fillRect(0, vy - 14, W, 38);
+
+                this._drawSpeedStreaks(P);
+                this._drawProgress(P);
+
+                const vg = ctx.createRadialGradient(W / 2, H * 0.55, W * 0.25, W / 2, H * 0.55, W * 0.75);
+                vg.addColorStop(0, 'rgba(0,0,0,0)');
+                vg.addColorStop(1, 'rgba(0,0,0,0.55)');
+                ctx.fillStyle = vg;
+                ctx.fillRect(0, 0, W, H);
+            }
+
+            _roadPath(ctx) {
+                const steps = 14;
+                ctx.beginPath();
+                for (let i = 0; i <= steps; i++) {
+                    const t = i / steps;
+                    const [x, y] = this._project(0, t);
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                for (let i = steps; i >= 0; i--) {
+                    const t = i / steps;
+                    const [x, y] = this._project(1, t);
+                    ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+            }
+
+            _fillRoad(P) {
+                const ctx = this.ctx;
+                this._roadPath(ctx);
+                if (!this._roadGrad || this._roadGradNight !== this.nightMode) {
+                    this._roadGradNight = this.nightMode;
+                    const g = ctx.createLinearGradient(0, 30, 0, this.H);
+                    if (this.nightMode) {
+                        g.addColorStop(0, '#08080f'); g.addColorStop(0.55, '#0d0d18'); g.addColorStop(1, '#12121e');
+                    } else {
+                        g.addColorStop(0, '#0c0c1b'); g.addColorStop(0.55, '#131324'); g.addColorStop(1, '#1b1b2a');
+                    }
+                    this._roadGrad = g;
+                }
+                ctx.fillStyle = this._roadGrad;
+                ctx.fill();
+            }
+
+            // A gently diverging branch that peels off toward the maneuver
+            // side, meeting the road at the vanishing point.
+            _fillExitFork(P) {
+                const ctx = this.ctx;
+                const rightSide = !/left/.test(this.maneuverDir);
+                const steps = 14;
+                ctx.save();
+                ctx.beginPath();
+                for (let i = 0; i <= steps; i++) {
+                    const t = i / steps;
+                    // Inner edge starts at the outermost lane divider
+                    const u = rightSide ? 1 - (1 / this.numLanes) : (1 / this.numLanes);
+                    const [x, y] = this._project(u, t);
+                    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                for (let i = steps; i >= 0; i--) {
+                    const t = i / steps;
+                    // Outer edge sweeps away from the main road
+                    const drift = rightSide ? 0.45 * t : -0.45 * t;
+                    const u = rightSide ? 1 + drift : 0 + drift;
+                    const [x, y] = this._project(u, t);
+                    ctx.lineTo(x, y);
+                }
+                ctx.closePath();
+                const g = ctx.createLinearGradient(0, 30, 0, this.H);
+                g.addColorStop(0,    'rgba(255,80,80,0.10)');
+                g.addColorStop(0.55, 'rgba(255,80,80,0.22)');
+                g.addColorStop(1,    'rgba(255,80,80,0.42)');
+                ctx.fillStyle = g;
+                ctx.fill();
+
+                // Fork divider gore (V-shape)
+                ctx.beginPath();
+                const [gx, gy] = this._project(rightSide ? 1 - 1 / this.numLanes : 1 / this.numLanes, 0.02);
+                const [vx, vy] = this._project(rightSide ? 1 - 1 / this.numLanes : 1 / this.numLanes, 0.85);
+                ctx.moveTo(gx, gy);
+                ctx.lineTo(vx, vy);
+                ctx.strokeStyle = P.chevron;
+                ctx.lineWidth = 1.6;
+                ctx.setLineDash([4, 3]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.restore();
+            }
+
+            _drawDepthLines(P) {
+                const ctx = this.ctx;
+                [0.20, 0.34, 0.48, 0.62, 0.75, 0.86, 0.94].forEach(t => {
+                    const [xL, yL] = this._project(0, t);
+                    const [xR, yR] = this._project(1, t);
+                    ctx.beginPath();
+                    ctx.moveTo(xL, yL); ctx.lineTo(xR, yR);
+                    ctx.strokeStyle = `rgba(180,190,220,${0.04 + (1 - t) * 0.08})`;
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                });
+            }
+
+            _laneEdgeU(i) { return i / this.numLanes; }
+
+            _drawActiveLaneFills(P) {
+                const ctx = this.ctx;
+                const pulse = 0.5 + 0.25 * Math.sin(this.phase * 2.6);
+                this.lanes.forEach((lane, i) => {
+                    const isActive = lane.active;
+                    const isUser   = this.userPickedLane === i;
+                    if (!isActive && !isUser && this.hoverLane !== i) return;
+
+                    const uL = this._laneEdgeU(i), uR = this._laneEdgeU(i + 1);
+                    ctx.beginPath();
+                    const steps = 12;
+                    for (let s = 0; s <= steps; s++) {
+                        const t = s / steps;
+                        const [x, y] = this._project(uL, t);
+                        if (s === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                    }
+                    for (let s = steps; s >= 0; s--) {
+                        const t = s / steps;
+                        const [x, y] = this._project(uR, t);
+                        ctx.lineTo(x, y);
+                    }
+                    ctx.closePath();
+                    const g = ctx.createLinearGradient(0, 30, 0, this.H);
+                    if (isUser) {
+                        g.addColorStop(0,    'rgba(80,220,140,0.05)');
+                        g.addColorStop(0.55, `rgba(80,220,140,${0.32 * pulse + 0.1})`);
+                        g.addColorStop(1,    `rgba(80,220,140,${0.58 * pulse + 0.1})`);
+                    } else if (isActive) {
+                        g.addColorStop(0,    'rgba(255,51,51,0.02)');
+                        g.addColorStop(0.55, P.laneFillMid);
+                        g.addColorStop(1,    P.laneFillBot);
+                    } else {
+                        // hover
+                        g.addColorStop(0,    'rgba(255,255,255,0.02)');
+                        g.addColorStop(0.55, 'rgba(255,255,255,0.06)');
+                        g.addColorStop(1,    'rgba(255,255,255,0.10)');
+                    }
+                    ctx.fillStyle = g;
+                    ctx.fill();
+                });
+            }
+
+            _drawLaneDividers(P) {
+                const ctx = this.ctx;
+                const dashWorld = 0.06;
+                const gapWorld  = 0.05;
+                const scroll    = (this.phase * 0.55) % (dashWorld + gapWorld);
+
+                for (let i = 1; i < this.numLanes; i++) {
+                    const u = this._laneEdgeU(i);
+                    const isCenter = (this.numLanes % 2 === 1) && (i === Math.floor(this.numLanes / 2));
+                    ctx.strokeStyle = isCenter ? P.dividerCenter : P.dividerSide;
+                    ctx.lineWidth = 1.4;
+
+                    let t = -scroll;
+                    while (t < 1) {
+                        const t0 = Math.max(0, t);
+                        const t1 = Math.min(1, t + dashWorld);
+                        if (t1 > t0) {
+                            const [x0, y0] = this._project(u, t0);
+                            const [x1, y1] = this._project(u, t1);
+                            ctx.beginPath();
+                            ctx.moveTo(x0, y0);
+                            ctx.lineTo(x1, y1);
+                            ctx.stroke();
+                        }
+                        t += dashWorld + gapWorld;
+                    }
+                }
+            }
+
+            _drawEdge(side, P) {
+                const ctx = this.ctx;
+                const u = side;
+                const steps = 16;
+                ctx.beginPath();
+                for (let s = 0; s <= steps; s++) {
+                    const t = s / steps;
+                    const [x, y] = this._project(u, t);
+                    if (s === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+                }
+                ctx.strokeStyle = P.edge;
+                ctx.lineWidth = 1.8;
+                ctx.stroke();
+
+                const activeAtEdge = this.lanes.some((l, i) =>
+                    l.active && (side === 0 ? i === 0 : i === this.numLanes - 1));
+                if (activeAtEdge) {
+                    ctx.save();
+                    ctx.shadowColor = P.chevronGlow;
+                    ctx.shadowBlur  = 8;
+                    ctx.strokeStyle = P.edgeActive;
+                    ctx.lineWidth = 1.4;
+                    ctx.stroke();
+                    ctx.restore();
+                }
+            }
+
+            _drawStreetlights(P) {
+                const ctx = this.ctx;
+                for (let side = 0; side <= 1; side++) {
+                    for (let k = 0; k < 4; k++) {
+                        const t = 0.15 + k * 0.22 + (this.phase * 0.05) % 0.22;
+                        if (t > 0.9) continue;
+                        const u = side === 0 ? -0.05 : 1.05;
+                        const [x, y] = this._project(u, t);
+                        const size = (1 - t) * 2.4 + 0.6;
+                        ctx.save();
+                        ctx.shadowColor = '#ffe08a';
+                        ctx.shadowBlur = 8;
+                        ctx.fillStyle = '#ffe08a';
+                        ctx.beginPath();
+                        ctx.arc(x, y - size * 2, size, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+            }
+
+            _drawGroundChevrons(P) {
+                const ctx = this.ctx;
+                const speed = 0.35;
+                const spacing = 0.22;
+                const base = (this.chevronPhase * speed) % spacing;
+
+                this.lanes.forEach((lane, i) => {
+                    if (!lane.active) return;
+                    const uC = (i + 0.5) / this.numLanes;
+                    const dir = (lane.dirs && lane.dirs[0]) || this.maneuverDir;
+
+                    for (let k = 0; k < 5; k++) {
+                        const t = 0.05 + base + k * spacing;
+                        if (t > 0.92) continue;
+                        const localDir = this._chevronDirAt(dir, t);
+                        const [cx, cy] = this._project(uC, t);
+                        const [nx, ny] = this._project(uC, Math.min(0.99, t + 0.02));
+                        const ang = Math.atan2(ny - cy, nx - cx) - Math.PI / 2;
+                        const size = (1 - t) * 18 + 4;
+                        const opacity = Math.min(1, (1 - t) * 1.4);
+                        this._drawGroundArrow(ctx, cx, cy, size, ang, localDir, opacity, P.chevron, P.chevronGlow);
+                    }
+                });
+
+                // Ghost chevrons for the NEXT maneuver, blended in near horizon
+                if (this.nextManeuver) {
+                    const uC = 0.5;
+                    for (let k = 0; k < 2; k++) {
+                        const t = 0.72 + k * 0.10;
+                        const [cx, cy] = this._project(uC, t);
+                        const [nx, ny] = this._project(uC, Math.min(0.99, t + 0.02));
+                        const ang = Math.atan2(ny - cy, nx - cx) - Math.PI / 2;
+                        const size = (1 - t) * 18 + 4;
+                        const opacity = Math.max(0, (1 - t) * 0.9) * 0.55;
+                        this._drawGroundArrow(ctx, cx, cy, size, ang, this.nextManeuver.dir,
+                                              opacity, '#8fd8ff', '#8fd8ff');
+                    }
+                }
+            }
+
+            _chevronDirAt(dir, t) {
+                // Now curves earlier (t > 0.35) so the "into the turn" feel
+                // starts before the maneuver point — matches early bend.
+                if (t < 0.35) return 'straight';
+                return dir;
+            }
+
+            _drawGroundArrow(ctx, x, y, s, ang, dir, alpha, fill, glow) {
+                ctx.save();
+                ctx.translate(x, y);
+                ctx.rotate(ang);
+                ctx.scale(1, 0.55);
+
+                ctx.globalAlpha = alpha;
+                ctx.strokeStyle = fill;
+                ctx.fillStyle   = fill;
+                ctx.lineWidth   = Math.max(1.2, s * 0.18);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.shadowColor = glow;
+                ctx.shadowBlur  = 6;
+
+                if (dir === 'left' || dir === 'slight-left' || dir === 'sharp-left') {
+                    ctx.beginPath();
+                    ctx.moveTo(0,  s * 0.55);
+                    ctx.lineTo(0,  0);
+                    ctx.quadraticCurveTo(0, -s * 0.55, -s * 0.55, -s * 0.55);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(-s * 0.90, -s * 0.55);
+                    ctx.lineTo(-s * 0.35, -s * 0.25);
+                    ctx.lineTo(-s * 0.35, -s * 0.85);
+                    ctx.closePath(); ctx.fill();
+                } else if (dir === 'right' || dir === 'slight-right' || dir === 'sharp-right') {
+                    ctx.beginPath();
+                    ctx.moveTo(0,  s * 0.55);
+                    ctx.lineTo(0,  0);
+                    ctx.quadraticCurveTo(0, -s * 0.55, s * 0.55, -s * 0.55);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(s * 0.90, -s * 0.55);
+                    ctx.lineTo(s * 0.35, -s * 0.25);
+                    ctx.lineTo(s * 0.35, -s * 0.85);
+                    ctx.closePath(); ctx.fill();
+                } else if (dir === 'uturn') {
+                    ctx.beginPath();
+                    ctx.moveTo(s * 0.30,  s * 0.55);
+                    ctx.lineTo(s * 0.30, -s * 0.10);
+                    ctx.arc(0, -s * 0.10, s * 0.30, 0, Math.PI, true);
+                    ctx.lineTo(-s * 0.30, s * 0.30);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(-s * 0.65, s * 0.15);
+                    ctx.lineTo(-s * 0.30, s * 0.00);
+                    ctx.lineTo(-s * 0.05, s * 0.15);
+                    ctx.closePath(); ctx.fill();
+                } else if (dir === 'arrive') {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, s * 0.55, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    ctx.beginPath();
+                    ctx.moveTo(-s * 0.65, s * 0.10);
+                    ctx.lineTo(0,        -s * 0.55);
+                    ctx.lineTo( s * 0.65, s * 0.10);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(-s * 0.65, s * 0.55);
+                    ctx.lineTo(0,        -s * 0.05);
+                    ctx.lineTo( s * 0.65, s * 0.55);
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+
+            _drawHeadlightCones() {
+                // Faint driver-POV headlight cones washing the road
+                const ctx = this.ctx;
+                const [lx, ly] = this._project(0.35, 0.35);
+                const [rx, ry] = this._project(0.65, 0.35);
+                [[lx, ly], [rx, ry]].forEach(([cx, cy]) => {
+                    const g = ctx.createRadialGradient(cx, this.H + 20, 0, cx, cy, 90);
+                    g.addColorStop(0, 'rgba(255,240,200,0.22)');
+                    g.addColorStop(1, 'rgba(255,240,200,0)');
+                    ctx.fillStyle = g;
+                    ctx.fillRect(0, this._horizonY(), this.W, this.H - this._horizonY());
+                });
+            }
+
+            _drawLaneChooser(P) {
+                // Small clickable lane pills near the bottom of the canvas
+                const ctx = this.ctx;
+                const y = this.H - 12, h = 6;
+                for (let i = 0; i < this.numLanes; i++) {
+                    const uL = i / this.numLanes, uR = (i + 1) / this.numLanes;
+                    const [xL] = this._project(uL, 0.02);
+                    const [xR] = this._project(uR, 0.02);
+                    const px = Math.min(xL, xR) + 3;
+                    const pw = Math.abs(xR - xL) - 6;
+                    if (pw < 4) continue;
+
+                    const isActive = this.lanes[i] && this.lanes[i].active;
+                    const isUser   = this.userPickedLane === i;
+                    const isHover  = this.hoverLane === i;
+
+                    ctx.beginPath();
+                    if (ctx.roundRect) ctx.roundRect(px, y, pw, h, 2);
+                    else               ctx.rect(px, y, pw, h);
+                    ctx.fillStyle = isUser   ? 'rgba(80,220,140,0.95)'
+                                    : isActive ? 'rgba(255,80,80,0.85)'
+                                    : isHover  ? 'rgba(255,255,255,0.35)'
+                                               : 'rgba(255,255,255,0.14)';
+                    ctx.fill();
+                }
+            }
+
+            _drawBeacon(P) {
+                const ctx = this.ctx;
+                const [bx, by] = this._project(0.5, 0.88);
+                const r = 3 + 1.5 * Math.sin(this.phase * 3);
+                ctx.save();
+                ctx.shadowColor = P.chevronGlow;
+                ctx.shadowBlur = 16;
+                ctx.fillStyle = P.chevron;
+                ctx.beginPath();
+                ctx.arc(bx, by, r, 0, Math.PI * 2);
+                ctx.fill();
+                const g = ctx.createLinearGradient(bx, by - 30, bx, by);
+                g.addColorStop(0, 'rgba(255,80,80,0)');
+                g.addColorStop(1, 'rgba(255,80,80,0.55)');
+                ctx.fillStyle = g;
+                ctx.fillRect(bx - 1.2, by - 30, 2.4, 30);
+                ctx.restore();
+            }
+
+            _drawSignGantry(P) {
+                const ctx = this.ctx;
+                const W = this.W;
+                ctx.save();
+                ctx.fillStyle = P.signBg;
+                ctx.strokeStyle = P.signBorder;
+                ctx.lineWidth = 1;
+                const sx = W * 0.10, sy = 6, sw = W * 0.80, sh = 17;
+                ctx.beginPath();
+                ctx.roundRect ? ctx.roundRect(sx, sy, sw, sh, 3)
+                              : ctx.rect(sx, sy, sw, sh);
+                ctx.fill();
+                ctx.stroke();
+
+                // Exit badge (freeway-green style) if present
+                let textX = sx + sw / 2;
+                if (this.exitNumber) {
+                    const ebw = 34, ebh = sh - 4, ebx = sx + 2, eby = sy + 2;
+                    ctx.fillStyle = '#0d6b3a';
+                    ctx.strokeStyle = '#8bd3a3';
+                    ctx.beginPath();
+                    ctx.roundRect ? ctx.roundRect(ebx, eby, ebw, ebh, 2)
+                                  : ctx.rect(ebx, eby, ebw, ebh);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = '#e8fff0';
+                    ctx.font = '700 6.5px SFMono-Regular, Consolas, monospace';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('EXIT', ebx + ebw / 2, eby + 4);
+                    ctx.font = '800 8.5px SFMono-Regular, Consolas, monospace';
+                    ctx.fillText(String(this.exitNumber).toUpperCase(),
+                                 ebx + ebw / 2, eby + ebh - 5);
+                    textX = ebx + ebw + (sx + sw - ebx - ebw) / 2;
+                }
+
+                ctx.fillStyle = P.signText;
+                ctx.font = '600 8px SFMono-Regular, Consolas, monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const maxChars = this.exitNumber ? 22 : 30;
+                const label = (this.nextStreet || '').length > maxChars
+                    ? this.nextStreet.slice(0, maxChars - 1) + '…'
+                    : (this.nextStreet || '');
+                ctx.fillText(label.toUpperCase(), textX, sy + sh / 2 + 0.5);
+
+                // Preview of next street below the sign (small ghost line)
+                if (this.nextManeuver && this.nextManeuver.previewStreet) {
+                    ctx.fillStyle = 'rgba(140,180,255,0.55)';
+                    ctx.font = '500 6px SFMono-Regular, Consolas, monospace';
+                    ctx.textAlign = 'center';
+                    const preview = 'THEN → ' + this.nextManeuver.previewStreet
+                        .slice(0, 22).toUpperCase();
+                    ctx.fillText(preview, W / 2, sy + sh + 6);
+                }
+
+                ctx.restore();
+            }
+
+            _drawSpeedStreaks(P) {
+                const ctx = this.ctx;
+                const W = this.W, H = this.H;
+                ctx.save();
+                ctx.globalCompositeOperation = 'lighter';
+                for (let i = 0; i < 6; i++) {
+                    const t = ((this.phase * 0.9 + i * 0.17) % 1);
+                    const y = 30 + t * (H - 30);
+                    const len = 12 + t * 30;
+                    const alpha = (1 - t) * 0.35;
+                    const col = this.nightMode ? '255,200,120' : '255,80,80';
+                    let g = ctx.createLinearGradient(0, y, 0, y + len);
+                    g.addColorStop(0, `rgba(${col},0)`);
+                    g.addColorStop(1, `rgba(${col},${alpha})`);
+                    ctx.fillStyle = g;
+                    ctx.fillRect(2 + i * 0.6, y, 1.2, len);
+                    g = ctx.createLinearGradient(0, y, 0, y + len);
+                    g.addColorStop(0, `rgba(${col},0)`);
+                    g.addColorStop(1, `rgba(${col},${alpha})`);
+                    ctx.fillStyle = g;
+                    ctx.fillRect(W - 3 - i * 0.6, y, 1.2, len);
+                }
+                ctx.restore();
+            }
+
+            _drawProgress(P) {
+                const ctx = this.ctx;
+                const W = this.W;
+                const total = Math.max(1, this.initialDistance);
+                const rem   = Math.max(0, Math.min(total, this.distanceMeters));
+                const pct   = 1 - rem / total;
+                const bx = 12, by = 26, bw = W - 24, bh = 2;
+                ctx.fillStyle = 'rgba(255,255,255,0.08)';
+                ctx.fillRect(bx, by, bw, bh);
+                const g = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+                g.addColorStop(0, P.chevron);
+                g.addColorStop(1, this.nightMode ? '#8fd8ff' : '#ffb347');
+                ctx.fillStyle = g;
+                ctx.fillRect(bx, by, bw * pct, bh);
+                const px = bx + bw * pct;
+                ctx.save();
+                ctx.shadowColor = P.chevronGlow;
+                ctx.shadowBlur = 6;
+                ctx.fillStyle = P.chevron;
+                ctx.fillRect(px - 1, by - 0.5, 2, bh + 1);
+                ctx.restore();
+            }
+        }
+        // ── End LaneGuidance3D ─────────────────────────────────────────────
+
+
+        // ── Lane-guidance ⇄ map synchronization ─────────────────────────
+        // Keeps the 3D HUD's horizon/curve aligned with wherever the user
+        // has rotated the map, and updates the pre-turn distance blend as
+        // GPS progresses toward the next maneuver.
+        let activeStepIndex = 0;
+        function currentActiveStep() {
+            const r = activeRouteDataStore[selectedRouteIndex];
+            if (!r || !r.steps.length) return null;
+            return r.steps[Math.min(activeStepIndex, r.steps.length - 1)];
+        }
+        function pushMapCameraDelta() {
+            if (!laneGuidance || !map) return;
+            const step = currentActiveStep();
+            if (!step || typeof step.bearing !== 'number') {
+                laneGuidance.setMapCameraDelta(0);
+                return;
+            }
+            // Signed shortest-angle delta between map view and turn bearing
+            let d = ((map.getBearing() - step.bearing + 540) % 360) - 180;
+            laneGuidance.setMapCameraDelta((d * Math.PI) / 180);
+        }
+        function wireLaneGuidanceMapSync() {
+            map.on('rotate', pushMapCameraDelta);
+            map.on('pitch',  pushMapCameraDelta);
+            map.on('move',   pushMapCameraDelta);
+        }
+
+        // Approx meters between two [lng,lat] points (equirectangular)
+        function metersBetween(a, b) {
+            const R = 6371000;
+            const lat1 = a[1] * Math.PI / 180, lat2 = b[1] * Math.PI / 180;
+            const x = (b[0] - a[0]) * Math.PI / 180 * Math.cos((lat1 + lat2) / 2);
+            const y = (b[1] - a[1]) * Math.PI / 180;
+            return Math.sqrt(x * x + y * y) * R;
+        }
+
+        // Called from the GPS loop with the latest fix [lng,lat]
+        function syncLaneGuidanceLive(fix) {
+            if (!laneGuidance) return;
+            const r = activeRouteDataStore[selectedRouteIndex];
+            if (!r || !r.steps.length || !fix) return;
+
+            // Advance the active step when we're within 20m of its maneuver
+            const cur = r.steps[activeStepIndex];
+            if (cur && cur.coordinates) {
+                const d = metersBetween(fix, cur.coordinates);
+                if (d < 20 && activeStepIndex < r.steps.length - 1) {
+                    activeStepIndex++;
+                    const s = r.steps[activeStepIndex];
+                    laneGuidance.show(s, r.steps[activeStepIndex + 1] || null);
+                    updateMapLaneGuidance();
+                } else {
+                    laneGuidance.updateDistance(d);
+                }
+            }
+            pushMapCameraDelta();
+        }
+
+        // ── On-map lane guidance ─────────────────────────────────────────
+        // Draws the upcoming maneuver's recommended lane path and a chain
+        // of directional arrows directly onto the MapLibre map, oriented
+        // to the actual road geometry.
+        function ensureLaneArrowIcon() {
+            if (!map || map.hasImage('lane-arrow')) return;
+            const s = 48;
+            const c = document.createElement('canvas'); c.width = s; c.height = s;
+            const g = c.getContext('2d');
+            // Arrow pointing UP (symbol layer rotates it along the line)
+            g.fillStyle = '#ffffff';
+            g.beginPath();
+            g.moveTo(s / 2, 4);
+            g.lineTo(s - 8, s / 2 + 2);
+            g.lineTo(s / 2 + 7, s / 2 + 2);
+            g.lineTo(s / 2 + 7, s - 6);
+            g.lineTo(s / 2 - 7, s - 6);
+            g.lineTo(s / 2 - 7, s / 2 + 2);
+            g.lineTo(8,         s / 2 + 2);
+            g.closePath();
+            g.fill();
+            // Slight outline for contrast on light basemaps
+            g.strokeStyle = 'rgba(0,0,0,0.35)'; g.lineWidth = 1.5; g.stroke();
+            const img = g.getImageData(0, 0, s, s);
+            map.addImage('lane-arrow', img, { sdf: true, pixelRatio: 2 });
+        }
+
+        function installMapLaneGuidance() {
+            if (!map) return;
+            ensureLaneArrowIcon();
+            if (!map.getSource('lane-guidance')) {
+                map.addSource('lane-guidance', {
+                    type: 'geojson',
+                    data: { type: 'FeatureCollection', features: [] }
+                });
+            }
+            if (!map.getLayer('lane-guidance-glow')) {
+                map.addLayer({
+                    id: 'lane-guidance-glow', type: 'line', source: 'lane-guidance',
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: {
+                        'line-color': ['coalesce', ['get', 'color'], '#ff3333'],
+                        'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 14, 6, 18, 22],
+                        'line-blur':  6,
+                        'line-opacity': 0.55,
+                        'line-offset': ['coalesce', ['get', 'offset'], 0]
+                    }
+                });
+            }
+            if (!map.getLayer('lane-guidance-line')) {
+                map.addLayer({
+                    id: 'lane-guidance-line', type: 'line', source: 'lane-guidance',
+                    layout: { 'line-cap': 'round', 'line-join': 'round' },
+                    paint: {
+                        'line-color': ['coalesce', ['get', 'color'], '#ff5252'],
+                        'line-width': ['interpolate', ['exponential', 1.5], ['zoom'], 14, 3, 18, 10],
+                        'line-opacity': 0.95,
+                        'line-offset': ['coalesce', ['get', 'offset'], 0]
+                    }
+                });
+            }
+            if (!map.getLayer('lane-guidance-arrows')) {
+                map.addLayer({
+                    id: 'lane-guidance-arrows', type: 'symbol', source: 'lane-guidance',
+                    layout: {
+                        'symbol-placement': 'line',
+                        'symbol-spacing':   ['interpolate', ['linear'], ['zoom'], 14, 60, 18, 40],
+                        'icon-image':       'lane-arrow',
+                        'icon-size':        ['interpolate', ['linear'], ['zoom'], 14, 0.35, 18, 0.75],
+                        'icon-rotation-alignment': 'map',
+                        'icon-pitch-alignment':    'map',
+                        'icon-allow-overlap':      true,
+                        'icon-ignore-placement':   true,
+                        'icon-rotate': 180 // arrow art points up; direction of travel is down the line
+                    },
+                    paint: {
+                        'icon-color':      ['coalesce', ['get', 'color'], '#ffffff'],
+                        'icon-halo-color': ['coalesce', ['get', 'halo'],  '#000000'],
+                        'icon-halo-width': 1.5,
+                        'icon-opacity':    0.95
+                    }
+                });
+            }
+        }
+
+        // Rough px offset from centerline into the recommended lane at
+        // typical navigation zoom levels. Uses lane index shift from center.
+        function laneOffsetPx(laneIdx, numLanes) {
+            const shift = (laneIdx + 0.5) - numLanes / 2;
+            return shift * 5; // ≈5 px per lane at z17 — MapLibre offsets in screen px
+        }
+
+        function updateMapLaneGuidance() {
+            if (!map || !map.getSource || !map.getSource('lane-guidance')) return;
+            const empty = { type: 'FeatureCollection', features: [] };
+            const r = activeRouteDataStore[selectedRouteIndex];
+            if (!r || !r.steps.length || !laneGuidance) {
+                map.getSource('lane-guidance').setData(empty);
+                return;
+            }
+            const step = r.steps[Math.min(activeStepIndex, r.steps.length - 1)];
+            if (!step || !step.geometry || !Array.isArray(step.geometry.coordinates) ||
+                step.geometry.coordinates.length < 2) {
+                map.getSource('lane-guidance').setData(empty);
+                return;
+            }
+
+            const night = laneGuidance.nightMode;
+            const activeIdx = (laneGuidance.userPickedLane != null)
+                ? laneGuidance.userPickedLane
+                : (laneGuidance.lanes.findIndex(l => l.active));
+            const idx = activeIdx >= 0 ? activeIdx : Math.floor(laneGuidance.numLanes / 2);
+            const offset = laneOffsetPx(idx, laneGuidance.numLanes);
+
+            const userPicked = laneGuidance.userPickedLane != null;
+            const color = userPicked ? '#3fd18a'
+                        : night      ? '#ffb020'
+                                     : '#ff5252';
+            const halo  = night ? '#221100' : '#3a0000';
+
+            const feature = {
+                type: 'Feature',
+                geometry: step.geometry,
+                properties: { color, halo, offset }
+            };
+            map.getSource('lane-guidance').setData({ type: 'FeatureCollection', features: [feature] });
+        }
+
+        map.on('load', () => {
+            laneGuidance = new LaneGuidance3D();
+            wireLaneGuidanceMapSync();
+            installMapLaneGuidance();
+            initPOIRadar();
+            initThemePicker();
+            initTacticalPanelDraggingPhysics();
+            initAutonomousSearchMatrix();
+            initDirectMapInputListeners();
+            initHardwareConsoleTriggers();
+            inject3DEarthWorldAssets();
+            establishLiveHardwarePositioningStream();
+
+            map.setFog({
+                'color': '#050505',
+                'high-color': '#0f0f13',
+                'space-color': '#000000',
+                'horizon-blend': 0.05
+            });
+
+            map.on('mousemove', (e) => {
+                const overlay = document.getElementById('coordinate-overlay-tracker');
+                if (overlay) overlay.innerText = `X: ${e.lngLat.lng.toFixed(5)} | Y: ${e.lngLat.lat.toFixed(5)}`;
+            });
+
+            const cancelTracking = () => {
+                if (cameraTrackingMode) {
+                    cameraTrackingMode = false;
+                    const recenterBtn = document.getElementById('force-gps-recenter');
+                    if (recenterBtn) recenterBtn.classList.remove('active-state');
+                }
+            };
+
+            map.on('dragstart', cancelTracking);
+            map.on('zoomstart', cancelTracking);
+            map.on('rotatestart', cancelTracking);
+            map.on('pitchstart', cancelTracking);
+        });
+
+        // FIX #3: Added isStyleLoaded() guard so layers are only injected once
+        // the style is fully ready. style.data fires many times during loading,
+        // and attempting to add sources/layers before the style is ready throws.
+        map.on('style.data', () => {
+            if (!map.isStyleLoaded()) return;
+            inject3DEarthWorldAssets();
+            redrawActiveRoutePipelines();
+        });
+
+        function inject3DEarthWorldAssets() {
+            // FIX #3 (also guards from load path in case style not yet settled)
+            if (!map.isStyleLoaded()) return;
+
+            const styleSources = map.getStyle().sources;
+            if (!styleSources) return;
+
+            const sourceKey = Object.keys(styleSources).find(key => styleSources[key].type === 'vector');
+            if (!sourceKey || !map.getSource(sourceKey)) return;
+
+            const layers = map.getStyle().layers;
+            let labelLayerId;
+            for (let i = 0; i < layers.length; i++) {
+                if (layers[i].type === 'symbol' && layers[i].layout && layers[i].layout['text-field']) {
+                    labelLayerId = layers[i].id;
+                    break;
+                }
+            }
+
+            if (!map.getLayer('earth-3d-lanes-shadow')) {
+                map.addLayer({
+                    id: 'earth-3d-lanes-shadow',
+                    source: sourceKey,
+                    'source-layer': 'transportation',
+                    type: 'line',
+                    minzoom: 12,
+                    filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary']]],
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: {
+                        'line-color': '#000000',
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 3, 16, 12, 20, 34],
+                        'line-opacity': 0.55,
+                        'line-blur': ['interpolate', ['linear'], ['zoom'], 12, 2, 18, 8],
+                        'line-offset': ['interpolate', ['linear'], ['zoom'], 12, 1, 18, 4]
+                    }
+                }, labelLayerId);
+            }
+
+            if (!map.getLayer('earth-3d-lanes-deck')) {
+                map.addLayer({
+                    id: 'earth-3d-lanes-deck',
+                    source: sourceKey,
+                    'source-layer': 'transportation',
+                    type: 'line',
+                    minzoom: 12,
+                    filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary']]],
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: {
+                        'line-color': ['interpolate', ['linear'], ['zoom'], 12, '#15151c', 17, '#24242f'],
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 2, 16, 9, 20, 28],
+                        'line-opacity': 0.9
+                    }
+                }, labelLayerId);
+            }
+
+            if (!map.getLayer('earth-3d-lanes-highlight')) {
+                map.addLayer({
+                    id: 'earth-3d-lanes-highlight',
+                    source: sourceKey,
+                    'source-layer': 'transportation',
+                    type: 'line',
+                    minzoom: 14,
+                    filter: ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary', 'tertiary']]],
+                    layout: { 'line-join': 'round', 'line-cap': 'round' },
+                    paint: {
+                        'line-color': '#ff3333',
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 0.5, 18, 2, 20, 4],
+                        'line-opacity': ['interpolate', ['linear'], ['zoom'], 14, 0.15, 18, 0.45],
+                        'line-offset': ['interpolate', ['linear'], ['zoom'], 14, -0.5, 18, -2]
+                    }
+                }, labelLayerId);
+            }
+
+            if (!map.getLayer('earth-3d-buildings')) {
+                map.addLayer({
+                    'id': 'earth-3d-buildings',
+                    'source': sourceKey,
+                    'source-layer': 'building',
+                    'type': 'fill-extrusion',
+                    'minzoom': 15,
+                    'paint': {
+                        'fill-extrusion-height': ['coalesce', ['get', 'height'], ['get', 'render_height'], 14],
+                        'fill-extrusion-base': ['coalesce', ['get', 'min_height'], ['get', 'render_min_height'], 0],
+                        'fill-extrusion-color': '#161620',
+                        'fill-extrusion-opacity': 0.85,
+                        'fill-extrusion-vertical-gradient': true
+                    }
+                }, labelLayerId);
+            }
+        }
+
+        async function handleRoutingButtonClick() {
+            const btn = document.getElementById('launch-routing-action');
+            if (!btn || !isValidCoordinatePair(targetSelectedCoordinates)) return;
+
+            btn.innerText = "COMPUTING PATH TRAJECTORY...";
+            btn.style.opacity = "0.6";
+            btn.disabled = true;
+
+            let originCoords = isValidCoordinatePair(currentLiveGpsPosition) ? currentLiveGpsPosition : null;
+            if (!originCoords) {
+                const mapCenter = map.getCenter();
+                originCoords = [mapCenter.lng, mapCenter.lat];
+            }
+            if (!isValidCoordinatePair(originCoords)) {
+                btn.innerText = "GPS ORIGIN UNAVAILABLE";
+                btn.style.opacity = "1";
+                btn.disabled = false;
+                return;
+            }
+
+            const routingQueryUrl = `https://router.project-osrm.org/route/v1/${currentRoutingProfile}/${originCoords.join(',')};${targetSelectedCoordinates.join(',')}?overview=full&geometries=geojson&steps=true&alternatives=3`;
+
+            try {
+                clearActiveRouteLayers();
+                activeRouteDataStore = [];
+                activeStepIndex = 0;
+
+                const stream = await fetch(routingQueryUrl);
+                if (!stream.ok) throw new Error(`Routing service returned ${stream.status}`);
+                const results = await stream.json();
+
+                if (results.code === 'Ok' && results.routes && results.routes.length > 0) {
+                    activeRouteDataStore = results.routes.slice(0, 3).map((route, idx) => {
+                        let parsedInstructions = [];
+                        if (route.legs && route.legs[0].steps) {
+                            const rawSteps = route.legs[0].steps;
+                            parsedInstructions = rawSteps.map((step, si) => {
+                                const nextRaw = rawSteps[si + 1];
+                                let modifier = step.maneuver.modifier ? ` ${step.maneuver.modifier}` : '';
+                                let type = step.maneuver.type === 'turn' ? 'Turn' : step.maneuver.type;
+                                let street = step.name ? ` onto ${step.name}` : '';
+                                let rawMessage = `${type}${modifier}${street}`;
+                                if (step.maneuver.type === 'depart') rawMessage = `Follow target vector from ${step.name || 'current coordinates'}`;
+                                if (step.maneuver.type === 'arrive') rawMessage = "Target location node reached";
+
+                                // Exit number (OSRM/Mapbox conventions)
+                                const exitNum = (step.maneuver && step.maneuver.exit)
+                                    || (step.exits ? String(step.exits).split(';')[0] : '')
+                                    || (step.destinations && /Exit\s+(\S+)/i.test(step.destinations)
+                                          ? step.destinations.match(/Exit\s+(\S+)/i)[1] : '');
+
+                                // Lane hints from the first intersection that has them
+                                let lanes = null;
+                                if (Array.isArray(step.intersections)) {
+                                    const withLanes = step.intersections.find(x => Array.isArray(x.lanes) && x.lanes.length);
+                                    if (withLanes) lanes = withLanes.lanes;
+                                }
+
+                                // Target compass bearing for this step (for map sync)
+                                let bearing = null, bearingBefore = null;
+                                if (Array.isArray(step.intersections) && step.intersections[0]) {
+                                    const inter = step.intersections[0];
+                                    if (typeof inter.bearing_after === 'number')       bearing = inter.bearing_after;
+                                    else if (Array.isArray(inter.bearings) && Array.isArray(inter.entry)) {
+                                        const idxB = inter.entry.findIndex(v => v === true);
+                                        if (idxB >= 0) bearing = inter.bearings[idxB];
+                                    }
+                                    if (typeof inter.bearing_before === 'number') bearingBefore = inter.bearing_before;
+                                }
+
+                                // Road class heuristic from OSRM step
+                                const roadClass = (step.mode === 'driving' && step.ref) ? 'primary' :
+                                                  (step.name || '').toLowerCase().match(/\b(hwy|highway|fwy|freeway|expressway|interstate|i-\d)\b/) ? 'motorway' :
+                                                  (step.ref ? 'trunk' : 'street');
+
+                                return {
+                                    text: rawMessage.charAt(0).toUpperCase() + rawMessage.slice(1),
+                                    distance: step.distance,
+                                    coordinates: step.maneuver.location,
+                                    maneuverType: step.maneuver.type,
+                                    maneuverModifier: step.maneuver.modifier || 'straight',
+                                    name: step.name || '',
+                                    nextName: nextRaw ? (nextRaw.name || '') : '',
+                                    exit: exitNum || '',
+                                    lanes: lanes,
+                                    bearing: bearing,
+                                    bearingBefore: bearingBefore,
+                                    geometry: step.geometry || null,
+                                    roadClass: roadClass,
+                                    ref: step.ref || '',
+                                    destinations: step.destinations || ''
+                                };
+                            }).filter(item => item.text);
+                        }
+                        return { index: idx, geometry: route.geometry, duration: route.duration, distance: route.distance, steps: parsedInstructions };
+                    });
+                    selectedRouteIndex = 0;
+                }
+            } catch (err) {
+                console.error("OSRM route fault.", err);
+            }
+
+            redrawActiveRoutePipelines();
+            renderRouteDashboardUI();
+
+            if (activeRouteDataStore.length > 0) {
+                const coords = activeRouteDataStore[0].geometry.coordinates;
+                if (coords.length > 1) {
+                    const initialAngle = calculateBearingAngle(coords[0], coords[1]);
+                    map.flyTo({
+                        center: coords[0],
+                        zoom: 17.5,
+                        pitch: 70,
+                        bearing: initialAngle,
+                        duration: 1200
+                    });
+                }
+                document.getElementById('control-panel-deck').classList.add('minimized');
+                // Show 3D lane guidance starting from the first step of selected route
+                if (laneGuidance && activeRouteDataStore[selectedRouteIndex].steps.length > 0) {
+                    const s = activeRouteDataStore[selectedRouteIndex].steps;
+                    laneGuidance.show(s[0], s[1] || null);
+                    updateMapLaneGuidance();
+                }
+                // Load elevation profile
+                loadElevationProfile(activeRouteDataStore[selectedRouteIndex].geometry.coordinates);
+            } else {
+                btn.innerText = "ROUTE UNAVAILABLE - TRY AGAIN";
+                btn.style.display = "block";
+            }
+
+            btn.style.opacity = "1";
+            btn.disabled = false;
+
+            // FIX #4: Reset button text before hiding so it shows correctly
+            // if the panel is re-expanded before the next destination is selected.
+            if (activeRouteDataStore.length > 0) {
+                btn.innerText = "GET DIRECTIONS";
+                btn.style.display = "none";
+            }
+        }
+
+        function redrawActiveRoutePipelines() {
+            if (!activeRouteDataStore || activeRouteDataStore.length === 0) return;
+            if (!map.isStyleLoaded()) return;
+
+            activeRouteDataStore.forEach((r) => {
+                const isSelected = r.index === selectedRouteIndex;
+                const baseCoords = r.geometry.coordinates;
+                const srcId = `src-active-route-${r.index}`;
+
+                if (!map.getSource(srcId)) {
+                    map.addSource(srcId, {
+                        type: 'geojson',
+                        data: { type: 'Feature', geometry: { type: 'LineString', coordinates: baseCoords } }
+                    });
+                } else {
+                    map.getSource(srcId).setData({ type: 'Feature', geometry: { type: 'LineString', coordinates: baseCoords } });
+                }
+
+                if (!map.getLayer(`layer-route-lane-shadow-${r.index}`)) {
+                    map.addLayer({
+                        id: `layer-route-lane-shadow-${r.index}`,
+                        type: 'line',
+                        source: srcId,
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: {
+                            'line-color': isSelected ? '#ff3333' : '#666680',
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 8, 16, 16, 20, 36],
+                            'line-opacity': isSelected ? 0.35 : 0.12,
+                            'line-blur': 14,
+                            'line-offset': ['interpolate', ['linear'], ['zoom'], 12, 1, 18, 5]
+                        }
+                    });
+                }
+
+                if (!map.getLayer(`layer-route-lane-deck-${r.index}`)) {
+                    map.addLayer({
+                        id: `layer-route-lane-deck-${r.index}`,
+                        type: 'line',
+                        source: srcId,
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: {
+                            'line-color': isSelected ? '#1b1b25' : '#252535',
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 6, 16, 12, 20, 28],
+                            'line-opacity': isSelected ? 0.96 : 0.5
+                        }
+                    });
+                }
+
+                if (!map.getLayer(`layer-route-lane-core-${r.index}`)) {
+                    map.addLayer({
+                        id: `layer-route-lane-core-${r.index}`,
+                        type: 'line',
+                        source: srcId,
+                        layout: { 'line-join': 'round', 'line-cap': 'round' },
+                        paint: {
+                            'line-color': isSelected ? '#ff3333' : '#4a4a6a',
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 4, 16, 8, 20, 16],
+                            'line-opacity': isSelected ? 1.0 : 0.55
+                        }
+                    });
+                }
+            });
+        }
+
+        function renderRouteDashboardUI() {
+            const dashboard = document.getElementById('route-variants-dashboard');
+            if (!dashboard) return;
+            dashboard.innerHTML = '';
+            if (!activeRouteDataStore || !activeRouteDataStore.length) {
+                dashboard.style.display = 'none';
+                return;
+            }
+            dashboard.style.display = 'flex';
+
+            // ── Alternative route selector chips ────────────────────────────
+            if (activeRouteDataStore.length > 1) {
+                const altRow = document.createElement('div');
+                altRow.className = 'route-alt-row';
+                activeRouteDataStore.forEach((r, idx) => {
+                    const mins = Math.max(1, Math.round(r.duration / 60));
+                    const miles = (r.distance / 1609.34).toFixed(1);
+                    const chip = document.createElement('button');
+                    chip.className = `route-alt-chip${idx === selectedRouteIndex ? ' alt-selected' : ''}`;
+                    chip.innerHTML = `
+                        <div class="route-alt-badge">ROUTE ${idx + 1}${idx === 0 ? ' ★' : ''}</div>
+                        <div class="route-alt-time">${mins} min</div>
+                        <div class="route-alt-dist">${miles} mi</div>
+                    `;
+                    chip.addEventListener('click', () => {
+                        // Guard against stale chip handlers during active rerouting
+                        if (!activeRouteDataStore.length || idx >= activeRouteDataStore.length) return;
+                        if (idx === selectedRouteIndex) return;
+                        selectedRouteIndex = idx;
+                        clearActiveRouteLayers();
+                        redrawActiveRoutePipelines();
+                        renderRouteDashboardUI();
+                        const coords = activeRouteDataStore[idx].geometry.coordinates;
+                        if (coords.length > 1) {
+                            map.flyTo({ center: coords[0], zoom: 17.5, pitch: 70, bearing: calculateBearingAngle(coords[0], coords[1]), duration: 800 });
+                        }
+                        if (laneGuidance && activeRouteDataStore[idx].steps.length > 0) {
+                            const s = activeRouteDataStore[idx].steps;
+                            laneGuidance.show(s[0], s[1] || null);
+                            updateMapLaneGuidance();
+                        }
+                        loadElevationProfile(activeRouteDataStore[idx].geometry.coordinates);
+                    });
+                    altRow.appendChild(chip);
+                });
+                dashboard.appendChild(altRow);
+            }
+
+            // ── Selected route details ───────────────────────────────────────
+            const r = activeRouteDataStore[selectedRouteIndex];
+            if (!r) return;
+            const mins = Math.max(1, Math.round(r.duration / 60));
+            const miles = (r.distance / 1609.34).toFixed(1);
+
+            let modeBadgeText = "★ ROAD-ALIGNED SYSTEM PATH";
+            if (currentRoutingProfile === 'cycling') modeBadgeText = "★ CYCLE PATH TRAJECTORY";
+            if (currentRoutingProfile === 'walking') modeBadgeText = "★ PEDESTRIAN VECTOR PATH";
+
+            const metricsRow = document.createElement('div');
+            metricsRow.className = 'route-badge-row';
+            metricsRow.innerHTML = `
+                <div>
+                    <span style="color:var(--action-red);font-weight:bold;font-family:var(--font-monospace);font-size:0.7rem;">${modeBadgeText}</span>
+                    <div style="color:var(--text-primary);margin-top:4px;font-size:0.95rem;font-weight:bold;">
+                        ${mins} mins <span style="color:var(--text-muted);font-weight:normal;font-size:0.8rem;">(${miles} mi)</span>
+                    </div>
+                </div>
+            `;
+            dashboard.appendChild(metricsRow);
+
+            if (r.steps && r.steps.length > 0) {
+                const manifestContainer = document.createElement('div');
+                manifestContainer.className = 'directions-manifest';
+                r.steps.forEach((step, stepIndex) => {
+                    const stepEl = document.createElement('div');
+                    stepEl.className = 'direction-step';
+                    const stepMiles = (step.distance / 1609.34).toFixed(2);
+                    const distanceDisplay = step.distance > 0 ? `${stepMiles} mi` : '';
+                    stepEl.innerHTML = `
+                        <div class="step-index">${stepIndex + 1}</div>
+                        <div class="step-text">${step.text}</div>
+                        <div class="step-distance">${distanceDisplay}</div>
+                    `;
+                    stepEl.addEventListener('click', () => {
+                        cameraTrackingMode = false;
+                        document.getElementById('force-gps-recenter').classList.remove('active-state');
+                        let targetStepBearing = currentVehicleHeading;
+                        if (stepIndex < r.steps.length - 1) {
+                            targetStepBearing = calculateBearingAngle(step.coordinates, r.steps[stepIndex + 1].coordinates);
+                        }
+                        map.flyTo({ center: step.coordinates, zoom: 18, pitch: 70, bearing: targetStepBearing, duration: 800 });
+                        if (laneGuidance) { laneGuidance.show(step, r.steps[stepIndex + 1] || null); updateMapLaneGuidance(); }
+                    });
+                    manifestContainer.appendChild(stepEl);
+                });
+                dashboard.appendChild(manifestContainer);
+            }
+        }
+
+        function clearActiveRouteLayers() {
+            for (let idx = 0; idx < 10; idx++) {
+                const elements = [`layer-route-lane-shadow-${idx}`, `layer-route-lane-deck-${idx}`, `layer-route-lane-core-${idx}`];
+                elements.forEach(id => { if (map.getLayer(id)) map.removeLayer(id); });
+                const sources = [`src-active-route-${idx}`];
+                sources.forEach(id => { if (map.getSource(id)) map.removeSource(id); });
+            }
+        }
+
+        function establishLiveHardwarePositioningStream() {
+            const diagnosticStatus = document.getElementById('telemetry-status-node');
+            if (!diagnosticStatus) return;
+
+            if (!window.isSecureContext) {
+                diagnosticStatus.innerText = "GPS REQUIRES HTTPS";
+                diagnosticStatus.style.color = "#ff9500";
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                diagnosticStatus.innerText = "SENSOR FAULT";
+                diagnosticStatus.style.color = "#ff9500";
+                return;
+            }
+
+            let initialLockAcquired = false;
+
+            navigator.geolocation.watchPosition(
+                (position) => {
+                    const rawFix = [position.coords.longitude, position.coords.latitude];
+                    if (!isValidCoordinatePair(rawFix)) return;
+
+                    const now = performance.now();
+                    const accuracy = Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : Infinity;
+                    const hasExistingFix = isValidCoordinatePair(currentLiveGpsPosition);
+
+                    if (hasExistingFix && accuracy > GPS_MAX_ACCEPTED_ACCURACY_METERS) {
+                        diagnosticStatus.innerText = `GPS WEAK (${Math.round(accuracy)}M)`;
+                        diagnosticStatus.style.color = "#ff9500";
+                        return;
+                    }
+
+                    const elapsedSecs = lastGpsTimestamp ? Math.max((now - lastGpsTimestamp) / 1000, 0.001) : 0;
+                    const movementMeters = hasExistingFix ? calculateDistanceMeters(currentLiveGpsPosition, rawFix) : 0;
+                    const impliedSpeed = elapsedSecs > 0 ? movementMeters / elapsedSecs : 0;
+
+                    if (hasExistingFix && elapsedSecs < 10 && impliedSpeed > GPS_MAX_PLAUSIBLE_SPEED_MPS) {
+                        diagnosticStatus.innerText = "GPS SPIKE FILTERED";
+                        diagnosticStatus.style.color = "#ff9500";
+                        return;
+                    }
+
+                    const stableFix = initialLockAcquired
+                        ? smoothCoordinatePair(currentLiveGpsPosition, rawFix)
+                        : rawFix;
+
+                    let nextHeading = currentVehicleHeading;
+                    if (Number.isFinite(position.coords.heading) && position.coords.heading >= 0) {
+                        nextHeading = position.coords.heading;
+                    } else if (movementMeters >= GPS_MIN_HEADING_DISTANCE_METERS) {
+                        nextHeading = calculateBearingAngle(currentLiveGpsPosition, rawFix, currentVehicleHeading);
+                    }
+
+                    currentLiveGpsPosition = stableFix;
+                    currentVehicleHeading = nextHeading;
+                    lastGpsTimestamp = now;
+
+                    // Throttled weather + speed limit side effects
+                    updateWeatherHUD(stableFix[1], stableFix[0]);
+                    if (activeRouteDataStore.length > 0) updateSpeedLimit(stableFix[1], stableFix[0]);
+                    syncLaneGuidanceLive(stableFix);
+
+                    diagnosticStatus.innerText = accuracy === Infinity
+                        ? "GPS TRACKING ACTIVE"
+                        : `GPS TRACKING ACTIVE ±${Math.round(accuracy)}M`;
+                    diagnosticStatus.style.color = "var(--action-red)";
+
+                    if (!userLocationBeaconMarker) {
+                        const beaconEl = document.createElement('div');
+                        beaconEl.className = 'live-gps-beacon-node';
+                        userLocationBeaconMarker = new maplibregl.Marker({ element: beaconEl })
+                            .setLngLat(currentLiveGpsPosition)
+                            .addTo(map);
+                    } else {
+                        userLocationBeaconMarker.setLngLat(currentLiveGpsPosition);
+                    }
+
+                    if (!initialLockAcquired) {
+                        initialLockAcquired = true;
+                        lastCameraUpdateTimestamp = now;
+                        map.jumpTo({ center: currentLiveGpsPosition, zoom: 17.5, pitch: 70, bearing: currentVehicleHeading });
+                        return;
+                    }
+
+                    if (cameraTrackingMode && now - lastCameraUpdateTimestamp >= GPS_MIN_CAMERA_INTERVAL_MS) {
+                        lastCameraUpdateTimestamp = now;
+                        map.easeTo({
+                            center: currentLiveGpsPosition,
+                            pitch: 70,
+                            bearing: currentVehicleHeading,
+                            zoom: Math.max(map.getZoom(), 17.5),
+                            duration: 650,
+                            essential: true
+                        });
+                    }
+                },
+                (error) => {
+                    const messageByCode = {
+                        [error.PERMISSION_DENIED]: "GPS PERMISSION DENIED",
+                        [error.POSITION_UNAVAILABLE]: "GPS POSITION UNAVAILABLE",
+                        [error.TIMEOUT]: "GPS TIMEOUT - RETRYING"
+                    };
+                    diagnosticStatus.innerText = messageByCode[error.code] || "GPS SENSOR ERROR";
+                    diagnosticStatus.style.color = "#ff9500";
+                },
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 1000 }
+            );
+        }
+
+        function initHardwareConsoleTriggers() {
+            const modeBtns = document.querySelectorAll('.mode-btn');
+            modeBtns.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    modeBtns.forEach(b => b.classList.remove('active-mode'));
+                    e.currentTarget.classList.add('active-mode');
+                    currentRoutingProfile = e.currentTarget.dataset.mode;
+
+                    if (activeRouteDataStore.length > 0) {
+                        handleRoutingButtonClick();
+                    }
+                });
+            });
+
+            const compassBtn = document.getElementById('compass-orientation-lock');
+            if (compassBtn) {
+                compassBtn.addEventListener('click', () => {
+                    map.easeTo({ bearing: 0 });
+                });
+            }
+
+            const recenterBtn = document.getElementById('force-gps-recenter');
+            if (recenterBtn) {
+                recenterBtn.addEventListener('click', () => {
+                    cameraTrackingMode = true;
+                    recenterBtn.classList.add('active-state');
+                    if (isValidCoordinatePair(currentLiveGpsPosition)) {
+                        lastCameraUpdateTimestamp = performance.now();
+                        map.flyTo({
+                            center: currentLiveGpsPosition,
+                            zoom: 17.5,
+                            pitch: 70,
+                            bearing: currentVehicleHeading,
+                            duration: 600,
+                            essential: true
+                        });
+                    }
+                });
+            }
+
+            const routingBtn = document.getElementById('launch-routing-action');
+            if (routingBtn) {
+                routingBtn.addEventListener('click', handleRoutingButtonClick);
+            }
+
+            const flushBtn = document.getElementById('flush-workspace-trigger');
+            if (flushBtn) {
+                flushBtn.addEventListener('click', () => {
+                    clearActiveRouteLayers();
+                    activeRouteDataStore = [];
+                    activeStepIndex = 0;
+                    if (activeMapMarker) { activeMapMarker.remove(); activeMapMarker = null; }
+                    document.getElementById('context-destination-panel').style.display = 'none';
+                    document.getElementById('routing-mode-selector').style.display = 'none';
+                    document.getElementById('osm-engine-input').value = '';
+                    document.getElementById('launch-routing-action').style.display = 'none';
+                    document.getElementById('route-variants-dashboard').style.display = 'none';
+                    document.getElementById('control-panel-deck').classList.remove('minimized');
+                    targetSelectedCoordinates = null;
+                    selectedRouteIndex = 0;
+                    if (laneGuidance) laneGuidance.hide();
+                    updateMapLaneGuidance();
+                    document.getElementById('elevation-profile-wrap').style.display = 'none';
+                    document.getElementById('speed-limit-beacon').style.display = 'none';
+                });
+            }
+        }
+
+        function initTacticalPanelDraggingPhysics() {
+            const panel = document.getElementById('control-panel-deck');
+            const handle = document.getElementById('drag-handle');
+            if (!panel || !handle) return;
+
+            // FIX #1: Use dragOccurred to distinguish real drags from clicks.
+            // The bug was that isDragging is reset to false in endDrag (which
+            // fires on mouseup) BEFORE the 'click' event fires. This meant the
+            // !isDragging check in the click handler was always true, causing the
+            // panel to both snap via endDrag AND toggle again via click on every drag.
+            let isDragging = false, startY = 0, dragOccurred = false;
+
+            handle.addEventListener('mousedown', startDrag);
+            window.addEventListener('mousemove', processDragMouse);
+            window.addEventListener('mouseup', endDrag);
+            handle.addEventListener('touchstart', (e) => startDrag(e.touches[0]), { passive: true });
+
+            // FIX #2: Call e.preventDefault() during touch drag so the page does
+            // not scroll while the user is dragging the panel on mobile.
+            // The listener was already registered as passive:false (enabling
+            // preventDefault) but never actually called it.
+            window.addEventListener('touchmove', (e) => {
+                if (isDragging) e.preventDefault();
+                processDragTouch(e.touches[0]);
+            }, { passive: false });
+
+            window.addEventListener('touchend', endDrag);
+
+            handle.addEventListener('click', () => {
+                // Only toggle if the pointer didn't meaningfully move (i.e. it
+                // was a tap/click, not the end of a drag gesture).
+                if (!dragOccurred) {
+                    panel.classList.toggle('minimized');
+                    panel.style.transform = '';
+                }
+                dragOccurred = false;
+            });
+
+            function startDrag(e) {
+                isDragging = true;
+                dragOccurred = false;
+                startY = e.clientY;
+                panel.classList.add('dragging');
+            }
+
+            function processDragMouse(e) {
+                if (!isDragging) return;
+                applyDrag(e.clientY);
+            }
+
+            function processDragTouch(e) {
+                if (!isDragging) return;
+                applyDrag(e.clientY);
+            }
+
+            function applyDrag(clientY) {
+                const deltaY = clientY - startY;
+                // Only count as a drag if the pointer moved more than 5px.
+                if (Math.abs(deltaY) > 5) dragOccurred = true;
+
+                if (panel.classList.contains('minimized')) {
+                    if (deltaY < 0) {
+                        panel.style.transform = `translateX(-50%) translateY(calc(100% - 28px + ${deltaY}px))`;
+                    }
+                } else {
+                    if (deltaY > 0) {
+                        panel.style.transform = `translateX(-50%) translateY(${deltaY}px)`;
+                    }
+                }
+            }
+
+            function endDrag(e) {
+                if (!isDragging) return;
+                isDragging = false;
+                panel.classList.remove('dragging');
+                panel.style.transform = '';
+
+                const clientY = e.changedTouches ? e.changedTouches[0].clientY : e.clientY;
+                const deltaY = clientY - startY;
+
+                if (panel.classList.contains('minimized')) {
+                    if (deltaY < -50) panel.classList.remove('minimized');
+                } else {
+                    if (deltaY > 50) panel.classList.add('minimized');
+                }
+            }
+        }
+
+        function initAutonomousSearchMatrix() {
+            const input = document.getElementById('osm-engine-input');
+            const dropdown = document.getElementById('osm-engine-dropdown');
+            if (!input || !dropdown) return;
+
+            input.addEventListener('input', (e) => {
+                const queryVal = e.target.value.trim();
+                clearTimeout(querySearchDebounceTimer);
+                if (queryVal.length < 3) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; return; }
+
+                querySearchDebounceTimer = setTimeout(async () => {
+                    try {
+                        let searchApiUrl = `https://photon.komoot.io/api/?q=${encodeURIComponent(queryVal)}&limit=5`;
+                        if (isValidCoordinatePair(currentLiveGpsPosition)) searchApiUrl += `&lon=${currentLiveGpsPosition[0]}&lat=${currentLiveGpsPosition[1]}`;
+
+                        const response = await fetch(searchApiUrl);
+                        if (!response.ok) throw new Error(`Search service returned ${response.status}`);
+                        const payload = await response.json();
+
+                        if (!payload.features || payload.features.length === 0) { dropdown.style.display = 'none'; return; }
+
+                        dropdown.innerHTML = '';
+                        payload.features.forEach(feature => {
+                            const segmentItem = document.createElement('div');
+                            segmentItem.className = 'osm-suggest-item';
+                            const p = feature.properties;
+                            const labeledLocation = [p.name, p.city, p.state, p.country].filter(Boolean).join(', ') || 'Unnamed location';
+                            segmentItem.innerText = labeledLocation;
+
+                            segmentItem.addEventListener('click', () => {
+                                const targetLoc = feature.geometry.coordinates;
+                                if (!isValidCoordinatePair(targetLoc)) return;
+
+                                dropdown.style.display = 'none';
+                                input.value = labeledLocation;
+
+                                cameraTrackingMode = false;
+                                document.getElementById('force-gps-recenter').classList.remove('active-state');
+                                map.flyTo({ center: targetLoc, zoom: 17, pitch: 65 });
+                                triggerWorkspaceTargetDeck(targetLoc, p.name || "Target Vector", labeledLocation);
+                            });
+                            dropdown.appendChild(segmentItem);
+                        });
+                        dropdown.style.display = 'block';
+                    } catch (err) {
+                        console.error("Search fault.", err);
+                    }
+                }, 250);
+            });
+        }
+
+        function initDirectMapInputListeners() {
+            map.on('click', async (e) => {
+                const pinpoint = [e.lngLat.lng, e.lngLat.lat];
+                if (!isValidCoordinatePair(pinpoint)) return;
+                document.getElementById('control-panel-deck').classList.remove('minimized');
+
+                triggerWorkspaceTargetDeck(pinpoint, "Target Spatial Vector", `Lat: ${pinpoint[1].toFixed(5)}, Lon: ${pinpoint[0].toFixed(5)}`);
+                try {
+                    const lookup = await fetch(`https://photon.komoot.io/reverse?lon=${pinpoint[0]}&lat=${pinpoint[1]}`);
+                    if (!lookup.ok) throw new Error(`Reverse geocoder returned ${lookup.status}`);
+                    const details = await lookup.json();
+
+                    if (details.features && details.features.length > 0) {
+                        const p = details.features[0].properties;
+                        const addressString = [p.name, p.street, p.city].filter(Boolean).join(', ');
+                        triggerWorkspaceTargetDeck(pinpoint, p.name || "Identified Point", addressString || "Raw Matrix Grid Reference");
+                    }
+                } catch(error) {
+                    console.error("Reverse geocode fault.", error);
+                }
+            });
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // ── WEATHER + AQI  (Open-Meteo, zero API key) ─────────────────────────
+        // ══════════════════════════════════════════════════════════════════════
+        const WMO_CODES = {
+            0:{'i':'☀','l':'Clear'}, 1:{'i':'🌤','l':'Mainly Clear'}, 2:{'i':'⛅','l':'Partly Cloudy'},
+            3:{'i':'☁','l':'Overcast'}, 45:{'i':'🌫','l':'Foggy'}, 48:{'i':'🌫','l':'Icy Fog'},
+            51:{'i':'🌦','l':'Drizzle'}, 53:{'i':'🌦','l':'Drizzle'}, 55:{'i':'🌦','l':'Heavy Drizzle'},
+            61:{'i':'🌧','l':'Rain'}, 63:{'i':'🌧','l':'Rain'}, 65:{'i':'🌧','l':'Heavy Rain'},
+            71:{'i':'❄','l':'Snow'}, 73:{'i':'❄','l':'Snow'}, 75:{'i':'❄','l':'Heavy Snow'},
+            77:{'i':'❄','l':'Snow Grains'}, 80:{'i':'🌦','l':'Showers'}, 81:{'i':'🌦','l':'Showers'},
+            82:{'i':'🌦','l':'Heavy Showers'}, 85:{'i':'❄','l':'Snow Showers'}, 86:{'i':'❄','l':'Snow Showers'},
+            95:{'i':'⛈','l':'Thunderstorm'}, 96:{'i':'⛈','l':'Thunderstorm'}, 99:{'i':'⛈','l':'Thunderstorm'}
+        };
+        const AQI_SCALE = [
+            {max:50,  lbl:'Good',             col:'#22c55e'},
+            {max:100, lbl:'Moderate',         col:'#eab308'},
+            {max:150, lbl:'Unhealthy (Sens)', col:'#f97316'},
+            {max:200, lbl:'Unhealthy',        col:'#ef4444'},
+            {max:300, lbl:'Very Unhealthy',   col:'#a855f7'},
+            {max:9999,lbl:'Hazardous',        col:'#7f1d1d'}
+        ];
+        let _lastWeatherLoc = null, _weatherAt = 0;
+
+        async function updateWeatherHUD(lat, lon) {
+            const now = Date.now();
+            if (_lastWeatherLoc) {
+                const d = calculateDistanceMeters(_lastWeatherLoc, [lon, lat]);
+                if (d < 2000 && now - _weatherAt < 300000) return;
+            }
+            _lastWeatherLoc = [lon, lat]; _weatherAt = now;
+            try {
+                const [wRes, aRes] = await Promise.all([
+                    fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=temperature_2m,apparent_temperature,windspeed_10m,weathercode&temperature_unit=fahrenheit&wind_speed_unit=mph&forecast_days=1`),
+                    fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&current=us_aqi`)
+                ]);
+                const wData = await wRes.json(), aData = await aRes.json();
+                const cur = wData.current;
+                const wmo = WMO_CODES[cur.weathercode] || {i:'?', l:'Unknown'};
+                document.getElementById('wh-cond-icon').textContent = wmo.i;
+                document.getElementById('wh-temp').textContent = `${Math.round(cur.temperature_2m)}°F`;
+                document.getElementById('wh-feels').textContent = `Feels ${Math.round(cur.apparent_temperature)}°`;
+                document.getElementById('wh-wind').textContent = `💨 ${Math.round(cur.windspeed_10m)} mph`;
+                const aqi = aData.current?.us_aqi;
+                const aqiBadge = document.getElementById('wh-aqi-badge');
+                if (aqi != null && aqiBadge) {
+                    const lvl = AQI_SCALE.find(l => aqi <= l.max) || AQI_SCALE[AQI_SCALE.length - 1];
+                    aqiBadge.textContent = `AQI ${aqi} · ${lvl.lbl}`;
+                    aqiBadge.style.cssText = `background:${lvl.col}28;border-color:${lvl.col}70;color:${lvl.col};display:inline-block;`;
+                }
+                document.getElementById('weather-env-hud').style.display = 'flex';
+            } catch(e) { console.warn('Weather fetch failed:', e.message); }
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // ── POI RADAR  (Overpass API, free) ───────────────────────────────────
+        // ══════════════════════════════════════════════════════════════════════
+        const POI_CATS = {
+            food:     {ico:'🍽',lbl:'Food',    q:`node["amenity"~"restaurant|cafe|fast_food|bar"]`},
+            fuel:     {ico:'⛽',lbl:'Gas',     q:`node["amenity"="fuel"]`},
+            medical:  {ico:'🏥',lbl:'Medical', q:`node["amenity"~"hospital|pharmacy|clinic|doctors"]`},
+            parking:  {ico:'🅿',lbl:'Parking', q:`node["amenity"="parking"]`},
+            coffee:   {ico:'☕',lbl:'Coffee',  q:`node["amenity"~"cafe|coffee_shop"]`},
+            atm:      {ico:'💰',lbl:'ATM',     q:`node["amenity"="atm"]`},
+            hotel:    {ico:'🏨',lbl:'Hotel',   q:`node["tourism"~"hotel|motel|hostel|guest_house"]`},
+            shopping: {ico:'🛒',lbl:'Shop',    q:`node["shop"~"supermarket|convenience|department_store"]`}
+        };
+        let _poiCat = 'food', _poiRadius = 500;
+
+        async function runPOISearch() {
+            const center = isValidCoordinatePair(currentLiveGpsPosition) ? currentLiveGpsPosition : (() => { const c = map.getCenter(); return [c.lng, c.lat]; })();
+            const list = document.getElementById('poi-results-list');
+            if (list) list.innerHTML = '<div class="poi-status-msg">Scanning area…</div>';
+            try {
+                const cat = POI_CATS[_poiCat];
+                const body = `[out:json][timeout:12];(${cat.q}(around:${_poiRadius},${center[1].toFixed(5)},${center[0].toFixed(5)}););out 20;`;
+                const res = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: `data=${encodeURIComponent(body)}`
+                });
+                if (!res.ok) throw new Error(`Overpass ${res.status}`);
+                const data = await res.json();
+                const pois = (data.elements || []).map(el => ({
+                    name: el.tags?.name || el.tags?.brand || cat.lbl,
+                    lat: el.lat, lon: el.lon,
+                    dist: calculateDistanceMeters([center[0], center[1]], [el.lon, el.lat])
+                })).sort((a,b) => a.dist - b.dist);
+
+                if (!list) return;
+                list.innerHTML = '';
+                if (!pois.length) { list.innerHTML = `<div class="poi-status-msg">No ${cat.lbl} found nearby.<br>Try a larger radius.</div>`; return; }
+                pois.slice(0, 18).forEach(p => {
+                    const ft = Math.round(p.dist * 3.28084);
+                    const distStr = ft >= 5280 ? `${(ft/5280).toFixed(1)} mi` : `${ft} ft`;
+                    const card = document.createElement('button');
+                    card.className = 'poi-card';
+                    card.innerHTML = `<span class="poi-card-ico">${cat.ico}</span><span class="poi-card-body"><div class="poi-card-name">${p.name}</div><div class="poi-card-meta">${distStr} away</div></span><span class="poi-card-nav">GO →</span>`;
+                    card.addEventListener('click', () => {
+                        const coords = [p.lon, p.lat];
+                        map.flyTo({ center: coords, zoom: 18, pitch: 65, duration: 800 });
+                        triggerWorkspaceTargetDeck(coords, p.name, `${distStr} away · ${cat.lbl}`);
+                        document.getElementById('poi-explorer-panel').style.display = 'none';
+                        document.getElementById('poi-radar-toggle').classList.remove('active-state');
+                    });
+                    list.appendChild(card);
+                });
+            } catch(e) {
+                if (list) list.innerHTML = '<div class="poi-status-msg">Search failed. Check connection.</div>';
+                console.warn('POI fetch failed:', e.message);
+            }
+        }
+
+        function initPOIRadar() {
+            const toggleBtn = document.getElementById('poi-radar-toggle');
+            const panel = document.getElementById('poi-explorer-panel');
+            if (!toggleBtn || !panel) return;
+            toggleBtn.addEventListener('click', () => {
+                const open = panel.style.display === 'flex';
+                panel.style.display = open ? 'none' : 'flex';
+                toggleBtn.classList.toggle('active-state', !open);
+                if (!open) runPOISearch();
+            });
+            panel.querySelectorAll('.poi-cat-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    panel.querySelectorAll('.poi-cat-btn').forEach(b => b.classList.remove('poi-cat-active'));
+                    btn.classList.add('poi-cat-active');
+                    _poiCat = btn.dataset.cat;
+                    runPOISearch();
+                });
+            });
+            panel.querySelectorAll('.poi-rad-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    panel.querySelectorAll('.poi-rad-btn').forEach(b => b.classList.remove('poi-rad-active'));
+                    btn.classList.add('poi-rad-active');
+                    _poiRadius = parseInt(btn.dataset.radius, 10);
+                    runPOISearch();
+                });
+            });
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // ── ELEVATION PROFILE  (OpenTopoData ASTER, free, no key) ─────────────
+        // ══════════════════════════════════════════════════════════════════════
+        let _elevReqId = 0;
+        async function loadElevationProfile(routeCoords) {
+            const reqId = ++_elevReqId; // version stamp — guard against stale out-of-order responses
+            const wrap = document.getElementById('elevation-profile-wrap');
+            const canvas = document.getElementById('elev-canvas');
+            const loadMsg = document.getElementById('elev-loading-msg');
+            if (!wrap || !canvas || !loadMsg || !routeCoords || routeCoords.length < 2) return;
+
+            wrap.style.display = 'flex';
+            loadMsg.style.display = 'block';
+            canvas.style.display = 'none';
+            ['elev-gain','elev-loss','elev-max','elev-min'].forEach(id => { const e = document.getElementById(id); if (e) e.textContent = '…'; });
+
+            try {
+                const MAX = 50;
+                const step = Math.max(1, Math.floor(routeCoords.length / MAX));
+                const sample = [];
+                for (let i = 0; i < routeCoords.length; i += step) sample.push(routeCoords[i]);
+                if (sample[sample.length-1] !== routeCoords[routeCoords.length-1]) sample.push(routeCoords[routeCoords.length-1]);
+
+                const locStr = sample.map(c => `${c[1].toFixed(5)},${c[0].toFixed(5)}`).join('|');
+                const res = await fetch(`https://api.opentopodata.org/v1/aster30m?locations=${locStr}`);
+                if (!res.ok) throw new Error(`OpenTopoData ${res.status}`);
+                const data = await res.json();
+                if (data.status !== 'OK') throw new Error('OpenTopoData error: ' + data.error);
+                if (reqId !== _elevReqId) return; // Stale — a newer selection supersedes this response
+
+                const elevFt = data.results.map(r => (r.elevation || 0) * 3.28084);
+                const cumDist = [0];
+                for (let i = 1; i < sample.length; i++) cumDist.push(cumDist[i-1] + calculateDistanceMeters(sample[i-1], sample[i]));
+
+                loadMsg.style.display = 'none';
+                canvas.style.display = 'block';
+
+                const dpr = window.devicePixelRatio || 1;
+                const dw = canvas.offsetWidth || 340;
+                canvas.width = dw * dpr; canvas.height = 68 * dpr;
+                const ctx = canvas.getContext('2d');
+                ctx.scale(dpr, dpr);
+
+                const W = dw, H = 68;
+                const minE = Math.min(...elevFt), maxE = Math.max(...elevFt);
+                const rangeE = Math.max(maxE - minE, 10);
+                const totalD = cumDist[cumDist.length - 1];
+                const tx = d => (d / totalD) * W;
+                const ty = e => H - ((e - minE) / rangeE) * (H * 0.80) - H * 0.08;
+
+                const grad = ctx.createLinearGradient(0, 0, 0, H);
+                grad.addColorStop(0, 'rgba(255,51,51,0.55)');
+                grad.addColorStop(0.6, 'rgba(255,51,51,0.15)');
+                grad.addColorStop(1, 'rgba(255,51,51,0.01)');
+
+                ctx.beginPath();
+                ctx.moveTo(tx(cumDist[0]), H);
+                elevFt.forEach((e, i) => ctx.lineTo(tx(cumDist[i]), ty(e)));
+                ctx.lineTo(tx(totalD), H); ctx.closePath();
+                ctx.fillStyle = grad; ctx.fill();
+
+                ctx.beginPath();
+                elevFt.forEach((e, i) => i === 0 ? ctx.moveTo(tx(cumDist[i]), ty(e)) : ctx.lineTo(tx(cumDist[i]), ty(e)));
+                ctx.strokeStyle = '#ff3333'; ctx.lineWidth = 1.8; ctx.lineJoin = 'round'; ctx.stroke();
+
+                ctx.setLineDash([2,4]); ctx.strokeStyle = 'rgba(255,255,255,0.06)'; ctx.lineWidth = 0.5;
+                [0.25,0.5,0.75].forEach(t => { ctx.beginPath(); ctx.moveTo(0,t*H); ctx.lineTo(W,t*H); ctx.stroke(); });
+                ctx.setLineDash([]);
+
+                let gain = 0, loss = 0;
+                for (let i = 1; i < elevFt.length; i++) { const diff = elevFt[i] - elevFt[i-1]; if (diff > 0) gain += diff; else loss += Math.abs(diff); }
+                const fmt = v => v >= 1000 ? `${(v/1000).toFixed(1)}k ft` : `${Math.round(v)} ft`;
+                document.getElementById('elev-gain').textContent = '+' + fmt(gain);
+                document.getElementById('elev-loss').textContent = '-' + fmt(loss);
+                document.getElementById('elev-max').textContent  = fmt(Math.max(...elevFt));
+                document.getElementById('elev-min').textContent  = fmt(Math.min(...elevFt));
+            } catch(e) {
+                loadMsg.textContent = 'Elevation data unavailable';
+                canvas.style.display = 'none';
+                console.warn('Elevation fetch failed:', e.message);
+            }
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // ── MAP THEME SWITCHER  (free Carto styles, no key) ───────────────────
+        // ══════════════════════════════════════════════════════════════════════
+        const MAP_THEMES = [
+            {key:'dark',     lbl:'🌑 Dark Tactical',   url:'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'},
+            {key:'voyager',  lbl:'🗺 Voyager',          url:'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json'},
+            {key:'positron', lbl:'☀ Positron Light',   url:'https://basemaps.cartocdn.com/gl/positron-gl-style/style.json'},
+            {key:'nodark',   lbl:'🌒 Dark No Labels',  url:'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json'}
+        ];
+        let _currentTheme = 'dark';
+
+        function initThemePicker() {
+            const btn = document.getElementById('theme-switcher-btn');
+            const menu = document.getElementById('theme-picker-menu');
+            if (!btn || !menu) return;
+
+            const buildMenu = () => {
+                menu.innerHTML = MAP_THEMES.map(t =>
+                    `<button class="theme-btn${t.key===_currentTheme?' theme-active':''}" data-key="${t.key}">${t.lbl}</button>`
+                ).join('');
+            };
+            buildMenu();
+
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const open = menu.style.display === 'flex';
+                menu.style.display = open ? 'none' : 'flex';
+            });
+            menu.addEventListener('click', e => {
+                const themeBtn = e.target.closest('.theme-btn');
+                if (!themeBtn) return;
+                const key = themeBtn.dataset.key;
+                if (key === _currentTheme) { menu.style.display='none'; return; }
+                const theme = MAP_THEMES.find(t => t.key === key);
+                if (!theme) return;
+                _currentTheme = key;
+                buildMenu();
+                menu.style.display = 'none';
+                map.setStyle(theme.url);
+            });
+            document.addEventListener('click', e => {
+                if (!btn.contains(e.target) && !menu.contains(e.target)) menu.style.display = 'none';
+            });
+        }
+
+        // ══════════════════════════════════════════════════════════════════════
+        // ── SPEED LIMIT BADGE  (Overpass, near GPS position, no key) ──────────
+        // ══════════════════════════════════════════════════════════════════════
+        let _slAt = 0, _slLoc = null;
+
+        async function updateSpeedLimit(lat, lon) {
+            const now = Date.now();
+            if (now - _slAt < 15000) return;
+            if (_slLoc && calculateDistanceMeters(_slLoc, [lon, lat]) < 80) return;
+            _slAt = now; _slLoc = [lon, lat];
+            try {
+                const q = `[out:json][timeout:8];way["maxspeed"](around:40,${lat.toFixed(5)},${lon.toFixed(5)});out 3;`;
+                const res = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                    body: `data=${encodeURIComponent(q)}`
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const ways = data.elements || [];
+                if (!ways.length) return;
+                const raw = ways[0].tags?.maxspeed || '';
+                const match = raw.match(/(\d+)/);
+                if (!match) return;
+                let spd = parseInt(match[1], 10);
+                if (!raw.toLowerCase().includes('mph')) spd = Math.round(spd * 0.621371);
+                const badge = document.getElementById('speed-limit-beacon');
+                const valEl = document.getElementById('sl-value');
+                if (badge && valEl) { valEl.textContent = spd; badge.style.display = 'flex'; }
+            } catch(e) { /* non-critical */ }
+        }
+
+        function triggerWorkspaceTargetDeck(coords, title, details) {
+            if (!isValidCoordinatePair(coords)) return;
+            clearActiveRouteLayers();
+            activeRouteDataStore = [];
+            targetSelectedCoordinates = coords;
+
+            document.getElementById('node-panel-title').innerText = title;
+            document.getElementById('node-panel-address').innerText = details;
+            document.getElementById('context-destination-panel').style.display = 'flex';
+
+            document.getElementById('routing-mode-selector').style.display = 'grid';
+
+            const routingBtn = document.getElementById('launch-routing-action');
+            routingBtn.style.display = 'block';
+            routingBtn.innerText = "GET DIRECTIONS";
+
+            document.getElementById('route-variants-dashboard').style.display = 'none';
+
+            if (activeMapMarker) activeMapMarker.remove();
+            activeMapMarker = new maplibregl.Marker({ element: createCustomMarkerElement() })
+                .setLngLat(coords)
+                .addTo(map);
+        }
+    </script>
+</body>
+</html>
