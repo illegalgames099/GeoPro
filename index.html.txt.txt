@@ -1,0 +1,1148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>GeoPro</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+    <meta name="theme-color" content="#050505" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="GeoPro" />
+
+    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+
+    <style>
+        :root {
+            --bg-primary: #050505;
+            --bg-panel: rgba(10, 10, 12, 0.75);
+            --bg-panel-solid: #0f0f13;
+            --border-color: rgba(255, 51, 51, 0.25);
+            --action-red: #ff3333;
+            --action-red-glow: rgba(255, 51, 51, 0.4);
+            --text-primary: #f5f5f7;
+            --text-secondary: #c5c5ca;
+            --text-muted: #62626e;
+            --font-monospace: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-primary);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .hud-system-header {
+            position: absolute;
+            top: 16px;
+            left: 16px;
+            right: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .hud-module {
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px 16px;
+            pointer-events: auto;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-node {
+            font-family: var(--font-monospace);
+            font-weight: 900;
+            letter-spacing: 1px;
+            color: var(--text-primary);
+            font-size: 0.95rem;
+        }
+
+        .brand-node span {
+            color: var(--action-red);
+        }
+
+        #coordinate-overlay-tracker {
+            font-family: var(--font-monospace);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 2px;
+        }
+        
+        .snap-indicator {
+            font-size: 0.6rem;
+            color: var(--action-red);
+            font-weight: bold;
+        }
+
+        #telemetry-status-node {
+            font-family: var(--font-monospace);
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: var(--action-red);
+            text-transform: uppercase;
+        }
+
+        .floating-side-actions {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 10;
+        }
+
+        .side-btn {
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-primary);
+            cursor: pointer;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+            transition: all 0.2s ease;
+        }
+
+        .side-btn:hover {
+            background: #1a1a22;
+            border-color: var(--action-red);
+        }
+
+        .side-btn.active-state {
+            color: var(--action-red);
+            border-color: rgba(255, 51, 51, 0.6);
+            box-shadow: 0 0 16px rgba(255, 51, 51, 0.25);
+        }
+
+        #control-panel-deck {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(0px);
+            width: 440px;
+            max-width: calc(100vw - 32px);
+            background: var(--bg-panel);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
+            z-index: 10;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: transform 0.35s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        #control-panel-deck.minimized {
+            transform: translateX(-50%) translateY(calc(100% - 28px));
+        }
+
+        #drag-handle {
+            width: 100%;
+            height: 28px;
+            background: transparent;
+            cursor: grab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-bottom: 1px solid rgba(255, 51, 51, 0.1);
+            touch-action: none;
+        }
+
+        #drag-handle::before {
+            content: '';
+            width: 42px;
+            height: 5px;
+            background: #3a3a45;
+            border-radius: 3px;
+            transition: background 0.2s;
+        }
+
+        #drag-handle:hover::before {
+            background: var(--action-red);
+        }
+
+        .workspace-content-body {
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: 75vh;
+            overflow-y: auto;
+            opacity: 1;
+            transition: opacity 0.2s ease;
+        }
+
+        .search-engine-wrap {
+            position: relative;
+            display: flex;
+            width: 100%;
+        }
+
+        .search-engine-wrap input {
+            width: 100%;
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px 14px;
+            color: var(--text-primary);
+            font-size: 0.88rem;
+            outline: none;
+            transition: border-color 0.15s ease;
+        }
+
+        .search-engine-wrap input:focus {
+            border-color: var(--action-red);
+            box-shadow: 0 0 8px rgba(255, 51, 51, 0.2);
+        }
+
+        .suggest-dropdown-matrix {
+            position: absolute;
+            top: calc(100% + 6px);
+            left: 0;
+            right: 0;
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+        }
+
+        .osm-suggest-item {
+            padding: 10px 14px;
+            color: var(--text-secondary);
+            font-size: 0.82rem;
+            cursor: pointer;
+            border-bottom: 1px solid rgba(255,255,255,0.02);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .osm-suggest-item:hover {
+            background: rgba(255, 51, 51, 0.1);
+            color: var(--text-primary);
+        }
+
+        #context-destination-panel {
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            display: none;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .meta-vector-icon {
+            width: 20px;
+            height: 20px;
+            margin-top: 2px;
+            flex-shrink: 0;
+        }
+
+        .meta-vector-info-stack {
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        #node-panel-title {
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            font-weight: bold;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #node-panel-address {
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            line-height: 1.3;
+        }
+
+        .workspace-hardware-row {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .hud-btn {
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 10px;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.15s ease;
+        }
+
+        .hud-btn:hover {
+            background: #1a1a22;
+            color: var(--text-primary);
+            border-color: var(--action-red);
+        }
+
+        .custom-spatial-marker {
+            transform: translate(-50%, -100%);
+        }
+
+        .live-gps-beacon-node {
+            width: 18px;
+            height: 18px;
+            background: var(--action-red);
+            border: 3px solid #050505;
+            border-radius: 50%;
+            box-shadow: 0 0 16px var(--action-red-glow);
+        }
+
+        /* ── Weather + Environment HUD ─────────────────────── */
+        #weather-env-hud {
+            position: absolute;
+            top: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 7px 14px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.6);
+            pointer-events: none;
+            white-space: nowrap;
+            font-family: var(--font-monospace);
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+        }
+        #wh-cond-icon { font-size: 0.92rem; line-height: 1; }
+        #wh-temp { color: var(--text-primary); font-weight: bold; margin-left: 1px; }
+
+        /* ── Speed Limit Beacon ─────────────────────────────── */
+        #speed-limit-beacon {
+            position: absolute;
+            bottom: 210px;
+            left: 16px;
+            width: 54px;
+            height: 54px;
+            border-radius: 50%;
+            background: #fff;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 12;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.7), inset 0 0 0 4px #cc0000;
+            box-sizing: border-box;
+        }
+        #sl-value { font-size: 1.1rem; font-weight: 900; color: #111; line-height: 1; }
+        #sl-unit { font-size: 0.4rem; font-weight: 700; color: #333; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* ── POI Explorer Panel ─────────────────────────────── */
+        #poi-explorer-panel {
+            position: absolute;
+            top: 80px;
+            right: 76px;
+            width: 320px;
+            max-height: calc(100vh - 140px);
+            background: rgba(6,6,12,0.94);
+            backdrop-filter: blur(24px);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            z-index: 12;
+            display: none;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.85);
+        }
+        #poi-panel-hdr { padding: 12px; border-bottom: 1px solid var(--border-color); }
+        .poi-panel-hdr-flex { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        #poi-panel-hdr-title { font-family: var(--font-monospace); font-size: 0.65rem; font-weight: bold; color: var(--action-red); letter-spacing: 1.2px; }
+        #poi-unit-toggle {
+            background: var(--bg-panel-solid);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 4px;
+            font-size: 0.6rem;
+            padding: 2px 6px;
+            cursor: pointer;
+            font-family: var(--font-monospace);
+        }
+        .poi-cat-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 4px; }
+        .poi-cat-btn { background: var(--bg-panel-solid); border: 1px solid rgba(255,255,255,0.05); border-radius: 6px; padding: 6px 2px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+        .poi-cat-btn:hover { background: rgba(255,51,51,0.1); border-color: rgba(255,51,51,0.3); }
+        .poi-cat-btn.poi-cat-active { background: rgba(255,51,51,0.15); border-color: var(--action-red); }
+        .poi-cat-ico { font-size: 0.95rem; }
+        .poi-cat-lbl { font-size: 0.46rem; color: var(--text-muted); font-weight: 700; text-transform: uppercase; }
+        .poi-cat-btn.poi-cat-active .poi-cat-lbl { color: var(--action-red); }
+        #poi-radius-bar { display: flex; gap: 4px; padding: 6px 12px; border-bottom: 1px solid var(--border-color); align-items: center; }
+        .poi-rad-lbl { font-size: 0.6rem; color: var(--text-muted); margin-right: 2px; }
+        .poi-rad-btn { flex: 1; background: var(--bg-panel-solid); border: 1px solid rgba(255,255,255,0.05); border-radius: 4px; padding: 4px 2px; font-family: var(--font-monospace); font-size: 0.58rem; color: var(--text-muted); cursor: pointer; }
+        .poi-rad-btn.poi-rad-active { background: rgba(255,51,51,0.12); color: var(--action-red); border-color: rgba(255,51,51,0.5); }
+        #poi-results-list { overflow-y: auto; flex: 1; padding: 6px; display: flex; flex-direction: column; gap: 4px; min-height: 120px; }
+        .poi-status-msg { text-align: center; color: var(--text-muted); font-size: 0.72rem; padding: 22px 12px; }
+        .poi-card { width: 100%; background: var(--bg-panel-solid); border: 1px solid rgba(255,255,255,0.04); border-radius: 8px; padding: 7px 9px; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+        .poi-card:hover { background: rgba(255,51,51,0.08); border-color: rgba(255,51,51,0.35); }
+        .poi-card-body { flex: 1; overflow: hidden; }
+        .poi-card-name { color: var(--text-primary); font-size: 0.75rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .poi-card-meta { color: var(--text-muted); font-family: var(--font-monospace); font-size: 0.6rem; margin-top: 1px; }
+
+        /* ── Map Theme Picker ───────────────────────────────── */
+        #theme-picker-menu {
+            position: absolute;
+            right: 76px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(6,6,12,0.94);
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 6px;
+            z-index: 12;
+            display: none;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        /* ── 3D Lane Guidance HUD ─────────────────────────── */
+        #lane-guidance-hud {
+            position: absolute;
+            bottom: 24px;
+            left: 16px;
+            width: 248px;
+            background: rgba(6, 6, 12, 0.92);
+            backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 51, 51, 0.28);
+            border-radius: 14px;
+            overflow: hidden;
+            z-index: 11;
+            display: none;
+            flex-direction: column;
+        }
+        #lgh-header { display: flex; align-items: center; justify-content: space-between; padding: 8px 11px; }
+        #lgh-label { font-family: var(--font-monospace); font-size: 0.6rem; font-weight: bold; color: var(--action-red); }
+        #lgh-close { background: none; border: none; color: var(--text-muted); cursor: pointer; }
+        #lane-3d-canvas { display: block; width: 248px; height: 155px; }
+        #lgh-footer { display: flex; align-items: center; gap: 9px; padding: 9px 11px; border-top: 1px solid rgba(255, 51, 51, 0.1); }
+        #lgh-text-col { flex: 1; overflow: hidden; }
+        #lgh-instruction { color: var(--text-primary); font-size: 0.75rem; font-weight: 600; }
+        #lgh-distance { color: var(--text-muted); font-family: var(--font-monospace); font-size: 0.62rem; }
+    </style>
+</head>
+<body>
+
+    <div id="map"></div>
+
+    <div id="weather-env-hud">
+        <span id="wh-cond-icon">☀</span>
+        <span id="wh-temp">--°F</span>
+    </div>
+
+    <div id="speed-limit-beacon">
+        <div id="sl-value">--</div>
+        <div id="sl-unit">mph</div>
+    </div>
+
+    <div id="theme-picker-menu"></div>
+
+    <!-- POI Explorer Panel -->
+    <div id="poi-explorer-panel">
+        <div id="poi-panel-hdr">
+            <div class="poi-panel-hdr-flex">
+                <div id="poi-panel-hdr-title">◈ NEARBY EXPLORER</div>
+                <button id="poi-unit-toggle">Miles</button>
+            </div>
+            <div class="poi-cat-grid">
+                <button class="poi-cat-btn poi-cat-active" data-cat="restaurant"><span class="poi-cat-ico">🍽</span><span class="poi-cat-lbl">Food</span></button>
+                <button class="poi-cat-btn" data-cat="fuel"><span class="poi-cat-ico">⛽</span><span class="poi-cat-lbl">Gas</span></button>
+                <button class="poi-cat-btn" data-cat="hospital"><span class="poi-cat-ico">🏥</span><span class="poi-cat-lbl">Medical</span></button>
+                <button class="poi-cat-btn" data-cat="parking"><span class="poi-cat-ico">🅿</span><span class="poi-cat-lbl">Parking</span></button>
+                <button class="poi-cat-btn" data-cat="cafe"><span class="poi-cat-ico">☕</span><span class="poi-cat-lbl">Coffee</span></button>
+                <button class="poi-cat-btn" data-cat="atm"><span class="poi-cat-ico">💰</span><span class="poi-cat-lbl">ATM</span></button>
+                <button class="poi-cat-btn" data-cat="hotel"><span class="poi-cat-ico">🏨</span><span class="poi-cat-lbl">Hotel</span></button>
+                <button class="poi-cat-btn" data-cat="mall"><span class="poi-cat-ico">🛒</span><span class="poi-cat-lbl">Shop</span></button>
+            </div>
+        </div>
+        <div id="poi-radius-bar">
+            <span class="poi-rad-lbl">Radius:</span>
+            <button class="poi-rad-btn" data-radius="500">0.3 mi</button>
+            <button class="poi-rad-btn poi-rad-active" data-radius="1609">1 mi</button>
+            <button class="poi-rad-btn" data-radius="8046">5 mi</button>
+            <button class="poi-rad-btn" data-radius="16093">10 mi</button>
+            <button class="poi-rad-btn" data-radius="40233">25 mi</button>
+        </div>
+        <div id="poi-results-list"><div class="poi-status-msg">Select a category to search nearby places.</div></div>
+    </div>
+
+    <div id="lane-guidance-hud">
+        <div id="lgh-header">
+            <span id="lgh-label">◈ LANE GUIDANCE</span>
+            <button id="lgh-close">✕</button>
+        </div>
+        <canvas id="lane-3d-canvas" width="496" height="310"></canvas>
+        <div id="lgh-footer">
+            <div id="lgh-text-col">
+                <div id="lgh-instruction">Follow current road</div>
+                <div id="lgh-distance"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="hud-system-header">
+        <div class="hud-module">
+            <div class="brand-node">Geo<span>PRO</span></div>
+            <div style="width: 1px; height: 14px; background: var(--border-color);"></div>
+            <div id="telemetry-status-node">3D ENGINE ONLINE</div>
+        </div>
+        <div id="coordinate-overlay-tracker" class="hud-module">
+            <span id="coord-readout">X: --.----- | Y: --.-----</span>
+            <span class="snap-indicator">SNAP: ACTIVE</span>
+        </div>
+    </div>
+
+    <div class="floating-side-actions">
+        <button id="snap-toggle-btn" class="side-btn active-state" title="Toggle Snap to Road">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </button>
+        <button id="force-gps-recenter" class="side-btn" title="Recenter GPS">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="12" r="3"></circle></svg>
+        </button>
+        <button id="compass-orientation-lock" class="side-btn" title="Reset North">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>
+        </button>
+        <button id="poi-radar-toggle" class="side-btn" title="Explore Nearby Places">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/><path d="M11 8v6M8 11h6"/></svg>
+        </button>
+        <button id="theme-switcher-btn" class="side-btn" title="Map Style">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+        </button>
+    </div>
+
+    <div id="control-panel-deck">
+        <div id="drag-handle"></div>
+        <div class="workspace-content-body">
+            <div class="search-engine-wrap">
+                <input type="text" id="osm-engine-input" placeholder="Search target location or city..." autocomplete="off"/>
+                <div id="osm-engine-dropdown" class="suggest-dropdown-matrix"></div>
+            </div>
+            <div id="context-destination-panel">
+                <svg class="meta-vector-icon" viewBox="0 0 24 24" fill="none"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#ff3333"/></svg>
+                <div class="meta-vector-info-stack">
+                    <div id="node-panel-title">Selected Matrix Node</div>
+                    <div id="node-panel-address">Tracking location calculations...</div>
+                </div>
+            </div>
+            <div class="workspace-hardware-row">
+                <button id="flush-workspace-trigger" class="hud-btn">CLEAR WORKSPACE</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let defaultUserCoordinates = [-122.084, 37.422];
+        let targetSelectedCoordinates = null;
+        let querySearchDebounceTimer = null;
+        let activeMapMarker = null;
+        let poiMarkersStore = [];
+        
+        let roadsGeometryData = [];
+        let snapToRoadActive = true;
+
+        // POI State
+        let currentPoiCategory = 'restaurant';
+        let currentPoiRadiusMeters = 1609; 
+        let useImperialUnits = true; 
+
+        // 3D Building Options & Real Life Style Configuration
+        const MAP_STYLE_DARK = {
+            'version': 8,
+            'sources': {
+                'osm-tiles': {
+                    'type': 'raster',
+                    'tiles': [
+                        'https://a.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+                        'https://b.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png',
+                        'https://c.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'
+                    ],
+                    'tileSize': 256,
+                    'attribution': '&copy; OpenStreetMap contributors'
+                },
+                'osm-buildings': { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } },
+                'osm-roads': { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } },
+                'osm-bridges': { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } },
+                'osm-trees': { 'type': 'geojson', 'data': { 'type': 'FeatureCollection', 'features': [] } }
+            },
+            'layers': [
+                {
+                    'id': 'osm-tiles-layer',
+                    'type': 'raster',
+                    'source': 'osm-tiles',
+                    'minzoom': 0,
+                    'maxzoom': 20
+                },
+                {
+                    'id': 'street-surface',
+                    'type': 'line',
+                    'source': 'osm-roads',
+                    'layout': { 'line-join': 'round', 'line-cap': 'round' },
+                    'paint': {
+                        'line-color': '#2a2a2f',
+                        'line-width': ['interpolate', ['linear'], ['zoom'], 14, 2, 18, 14]
+                    }
+                },
+                {
+                    'id': 'street-markings',
+                    'type': 'line',
+                    'source': 'osm-roads',
+                    'paint': {
+                        'line-color': '#ffcc00',
+                        'line-width': 1,
+                        'line-dasharray': [3, 4],
+                        'line-opacity': 0.6
+                    }
+                },
+                {
+                    'id': '3d-buildings',
+                    'type': 'fill-extrusion',
+                    'source': 'osm-buildings',
+                    'paint': {
+                        'fill-extrusion-color': ['coalesce', ['get', 'color'], '#2a2a35'],
+                        'fill-extrusion-height': ['get', 'height'],
+                        'fill-extrusion-base': ['get', 'min_height'],
+                        'fill-extrusion-opacity': 0.85,
+                        'fill-extrusion-vertical-gradient': true 
+                    }
+                },
+                {
+                    'id': '3d-bridges',
+                    'type': 'fill-extrusion',
+                    'source': 'osm-bridges',
+                    'paint': {
+                        'fill-extrusion-color': '#3a3a40',
+                        'fill-extrusion-height': ['get', 'height'],
+                        'fill-extrusion-base': ['get', 'min_height'],
+                        'fill-extrusion-opacity': 0.95,
+                        'fill-extrusion-vertical-gradient': true
+                    }
+                },
+                {
+                    'id': '3d-trees',
+                    'type': 'fill-extrusion',
+                    'source': 'osm-trees',
+                    'paint': {
+                        'fill-extrusion-color': '#115522',
+                        'fill-extrusion-height': ['get', 'height'],
+                        'fill-extrusion-base': ['get', 'min_height'],
+                        'fill-extrusion-opacity': 0.8,
+                        'fill-extrusion-vertical-gradient': true
+                    }
+                }
+            ]
+        };
+
+        const map = new maplibregl.Map({
+            container: 'map',
+            style: MAP_STYLE_DARK,
+            center: defaultUserCoordinates,
+            zoom: 16.5,
+            pitch: 65,
+            bearing: -15,
+            antialias: true
+        });
+
+        // ── Math & Geometry Generators ──────────────────────────────────────
+        function createTreePolygon(lon, lat, radiusInDegrees = 0.00003) {
+            const points = 6; 
+            const coords = [];
+            for (let i = 0; i < points; i++) {
+                const angle = (i / points) * (2 * Math.PI);
+                coords.push([lon + Math.cos(angle) * radiusInDegrees, lat + Math.sin(angle) * radiusInDegrees]);
+            }
+            coords.push(coords[0]);
+            return [coords];
+        }
+
+        function bufferLineToPolygon(lineCoords, widthInDegrees = 0.00004) {
+            if (lineCoords.length < 2) return null;
+            const leftCoords = [];
+            const rightCoords = [];
+            
+            for (let i = 0; i < lineCoords.length - 1; i++) {
+                const p1 = lineCoords[i];
+                const p2 = lineCoords[i + 1];
+                const angle = Math.atan2(p2[1] - p1[1], p2[0] - p1[0]);
+                const perp = angle + Math.PI / 2;
+                
+                const dx = Math.cos(perp) * widthInDegrees;
+                const dy = Math.sin(perp) * widthInDegrees;
+                
+                leftCoords.push([p1[0] + dx, p1[1] + dy]);
+                rightCoords.push([p1[0] - dx, p1[1] - dy]);
+                
+                if (i === lineCoords.length - 2) {
+                    leftCoords.push([p2[0] + dx, p2[1] + dy]);
+                    rightCoords.push([p2[0] - dx, p2[1] - dy]);
+                }
+            }
+            return [leftCoords.concat(rightCoords.reverse()).concat([leftCoords[0]])];
+        }
+
+        function pointToSegmentDistance(p, v, w) {
+            const l2 = Math.pow(v[0] - w[0], 2) + Math.pow(v[1] - w[1], 2);
+            if (l2 === 0) return { dist: Math.hypot(p[0]-v[0], p[1]-v[1]), snap: v };
+            let t = ((p[0] - v[0]) * (w[0] - v[0]) + (p[1] - v[1]) * (w[1] - v[1])) / l2;
+            t = Math.max(0, Math.min(1, t));
+            const snap = [v[0] + t * (w[0] - v[0]), v[1] + t * (w[1] - v[1])];
+            return { dist: Math.hypot(p[0]-snap[0], p[1]-snap[1]), snap: snap };
+        }
+
+        function getSnappedCoordinates(lng, lat) {
+            if (!snapToRoadActive || roadsGeometryData.length === 0) return [lng, lat];
+            
+            let minDist = Infinity;
+            let bestSnap = [lng, lat];
+            const p = [lng, lat];
+
+            for (const segment of roadsGeometryData) {
+                const result = pointToSegmentDistance(p, segment[0], segment[1]);
+                if (result.dist < minDist) {
+                    minDist = result.dist;
+                    bestSnap = result.snap;
+                }
+            }
+            if (minDist < 0.0005) return bestSnap;
+            return [lng, lat];
+        }
+
+
+        // ── Real Life 3D Buildings & Infrastructure Engine ──────────────────
+        async function fetchRealLifeVectorData() {
+            const bounds = map.getBounds();
+            const west = bounds.getWest();
+            const south = bounds.getSouth();
+            const east = bounds.getEast();
+            const north = bounds.getNorth();
+
+            const query = `[out:json][timeout:25];
+                (
+                  way["building"](${south},${west},${north},${east});
+                  relation["building"](${south},${west},${north},${east});
+                  way["highway"](${south},${west},${north},${east});
+                  node["natural"="tree"](${south},${west},${north},${east});
+                );
+                out body; >; out skel qt;`;
+
+            try {
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                const data = await response.json();
+                renderVectorPayload(data);
+            } catch (err) {
+                console.error("Vector streaming engine degradation:", err);
+            }
+        }
+
+        function renderVectorPayload(data) {
+            const nodes = {};
+            if (!data.elements) return;
+
+            data.elements.forEach(el => {
+                if (el.type === 'node') nodes[el.id] = [el.lon, el.lat];
+            });
+
+            const buildingFeatures = [];
+            const roadFeatures = [];
+            const bridgeFeatures = [];
+            const treeFeatures = [];
+            roadsGeometryData = [];
+            
+            data.elements.forEach(el => {
+                // Parse Volumetric Trees
+                if (el.type === 'node' && el.tags && el.tags.natural === 'tree') {
+                    treeFeatures.push({
+                        'type': 'Feature',
+                        'properties': {
+                            'height': parseFloat(el.tags.height || Math.random() * 5 + 3),
+                            'min_height': 0
+                        },
+                        'geometry': {
+                            'type': 'Polygon',
+                            'coordinates': createTreePolygon(el.lon, el.lat)
+                        }
+                    });
+                }
+
+                if ((el.type === 'way' || el.type === 'relation') && el.nodes) {
+                    const coordinates = el.nodes.map(nId => nodes[nId]).filter(Boolean);
+                    if (coordinates.length < 2) return;
+
+                    const tags = el.tags || {};
+                    
+                    // Parse 3D Extruded Colored Buildings
+                    if (tags.building) {
+                        let height = parseFloat(tags.height || tags["building:levels"] * 3.5 || 12);
+                        let minHeight = parseFloat(tags.min_height || tags["building:min_level"] * 3.5 || 0);
+                        let color = tags["building:colour"] || null; 
+                        
+                        buildingFeatures.push({
+                            'type': 'Feature',
+                            'properties': {
+                                'height': height,
+                                'min_height': minHeight,
+                                'color': color,
+                                'type': 'building'
+                            },
+                            'geometry': {
+                                'type': 'Polygon',
+                                'coordinates': [coordinates]
+                            }
+                        });
+                    }
+                    
+                    // Parse Thick 3D Bridges and Snapping Streets
+                    if (tags.highway) {
+                        for (let i = 0; i < coordinates.length - 1; i++) {
+                            roadsGeometryData.push([coordinates[i], coordinates[i+1]]);
+                        }
+
+                        if (tags.bridge === "yes") {
+                            const bridgePoly = bufferLineToPolygon(coordinates);
+                            if (bridgePoly) {
+                                bridgeFeatures.push({
+                                    'type': 'Feature',
+                                    'properties': { 'height': 8, 'min_height': 5 },
+                                    'geometry': { 'type': 'Polygon', 'coordinates': bridgePoly }
+                                });
+                            }
+                        } else {
+                            roadFeatures.push({
+                                'type': 'Feature',
+                                'properties': {},
+                                'geometry': { 'type': 'LineString', 'coordinates': coordinates }
+                            });
+                        }
+                    }
+                }
+            });
+
+            if (map.getSource('osm-buildings')) map.getSource('osm-buildings').setData({ 'type': 'FeatureCollection', 'features': buildingFeatures });
+            if (map.getSource('osm-roads')) map.getSource('osm-roads').setData({ 'type': 'FeatureCollection', 'features': roadFeatures });
+            if (map.getSource('osm-bridges')) map.getSource('osm-bridges').setData({ 'type': 'FeatureCollection', 'features': bridgeFeatures });
+            if (map.getSource('osm-trees')) map.getSource('osm-trees').setData({ 'type': 'FeatureCollection', 'features': treeFeatures });
+        }
+
+        // ── POI functional Radar Engine & Unit Transformation Matrix ──────────
+        async function runPoiSpatialQuery() {
+            const center = map.getCenter();
+            const listContainer = document.getElementById('poi-results-list');
+            listContainer.innerHTML = '<div class="poi-status-msg">Scanning vector grid...</div>';
+            
+            clearPoiVisualMarkers();
+
+            const query = `[out:json][timeout:25];
+                node["amenity"="${currentPoiCategory}"](around:${currentPoiRadiusMeters},${center.lat},${center.lng});
+                out body;`;
+
+            try {
+                const response = await fetch('https://overpass-api.de/api/interpreter', {
+                    method: 'POST',
+                    body: query
+                });
+                const result = await response.json();
+                
+                if (!result.elements || result.elements.length === 0) {
+                    listContainer.innerHTML = '<div class="poi-status-msg">No entries found within current target horizon.</div>';
+                    return;
+                }
+
+                listContainer.innerHTML = '';
+                
+                result.elements.forEach(poi => {
+                    const poiCoords = [poi.lon, poi.lat];
+                    const name = poi.tags.name || `${currentPoiCategory.toUpperCase()} Node`;
+                    
+                    const distMeters = calculateDistanceMetric(center.lng, center.lat, poi.lon, poi.lat);
+                    const formattedDistance = formatDistanceString(distMeters);
+
+                    const card = document.createElement('div');
+                    card.className = 'poi-card';
+                    card.innerHTML = `
+                        <div class="poi-card-body">
+                            <div class="poi-card-name">${name}</div>
+                            <div class="poi-card-meta">Distance: ${formattedDistance}</div>
+                        </div>
+                    `;
+                    card.addEventListener('click', () => {
+                        map.flyTo({ center: poiCoords, zoom: 17 });
+                    });
+                    listContainer.appendChild(card);
+
+                    const el = document.createElement('div');
+                    el.className = 'live-gps-beacon-node';
+                    el.style.backgroundColor = '#00ffcc';
+                    el.style.boxShadow = '0 0 12px rgba(0,255,204,0.8)';
+                    
+                    const marker = new maplibregl.Marker({ element: el })
+                        .setLngLat(poiCoords)
+                        .setPopup(new maplibregl.Popup({ offset: 10 }).setHTML(`<strong>${name}</strong><br>${formattedDistance}`))
+                        .addTo(map);
+                        
+                    poiMarkersStore.push(marker);
+                });
+
+            } catch(err) {
+                console.error("POI Grid Query Exception:", err);
+                listContainer.innerHTML = '<div class="poi-status-msg">Engine error fetching nearby locations.</div>';
+            }
+        }
+
+        function calculateDistanceMetric(lon1, lat1, lon2, lat2) {
+            const R = 6371e3; 
+            const phi1 = lat1 * Math.PI/180;
+            const phi2 = lat2 * Math.PI/180;
+            const deltaPhi = (lat2-lat1) * Math.PI/180;
+            const deltaLambda = (lon2-lon1) * Math.PI/180;
+            const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+                      Math.cos(phi1) * Math.cos(phi2) *
+                      Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        function formatDistanceString(meters) {
+            if (useImperialUnits) {
+                const miles = meters / 1609.344;
+                return `${miles.toFixed(2)} mi`;
+            } else {
+                if (meters >= 1000) {
+                    return `${(meters / 1000).toFixed(2)} km`;
+                }
+                return `${Math.round(meters)} m`;
+            }
+        }
+
+        function clearPoiVisualMarkers() {
+            poiMarkersStore.forEach(m => m.remove());
+            poiMarkersStore = [];
+        }
+
+        // ── Autonomous Address Resolution Handling Matrix ──────────────────
+        function initAutonomousSearchMatrix() {
+            const input = document.getElementById('osm-engine-input');
+            const dropdown = document.getElementById('osm-engine-dropdown');
+
+            input.addEventListener('input', () => {
+                clearTimeout(querySearchDebounceTimer);
+                const query = input.value.trim();
+                if (query.length < 3) {
+                    dropdown.style.display = 'none';
+                    return;
+                }
+
+                querySearchDebounceTimer = setTimeout(async () => {
+                    try {
+                        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+                        const data = await response.json();
+                        
+                        dropdown.innerHTML = '';
+                        if (!data.length) {
+                            dropdown.style.display = 'none';
+                            return;
+                        }
+
+                        data.slice(0, 5).forEach(item => {
+                            const el = document.createElement('div');
+                            el.className = 'osm-suggest-item';
+                            el.textContent = item.display_name;
+                            el.addEventListener('click', () => {
+                                targetSelectedCoordinates = [parseFloat(item.lon), parseFloat(item.lat)];
+                                dropdown.style.display = 'none';
+                                input.value = item.display_name;
+
+                                document.getElementById('context-destination-panel').style.display = 'flex';
+                                document.getElementById('node-panel-title').textContent = item.name || "Target Node";
+                                document.getElementById('node-panel-address').textContent = item.display_name;
+
+                                if (activeMapMarker) activeMapMarker.remove();
+                                
+                                const markerEl = document.createElement('div');
+                                markerEl.className = 'custom-spatial-marker';
+                                markerEl.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8" fill="#ff3333" fill-opacity="0.3"/><circle cx="12" cy="12" r="4" fill="#ff3333"/></svg>`;
+                                
+                                activeMapMarker = new maplibregl.Marker({ element: markerEl })
+                                    .setLngLat(targetSelectedCoordinates)
+                                    .addTo(map);
+
+                                map.flyTo({ center: targetSelectedCoordinates, zoom: 16 });
+                            });
+                            dropdown.appendChild(el);
+                        });
+                        dropdown.style.display = 'block';
+                    } catch (err) {
+                        console.error("Geocoding Core Failure:", err);
+                    }
+                }, 400);
+            });
+        }
+
+        // ── Core UI Interactive Setup Events ────────────────────────────────
+        function initPOIRadar() {
+            document.querySelectorAll('.poi-cat-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.poi-cat-btn').forEach(b => b.classList.remove('poi-cat-active'));
+                    const target = e.currentTarget;
+                    target.classList.add('poi-cat-active');
+                    currentPoiCategory = target.getAttribute('data-cat');
+                    runPoiSpatialQuery();
+                });
+            });
+
+            document.querySelectorAll('.poi-rad-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    document.querySelectorAll('.poi-rad-btn').forEach(b => b.classList.remove('poi-rad-active'));
+                    const target = e.currentTarget;
+                    target.classList.add('poi-rad-active');
+                    currentPoiRadiusMeters = parseInt(target.getAttribute('data-radius'), 10);
+                    runPoiSpatialQuery();
+                });
+            });
+
+            const unitToggleBtn = document.getElementById('poi-unit-toggle');
+            unitToggleBtn.addEventListener('click', () => {
+                useImperialUnits = !useImperialUnits;
+                unitToggleBtn.textContent = useImperialUnits ? 'Miles' : 'Metric';
+                
+                const radButtons = document.querySelectorAll('.poi-rad-btn');
+                if (useImperialUnits) {
+                    radButtons[0].textContent = "0.3 mi";
+                    radButtons[1].textContent = "1 mi";
+                    radButtons[2].textContent = "5 mi";
+                    radButtons[3].textContent = "10 mi";
+                    radButtons[4].textContent = "25 mi";
+                } else {
+                    radButtons[0].textContent = "500 m";
+                    radButtons[1].textContent = "1.6 km";
+                    radButtons[2].textContent = "8 km";
+                    radButtons[3].textContent = "16 km";
+                    radButtons[4].textContent = "40 km";
+                }
+                
+                runPoiSpatialQuery();
+            });
+
+            document.getElementById('poi-radar-toggle').addEventListener('click', (e) => {
+                const panel = document.getElementById('poi-explorer-panel');
+                const btn = e.currentTarget;
+                if (panel.style.display === 'flex') {
+                    panel.style.display = 'none';
+                    btn.classList.remove('active-state');
+                    clearPoiVisualMarkers();
+                } else {
+                    panel.style.display = 'flex';
+                    btn.classList.add('active-state');
+                    runPoiSpatialQuery();
+                }
+            });
+        }
+
+        function initThemePicker() {
+            document.getElementById('theme-switcher-btn').addEventListener('click', () => {
+                const menu = document.getElementById('theme-picker-menu');
+                menu.style.display = menu.style.display === 'flex' ? 'none' : 'flex';
+            });
+        }
+
+        document.getElementById('snap-toggle-btn').addEventListener('click', (e) => {
+            snapToRoadActive = !snapToRoadActive;
+            e.currentTarget.classList.toggle('active-state');
+            document.querySelector('.snap-indicator').textContent = snapToRoadActive ? 'SNAP: ACTIVE' : 'SNAP: INACTIVE';
+            document.querySelector('.snap-indicator').style.color = snapToRoadActive ? 'var(--action-red)' : 'var(--text-muted)';
+        });
+
+        document.getElementById('flush-workspace-trigger').addEventListener('click', () => {
+            if (activeMapMarker) activeMapMarker.remove();
+            clearPoiVisualMarkers();
+            document.getElementById('context-destination-panel').style.display = 'none';
+            document.getElementById('osm-engine-input').value = '';
+            document.getElementById('poi-explorer-panel').style.display = 'none';
+            document.getElementById('poi-radar-toggle').classList.remove('active-state');
+        });
+
+        map.on('moveend', () => {
+            if (map.getZoom() >= 14) {
+                fetchRealLifeVectorData();
+            }
+        });
+
+        map.on('load', () => {
+            fetchRealLifeVectorData();
+            initAutonomousSearchMatrix();
+            initPOIRadar();
+            initThemePicker();
+
+            map.on('mousemove', (e) => {
+                let displayLng = e.lngLat.lng;
+                let displayLat = e.lngLat.lat;
+
+                if (snapToRoadActive) {
+                    const snapped = getSnappedCoordinates(displayLng, displayLat);
+                    displayLng = snapped[0];
+                    displayLat = snapped[1];
+                }
+
+                document.getElementById('coord-readout').textContent = 
+                    `X: ${displayLng.toFixed(5)} | Y: ${displayLat.toFixed(5)}`;
+            });
+        });
+    </script>
+</body>
+</html>
