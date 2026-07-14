@@ -215,10 +215,10 @@
 
 <script>
 /* =========================================================================
-   ATLAS 3D — free Mapbox-Standard-style 3D map
-   Engine : MapLibre GL JS  (open-source, free, same tech Mapbox GL is from)
-   Tiles  : OpenFreeMap     (free vector tiles, no API key, no account)
-   Search : Nominatim (OSM) (free geocoding, no API key)
+   GeoPro — Mapbox style maps
+   Engine : MapLibre GL JS  
+   Tiles  : OpenFreeMap     
+   Search : Nominatim (OSM) 
    ========================================================================= */
 
 const map = new maplibregl.Map({
@@ -352,7 +352,7 @@ map.on('load', () => {
   const firstLabel = map.getStyle().layers.find(l => l.type === 'symbol')?.id;
 
   map.addLayer({
-    id: 'atlas-3d-buildings',
+    id: 'GeoPro-buildings',
     type: 'fill-extrusion',
     source: vectorSource,
     'source-layer': 'building',
