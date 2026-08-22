@@ -1,6 +1,6 @@
 const EARTH_3D_CACHE = 'earth-3d-static-v1';
 const CORE_ASSETS = [
-  './workspace.html',
+  './index.html',
   './manifest.webmanifest',
   './assets/icon.svg'
 ];
@@ -39,6 +39,6 @@ self.addEventListener('fetch', (event) => {
         return response;
       })
       .catch(() => caches.match(event.request)
-        .then((cachedResponse) => cachedResponse || caches.match('./workspace.html')))
+        .then((cachedResponse) => cachedResponse || caches.match('./index.html')))
   );
 });
