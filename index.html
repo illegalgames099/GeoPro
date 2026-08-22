@@ -342,6 +342,9 @@
 // served as PMTiles straight from source.coop — free, no key.
 maplibregl.addProtocol('pmtiles', new pmtiles.Protocol().tile);
 
+const SATELLITE_MAX_ZOOM = 18.8;
+const DEFAULT_MAX_ZOOM = 22;
+
 const map = new maplibregl.Map({
   container: 'map',
   style: 'https://tiles.openfreemap.org/styles/liberty', // free, keyless vector style
@@ -352,6 +355,7 @@ const map = new maplibregl.Map({
   hash: true,                   // keeps view in the URL so links are shareable
   attributionControl: { compact: true },
   maxPitch: 85,
+  maxZoom: DEFAULT_MAX_ZOOM,
   antialias: true
 });
 
@@ -536,6 +540,7 @@ map.on('load', () => {
     type: 'raster',
     tiles: ['https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
     tileSize: 256,
+    maxzoom: 18,
     attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
   });
 
@@ -721,6 +726,11 @@ map.on('load', () => {
 
 function setSatellite(enabled) {
   if (!map.getLayer('satellite-imagery')) return;
+  map.setMaxZoom(enabled ? SATELLITE_MAX_ZOOM : DEFAULT_MAX_ZOOM);
+  if (enabled && map.getZoom() > SATELLITE_MAX_ZOOM) {
+    map.easeTo({ zoom: SATELLITE_MAX_ZOOM, duration: 450 });
+    showToast('Satellite imagery is capped here so close zooms stay sharp instead of showing missing tiles.');
+  }
   map.setPaintProperty('satellite-imagery', 'raster-opacity', enabled ? 0.88 : 0);
   if (map.getLayer('satellite-clarity')) {
     map.setPaintProperty('satellite-clarity', 'raster-opacity', enabled ? 0.28 : 0);
@@ -1062,6 +1072,27 @@ function renderRouteChoices() {
     button.innerHTML = '<strong>' + name + '</strong><em>' + fmtDuration(route.duration) + '</em><span>' + fmtDist(route.distance) + ' · ' + route.legs[0].summary + '</span>';
     button.addEventListener('click', () => selectRoute(idx, false));
     routeChoices.appendChild(button);
+  });
+}
+
+function selectRoute(index, fit) {
+  if (!currentRoutes[index]) return;
+  activeRouteIndex = index;
+  const route = currentRoutes[index];
+  map.getSource('route').setData(routeFeature(route));
+  if (map.getSource('route-alternates')) {
+    map.getSource('route-alternates').setData({
+      type: 'FeatureCollection',
+      features: currentRoutes.filter((_, i) => i !== index).map(routeFeature)
+    });
+  }
+  routeChoices.querySelectorAll('.routeChoice').forEach((button, i) => {
+    button.classList.toggle('active', i === index);
+  });
+  renderRouteDetails(route);
+  if (fit) fitRoute(route);
+}
+
   });
 }
 
