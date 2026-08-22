@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">GeoPro icon</title>
+  <desc id="desc">A red GeoPro navigation arrow on a black rounded square.</desc>
+  <rect width="512" height="512" rx="112" fill="#050505"/>
+  <path d="M114 92 430 256 114 420 216 256Z" fill="#ff2d2d" stroke="#ff3636" stroke-width="32" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M114 92 430 256 216 256Z" fill="#ff4b4b" opacity=".35"/>
+</svg>
