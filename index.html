@@ -15,6 +15,7 @@
     --accent: #3d6bff;
     --shadow: 0 4px 18px rgba(15, 25, 55, 0.18);
     --glass-border: rgba(255, 255, 255, 0.55);
+    --panel-border: rgba(255, 255, 255, 0.48);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
@@ -49,10 +50,15 @@
   }
   .loaderCard h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: .08em; }
   .loaderCard p { margin: 0 0 18px; color: rgba(255,255,255,.76); font-size: 14px; }
+  #loadingStatus { display: block; min-height: 18px; margin-top: 12px; color: rgba(255,255,255,.68); font-size: 12.5px; }
   .progressTrack { height: 6px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.14); }
   #progressBar { width: 12%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #38bdf8, #60a5fa, #a78bfa); transition: width .35s ease; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes globePulse { 50% { transform: translateY(-4px) scale(1.04); } }
+  @media (prefers-reduced-motion: reduce) {
+    .globeLoader, .globeLoader::after { animation: none; }
+    #loadingScreen, #progressBar { transition: none; }
+  }
 
   /* Night/dusk tint overlay — sits on top of the map canvas */
   #tint {
@@ -120,6 +126,15 @@
     letter-spacing: .3px; user-select: none;
   }
   #brand span { color: var(--accent); }
+  #modeChip {
+    position: absolute; right: 14px; bottom: 26px; z-index: 10;
+    max-width: min(310px, calc(100vw - 28px));
+    padding: 10px 14px; border: 1px solid var(--panel-border);
+    border-radius: 14px; background: rgba(255,255,255,.86);
+    backdrop-filter: blur(12px); box-shadow: var(--shadow);
+    color: var(--panel-text); font-size: 12.5px; line-height: 1.35;
+  }
+  #modeChip strong { display: block; color: var(--accent); font-size: 13px; margin-bottom: 2px; }
 
   /* Move maplibre zoom controls below the brand chip */
   .maplibregl-ctrl-top-right { top: 52px; }
@@ -195,7 +210,8 @@
   @media (max-width: 560px) {
     #brand { display: none; }
     .maplibregl-ctrl-top-right { top: 0; }
-    #hud { bottom: 34px; }
+    #hud { bottom: 34px; flex-wrap: wrap; justify-content: center; width: calc(100vw - 24px); }
+    #modeChip { display: none; }
     .pillGroup button { padding: 8px 12px; font-size: 12px; }
   }
 </style>
@@ -208,6 +224,7 @@
     <h1>GEOPRO</h1>
     <p>Loading satellite, terrain, trees, and 3D buildings…</p>
     <div class="progressTrack"><div id="progressBar"></div></div>
+    <span id="loadingStatus">Preparing 3D scene…</span>
   </div>
 </div>
 
@@ -215,6 +232,7 @@
 <div id="tint"></div>
 
 <div id="brand">GEO<span>PRO</span></div>
+<div id="modeChip"><strong>3D+ mode</strong><span>Terrain, buildings, and tree canopy are active.</span></div>
 
 <div id="searchWrap">
   <div id="searchBox">
@@ -315,6 +333,30 @@ map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
 
 const loadingScreen = document.getElementById('loadingScreen');
 const progressBar = document.getElementById('progressBar');
+const loadingStatus = document.getElementById('loadingStatus');
+const modeChip = document.getElementById('modeChip');
+const loadingMessages = [
+  'Preparing 3D scene…',
+  'Streaming satellite imagery…',
+  'Shaping terrain elevation…',
+  'Planting tree canopy…',
+  'Extruding buildings…'
+];
+let progress = 12;
+let loadingStep = 0;
+let loadingDone = false;
+const progressTimer = setInterval(() => {
+  progress = Math.min(progress + Math.random() * 11, 92);
+  progressBar.style.width = progress + '%';
+  loadingStep = (loadingStep + 1) % loadingMessages.length;
+  loadingStatus.textContent = loadingMessages[loadingStep];
+}, 420);
+
+function hideLoadingScreen() {
+  if (loadingDone) return;
+  loadingDone = true;
+  clearInterval(progressTimer);
+  loadingStatus.textContent = 'Ready';
 let progress = 12;
 const progressTimer = setInterval(() => {
   progress = Math.min(progress + Math.random() * 13, 88);
@@ -327,11 +369,22 @@ function hideLoadingScreen() {
   setTimeout(() => loadingScreen.classList.add('hidden'), 350);
 }
 
+setTimeout(() => {
+  if (!loadingDone) {
+    loadingStatus.textContent = 'Still loading network map tiles…';
+    hideLoadingScreen();
+  }
+}, 12000);
+
 
 // Readable map error logging (tile/network failures etc.)
 map.on('error', e => {
   const m = e && e.error ? (e.error.message || e.error.status || String(e.error)) : String(e);
   console.warn('Map error:', m, e && e.sourceId ? 'source=' + e.sourceId : '');
+  if (!loadingDone && /terrain|satellite|pmtiles|network|fetch/i.test(m)) {
+    loadingStatus.textContent = 'Some enhanced layers are unavailable, opening the map…';
+    hideLoadingScreen();
+  }
 });
 
 // Show a hint while the first tiles stream in, so a blank map doesn't look broken
@@ -401,6 +454,10 @@ function buildingColorExpr(stops) {
 
 let currentPreset = 'day';
 
+function setModeChip(title, detail) {
+  modeChip.innerHTML = '<strong>' + title + '</strong><span>' + detail + '</span>';
+}
+
 function applyPreset(name) {
   currentPreset = name;
   const p = PRESETS[name];
@@ -413,6 +470,9 @@ function applyPreset(name) {
   }
   if (map.getLayer('geo-tree-canopy')) {
     map.setPaintProperty('geo-tree-canopy', 'circle-opacity', name === 'night' ? 0.32 : 0.58);
+  }
+  if (map.getLayer('geo-tree-shadow')) {
+    map.setPaintProperty('geo-tree-shadow', 'circle-opacity', name === 'night' ? 0.14 : 0.25);
   }
 }
 
@@ -492,6 +552,24 @@ map.on('load', () => {
   // data and stay pitched with the camera for a denser 3D scene without a key.
   if (map.getSource('openmaptiles')) {
     map.addLayer({
+      id: 'geo-tree-shadow',
+      type: 'circle',
+      source: 'openmaptiles',
+      'source-layer': 'landcover',
+      filter: ['in', ['get', 'class'], ['literal', ['wood', 'forest', 'tree', 'park', 'grass']]],
+      minzoom: 12,
+      paint: {
+        'circle-color': '#0b2f1d',
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 1.6, 15, 5.5, 18, 13],
+        'circle-opacity': 0.25,
+        'circle-blur': 0.65,
+        'circle-translate': [2, 3],
+        'circle-pitch-scale': 'map',
+        'circle-pitch-alignment': 'map'
+      }
+    }, firstLabel);
+
+    map.addLayer({
       id: 'geo-tree-canopy',
       type: 'circle',
       source: 'openmaptiles',
@@ -536,6 +614,16 @@ function setSatellite(enabled) {
   if (!map.getLayer('satellite-imagery')) return;
   map.setPaintProperty('satellite-imagery', 'raster-opacity', enabled ? 0.94 : 0);
   if (map.getLayer('geo-tree-canopy')) {
+    map.setPaintProperty('geo-tree-canopy', 'circle-opacity', enabled ? 0.72 : (currentPreset === 'night' ? 0.32 : 0.58));
+  }
+  if (map.getLayer('geo-tree-shadow')) {
+    map.setPaintProperty('geo-tree-shadow', 'circle-opacity', enabled ? 0.32 : (currentPreset === 'night' ? 0.14 : 0.25));
+  }
+}
+
+function setTerrain(exaggeration) {
+  if (!map.getSource('terrain-dem')) return;
+  map.setTerrain(exaggeration ? { source: 'terrain-dem', exaggeration } : null);
     map.setPaintProperty('geo-tree-canopy', 'circle-opacity', enabled ? 0.7 : (currentPreset === 'night' ? 0.32 : 0.58));
   }
 }
@@ -549,6 +637,18 @@ document.querySelectorAll('#viewToggle button').forEach(btn => {
     btn.classList.add('active');
     if (btn.dataset.view === '3d') {
       setSatellite(false);
+      setTerrain(1.45);
+      setModeChip('3D+ mode', 'Terrain, buildings, and tree canopy are active.');
+      map.easeTo({ pitch: 68, bearing: -28, duration: 1100 });
+    } else if (btn.dataset.view === 'satellite') {
+      setSatellite(true);
+      setTerrain(1.8);
+      setModeChip('Satellite 3D', 'High-detail imagery with exaggerated terrain and trees.');
+      map.easeTo({ pitch: 72, bearing: -35, duration: 1100 });
+    } else {
+      setSatellite(false);
+      setTerrain(null);
+      setModeChip('2D map', 'Flat vector map for fast scanning and routing.');
       map.setTerrain({ source: 'terrain-dem', exaggeration: 1.45 });
       map.easeTo({ pitch: 68, bearing: -28, duration: 1100 });
     } else if (btn.dataset.view === 'satellite') {
