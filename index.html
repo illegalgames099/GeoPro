@@ -1093,6 +1093,27 @@ function selectRoute(index, fit) {
   if (fit) fitRoute(route);
 }
 
+  });
+}
+
+function selectRoute(index, fit) {
+  if (!currentRoutes[index]) return;
+  activeRouteIndex = index;
+  const route = currentRoutes[index];
+  map.getSource('route').setData(routeFeature(route));
+  if (map.getSource('route-alternates')) {
+    map.getSource('route-alternates').setData({
+      type: 'FeatureCollection',
+      features: currentRoutes.filter((_, i) => i !== index).map(routeFeature)
+    });
+  }
+  routeChoices.querySelectorAll('.routeChoice').forEach((button, i) => {
+    button.classList.toggle('active', i === index);
+  });
+  renderRouteDetails(route);
+  if (fit) fitRoute(route);
+}
+
 function fitRoute(route) {
   const coords = route.geometry.coordinates;
   const bounds = coords.reduce(
