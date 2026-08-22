@@ -2,10 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>GeoPro — The Good Side</title>
+<title>GeoPro — Free 3D Maps</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet" />
 <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+<script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
 <style>
   :root {
     --panel-bg: rgba(255, 255, 255, 0.92);
@@ -137,6 +139,12 @@
   #dirSteps div { padding: 5px 2px; border-bottom: 1px solid rgba(0,0,0,.05); }
   #dirSteps span { opacity: .6; }
 
+  /* Red GPS location dot (MapLibre's default is blue) */
+  .maplibregl-user-location-dot,
+  .maplibregl-user-location-dot::before {
+    background-color: #e63b3b;
+  }
+
   /* ---------- Toast ---------- */
   #toast {
     position: absolute; top: 74px; left: 50%; transform: translateX(-50%) translateY(-8px);
@@ -161,7 +169,7 @@
 <div id="map"></div>
 <div id="tint"></div>
 
-<div id="brand">ATLAS <span>3D</span></div>
+<div id="brand">GEO<span>PRO</span></div>
 
 <div id="searchWrap">
   <div id="searchBox">
@@ -215,11 +223,15 @@
 
 <script>
 /* =========================================================================
-   GeoPro — Mapbox style maps
-   Engine : MapLibre GL JS  
-   Tiles  : OpenFreeMap     
-   Search : Nominatim (OSM) 
+   GEOPRO — free Mapbox-Standard-style 3D map
+   Engine : MapLibre GL JS  (open-source, free, same tech Mapbox GL is from)
+   Tiles  : OpenFreeMap     (free vector tiles, no API key, no account)
+   Search : Nominatim (OSM) (free geocoding, no API key)
    ========================================================================= */
+
+// Overture Maps buildings (OSM + Microsoft + Google AI footprints combined)
+// served as PMTiles straight from source.coop — free, no key.
+maplibregl.addProtocol('pmtiles', new pmtiles.Protocol().tile);
 
 const map = new maplibregl.Map({
   container: 'map',
@@ -312,9 +324,15 @@ const PRESETS = {
   }
 };
 
+// Overture height in meters where known; else estimate from floor count; else
+// a sensible small-building default.
+const BUILDING_HEIGHT = ['coalesce',
+  ['get', 'height'],
+  ['case', ['has', 'numfloors'], ['*', ['coalesce', ['get', 'numfloors'], 2], 3.2], 8]
+];
+
 function buildingColorExpr(stops) {
-  const expr = ['interpolate', ['linear'],
-    ['coalesce', ['get', 'render_height'], ['get', 'height'], 8]];
+  const expr = ['interpolate', ['linear'], BUILDING_HEIGHT];
   for (let i = 0; i < stops.length; i += 2) expr.push(stops[i], stops[i + 1]);
   return expr;
 }
@@ -339,10 +357,6 @@ function applyPreset(name) {
 map.on('load', () => {
   const style = map.getStyle();
 
-  // Find the vector source in the loaded style (OpenFreeMap uses OpenMapTiles schema)
-  const vectorSource = Object.keys(style.sources)
-    .find(id => style.sources[id].type === 'vector');
-
   // Remove any fill-extrusion layers the base style ships, so ours is the only one
   style.layers
     .filter(l => l.type === 'fill-extrusion')
@@ -351,11 +365,19 @@ map.on('load', () => {
   // Insert our buildings just below the first label layer so text stays on top
   const firstLabel = map.getStyle().layers.find(l => l.type === 'symbol')?.id;
 
+  // Overture buildings — far more complete than OSM alone (adds Microsoft's
+  // and Google's AI-detected footprints, so small towns get buildings too)
+  map.addSource('overture-buildings', {
+    type: 'vector',
+    url: 'pmtiles://https://data.source.coop/cholmes/overture/overture-buildings.pmtiles',
+    attribution: '© Overture Maps Foundation'
+  });
+
   map.addLayer({
-    id: 'GeoPro-buildings',
+    id: 'atlas-3d-buildings',
     type: 'fill-extrusion',
-    source: vectorSource,
-    'source-layer': 'building',
+    source: 'overture-buildings',
+    'source-layer': 'buildings',
     minzoom: 13.5,
     paint: {
       'fill-extrusion-color': buildingColorExpr(PRESETS.day.buildingColors),
@@ -363,13 +385,9 @@ map.on('load', () => {
       'fill-extrusion-height': [
         'interpolate', ['exponential', 1.4], ['zoom'],
         13.5, 0,
-        15.5, ['coalesce', ['get', 'render_height'], ['get', 'height'], 8]
+        15.5, BUILDING_HEIGHT
       ],
-      'fill-extrusion-base': [
-        'interpolate', ['exponential', 1.4], ['zoom'],
-        13.5, 0,
-        15.5, ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0]
-      ],
+      'fill-extrusion-base': 0,
       'fill-extrusion-opacity': PRESETS.day.buildingOpacity,
       // Darkens walls toward the ground — fakes ambient occlusion, sells the 3D
       'fill-extrusion-vertical-gradient': true
@@ -645,6 +663,14 @@ dirGo.addEventListener('click', async () => {
 }));
 
 async function fetchRoute() {
+  // If the user asks for a route before the style finishes loading, wait for
+  // the load handler (which adds the route source/layers) to run first.
+  if (!map.getSource('route')) {
+    await new Promise(resolve => {
+      if (map.getSource('route')) return resolve();
+      map.once('idle', resolve);
+    });
+  }
   const profiles = { car: 'routed-car', bike: 'routed-bike', foot: 'routed-foot' };
   const url = 'https://routing.openstreetmap.de/' + profiles[dirMode] +
     '/route/v1/driving/' + fromPoint.lng + ',' + fromPoint.lat + ';' +
