@@ -28,8 +28,6 @@
     background:
       radial-gradient(circle at 50% 42%, rgba(255, 45, 45, .22), transparent 28rem),
       linear-gradient(145deg, #020202 0%, #080808 48%, #151515 100%);
-      radial-gradient(circle at 50% 42%, rgba(61, 107, 255, .34), transparent 28rem),
-      linear-gradient(145deg, #07111f 0%, #0b1830 48%, #14213d 100%);
     color: #fff; transition: opacity .55s ease, visibility .55s ease;
   }
   #loadingScreen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
@@ -59,6 +57,7 @@
     content: ''; position: absolute; inset: 0; border-radius: inherit;
     background: linear-gradient(145deg, rgba(255,255,255,.22), transparent 18%, transparent 76%, rgba(255,255,255,.16));
     pointer-events: none;
+  }
   .globeLoader {
     width: 86px; height: 86px; margin: 0 auto 18px; border-radius: 50%;
     background: linear-gradient(135deg, #7dd3fc, #2563eb 52%, #22c55e);
@@ -76,13 +75,10 @@
   .progressTrack { height: 6px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.14); }
   #progressBar { width: 12%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff4b4b, #ff2d2d, #ff6a3d); transition: width .35s ease; }
   @keyframes logoPulse { 50% { transform: translateY(-4px) scale(1.035); } }
-  @media (prefers-reduced-motion: reduce) {
-    .appLogo { animation: none; }
-  #progressBar { width: 12%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #38bdf8, #60a5fa, #a78bfa); transition: width .35s ease; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes globePulse { 50% { transform: translateY(-4px) scale(1.04); } }
   @media (prefers-reduced-motion: reduce) {
-    .globeLoader, .globeLoader::after { animation: none; }
+    .appLogo, .globeLoader, .globeLoader::after { animation: none; }
     #loadingScreen, #progressBar { transition: none; }
   }
 
@@ -218,13 +214,24 @@
   #dirGo:hover { filter: brightness(1.1); }
   #dirGo:disabled { opacity: .55; cursor: wait; }
   #dirSummary { font-size: 13.5px; font-weight: 700; color: var(--panel-text); }
+  #routeChoices { display: none; gap: 6px; flex-direction: column; }
+  #routeChoices.hasRoutes { display: flex; }
+  .routeChoice {
+    display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; text-align: left;
+    border: 1px solid rgba(61,107,255,.16); border-radius: 10px; padding: 8px 10px;
+    background: rgba(61,107,255,.07); color: var(--panel-text); cursor: pointer;
+  }
+  .routeChoice.active { border-color: var(--accent); background: rgba(61,107,255,.16); box-shadow: inset 3px 0 0 var(--accent); }
+  .routeChoice strong { font-size: 13px; }
+  .routeChoice span { font-size: 12px; opacity: .72; }
+  .routeChoice em { grid-row: span 2; align-self: center; font-style: normal; font-weight: 800; color: var(--accent); }
   #dirSummary:empty, #dirSteps:empty { display: none; }
   #dirSteps {
     max-height: 34vh; overflow-y: auto; font-size: 12.5px; color: var(--panel-text);
     border-top: 1px solid rgba(0,0,0,.08); padding-top: 6px;
   }
-  #dirSteps div { padding: 5px 2px; border-bottom: 1px solid rgba(0,0,0,.05); }
-  #dirSteps span { opacity: .6; }
+  #dirSteps div { padding: 7px 2px; border-bottom: 1px solid rgba(0,0,0,.05); }
+  #dirSteps span { opacity: .6; float: right; margin-left: 8px; }
 
   /* Red GPS location dot (MapLibre's default is blue) */
   .maplibregl-user-location-dot,
@@ -259,7 +266,7 @@
     <div class="appLogo" aria-hidden="true"></div>
     <div class="globeLoader" aria-hidden="true"></div>
     <h1>GEOPRO</h1>
-    <p>Loading satellite, terrain, trees, and 3D buildings…</p>
+    <p>Loading satellite, terrain, vegetation, routes, and 3D buildings…</p>
     <div class="progressTrack"><div id="progressBar"></div></div>
     <span id="loadingStatus">Preparing 3D scene…</span>
   </div>
@@ -269,7 +276,6 @@
 <div id="tint"></div>
 
 <div id="brand"><i class="brandLogo" aria-hidden="true"></i>GEO<span>PRO</span></div>
-<div id="brand">GEO<span>PRO</span></div>
 <div id="modeChip"><strong>3D+ mode</strong><span>Terrain, buildings, and tree canopy are active.</span></div>
 
 <div id="searchWrap">
@@ -305,6 +311,7 @@
       <button id="dirGo">Get directions</button>
       <button id="dirClear" title="Clear route">✕</button>
     </div>
+    <div id="routeChoices"></div>
     <div id="dirSummary"></div>
     <div id="dirSteps"></div>
   </div>
@@ -335,6 +342,9 @@
 // served as PMTiles straight from source.coop — free, no key.
 maplibregl.addProtocol('pmtiles', new pmtiles.Protocol().tile);
 
+const SATELLITE_MAX_ZOOM = 18.8;
+const DEFAULT_MAX_ZOOM = 22;
+
 const map = new maplibregl.Map({
   container: 'map',
   style: 'https://tiles.openfreemap.org/styles/liberty', // free, keyless vector style
@@ -345,6 +355,7 @@ const map = new maplibregl.Map({
   hash: true,                   // keeps view in the URL so links are shareable
   attributionControl: { compact: true },
   maxPitch: 85,
+  maxZoom: DEFAULT_MAX_ZOOM,
   antialias: true
 });
 
@@ -395,14 +406,6 @@ function hideLoadingScreen() {
   loadingDone = true;
   clearInterval(progressTimer);
   loadingStatus.textContent = 'Ready';
-let progress = 12;
-const progressTimer = setInterval(() => {
-  progress = Math.min(progress + Math.random() * 13, 88);
-  progressBar.style.width = progress + '%';
-}, 360);
-
-function hideLoadingScreen() {
-  clearInterval(progressTimer);
   progressBar.style.width = '100%';
   setTimeout(() => loadingScreen.classList.add('hidden'), 350);
 }
@@ -506,11 +509,14 @@ function applyPreset(name) {
     map.setPaintProperty('atlas-3d-buildings', 'fill-extrusion-color', buildingColorExpr(p.buildingColors));
     map.setPaintProperty('atlas-3d-buildings', 'fill-extrusion-opacity', p.buildingOpacity);
   }
+  if (map.getLayer('geo-vegetation-depth')) {
+    map.setPaintProperty('geo-vegetation-depth', 'fill-opacity', name === 'night' ? 0.18 : ['interpolate', ['linear'], ['zoom'], 6, 0.16, 12, 0.28, 16, 0.38]);
+  }
   if (map.getLayer('geo-tree-canopy')) {
-    map.setPaintProperty('geo-tree-canopy', 'circle-opacity', name === 'night' ? 0.32 : 0.58);
+    map.setPaintProperty('geo-tree-canopy', 'circle-opacity', name === 'night' ? 0.32 : ['interpolate', ['linear'], ['zoom'], 13, 0.18, 16, 0.66]);
   }
   if (map.getLayer('geo-tree-shadow')) {
-    map.setPaintProperty('geo-tree-shadow', 'circle-opacity', name === 'night' ? 0.14 : 0.25);
+    map.setPaintProperty('geo-tree-shadow', 'circle-opacity', name === 'night' ? 0.14 : ['interpolate', ['linear'], ['zoom'], 13, 0.16, 16, 0.34]);
   }
 }
 
@@ -534,6 +540,7 @@ map.on('load', () => {
     type: 'raster',
     tiles: ['https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
     tileSize: 256,
+    maxzoom: 18,
     attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
   });
 
@@ -548,6 +555,19 @@ map.on('load', () => {
       'raster-brightness-min': 0.03
     }
   }, style.layers[0]?.id);
+
+  map.addLayer({
+    id: 'satellite-clarity',
+    type: 'raster',
+    source: 'satellite-imagery',
+    paint: {
+      'raster-opacity': 0,
+      'raster-saturation': 0.1,
+      'raster-contrast': 0.22,
+      'raster-brightness-min': 0.02,
+      'raster-brightness-max': 0.96
+    }
+  }, firstLabel);
 
   map.addSource('terrain-dem', {
     type: 'raster-dem',
@@ -589,19 +609,49 @@ map.on('load', () => {
   // Stylized tree canopies. These read from the base vector style's landcover
   // data and stay pitched with the camera for a denser 3D scene without a key.
   if (map.getSource('openmaptiles')) {
+    const vegetationFilter = ['in', ['get', 'class'], ['literal', ['wood', 'forest', 'tree', 'park', 'grass', 'scrub']]];
+    map.addLayer({
+      id: 'geo-vegetation-depth',
+      type: 'fill',
+      source: 'openmaptiles',
+      'source-layer': 'landcover',
+      filter: vegetationFilter,
+      minzoom: 6,
+      paint: {
+        'fill-color': ['match', ['get', 'class'], 'wood', '#123d24', 'forest', '#164a2b', 'park', '#2f7d46', 'grass', '#5da65a', 'scrub', '#557f3e', '#2f7d46'],
+        'fill-opacity': ['interpolate', ['linear'], ['zoom'], 6, 0.16, 12, 0.28, 16, 0.38],
+        'fill-antialias': true
+      }
+    }, firstLabel);
+
+    map.addLayer({
+      id: 'geo-vegetation-highlight',
+      type: 'line',
+      source: 'openmaptiles',
+      'source-layer': 'landcover',
+      filter: vegetationFilter,
+      minzoom: 12,
+      paint: {
+        'line-color': '#8bd66f',
+        'line-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.08, 16, 0.18],
+        'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.4, 17, 1.6],
+        'line-blur': 0.4
+      }
+    }, firstLabel);
+
     map.addLayer({
       id: 'geo-tree-shadow',
       type: 'circle',
       source: 'openmaptiles',
       'source-layer': 'landcover',
-      filter: ['in', ['get', 'class'], ['literal', ['wood', 'forest', 'tree', 'park', 'grass']]],
-      minzoom: 12,
+      filter: vegetationFilter,
+      minzoom: 13,
       paint: {
-        'circle-color': '#0b2f1d',
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 1.6, 15, 5.5, 18, 13],
-        'circle-opacity': 0.25,
-        'circle-blur': 0.65,
-        'circle-translate': [2, 3],
+        'circle-color': '#092315',
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 1.8, 15, 5.5, 18, 16],
+        'circle-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.16, 16, 0.34],
+        'circle-blur': 0.75,
+        'circle-translate': [2, 4],
         'circle-pitch-scale': 'map',
         'circle-pitch-alignment': 'map'
       }
@@ -612,13 +662,13 @@ map.on('load', () => {
       type: 'circle',
       source: 'openmaptiles',
       'source-layer': 'landcover',
-      filter: ['in', ['get', 'class'], ['literal', ['wood', 'forest', 'tree', 'park', 'grass']]],
-      minzoom: 12,
+      filter: vegetationFilter,
+      minzoom: 13,
       paint: {
-        'circle-color': ['interpolate', ['linear'], ['zoom'], 12, '#2f7d46', 16, '#1f6f3c'],
-        'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 1.1, 15, 4.2, 18, 10],
-        'circle-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.2, 15, 0.58],
-        'circle-blur': 0.28,
+        'circle-color': ['match', ['get', 'class'], 'grass', '#6bbf59', 'park', '#3e9650', 'scrub', '#6d8f45', '#1f6f3c'],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 13, 1.2, 15, 4.2, 18, 12],
+        'circle-opacity': ['interpolate', ['linear'], ['zoom'], 13, 0.18, 16, 0.66],
+        'circle-blur': 0.24,
         'circle-pitch-scale': 'map',
         'circle-pitch-alignment': 'map'
       }
@@ -644,26 +694,64 @@ map.on('load', () => {
       'line-width': ['interpolate', ['linear'], ['zoom'], 10, 4, 16, 8]
     }
   }, firstLabel);
+  map.addSource('route-alternates', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
+  map.addLayer({
+    id: 'route-alternates', type: 'line', source: 'route-alternates',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': '#7aa2ff',
+      'line-width': ['interpolate', ['linear'], ['zoom'], 10, 3, 16, 6],
+      'line-opacity': 0.38
+    }
+  }, 'route-casing');
+  map.addLayer({
+    id: 'route-arrows', type: 'symbol', source: 'route',
+    layout: {
+      'symbol-placement': 'line',
+      'symbol-spacing': 96,
+      'text-field': '➜',
+      'text-size': ['interpolate', ['linear'], ['zoom'], 10, 14, 16, 20],
+      'text-keep-upright': false,
+      'text-allow-overlap': true
+    },
+    paint: {
+      'text-color': '#ffffff',
+      'text-halo-color': '#1d4ed8',
+      'text-halo-width': 2
+    }
+  }, firstLabel);
 
   applyPreset(currentPreset);
 });
 
 function setSatellite(enabled) {
   if (!map.getLayer('satellite-imagery')) return;
-  map.setPaintProperty('satellite-imagery', 'raster-opacity', enabled ? 0.94 : 0);
+  map.setMaxZoom(enabled ? SATELLITE_MAX_ZOOM : DEFAULT_MAX_ZOOM);
+  if (enabled && map.getZoom() > SATELLITE_MAX_ZOOM) {
+    map.easeTo({ zoom: SATELLITE_MAX_ZOOM, duration: 450 });
+    showToast('Satellite imagery is capped here so close zooms stay sharp instead of showing missing tiles.');
+  }
+  map.setPaintProperty('satellite-imagery', 'raster-opacity', enabled ? 0.88 : 0);
+  if (map.getLayer('satellite-clarity')) {
+    map.setPaintProperty('satellite-clarity', 'raster-opacity', enabled ? 0.28 : 0);
+  }
+  if (map.getLayer('geo-vegetation-depth')) {
+    map.setPaintProperty('geo-vegetation-depth', 'fill-opacity', enabled ? 0.18 : ['interpolate', ['linear'], ['zoom'], 6, 0.16, 12, 0.28, 16, 0.38]);
+  }
+  if (map.getLayer('geo-vegetation-highlight')) {
+    map.setPaintProperty('geo-vegetation-highlight', 'line-opacity', enabled ? 0.1 : ['interpolate', ['linear'], ['zoom'], 12, 0.08, 16, 0.18]);
+  }
   if (map.getLayer('geo-tree-canopy')) {
-    map.setPaintProperty('geo-tree-canopy', 'circle-opacity', enabled ? 0.72 : (currentPreset === 'night' ? 0.32 : 0.58));
+    map.setPaintProperty('geo-tree-canopy', 'circle-opacity', enabled ? 0.5 : (currentPreset === 'night' ? 0.32 : 0.58));
   }
   if (map.getLayer('geo-tree-shadow')) {
-    map.setPaintProperty('geo-tree-shadow', 'circle-opacity', enabled ? 0.32 : (currentPreset === 'night' ? 0.14 : 0.25));
+    map.setPaintProperty('geo-tree-shadow', 'circle-opacity', enabled ? 0.22 : (currentPreset === 'night' ? 0.14 : 0.25));
   }
 }
 
 function setTerrain(exaggeration) {
   if (!map.getSource('terrain-dem')) return;
   map.setTerrain(exaggeration ? { source: 'terrain-dem', exaggeration } : null);
-    map.setPaintProperty('geo-tree-canopy', 'circle-opacity', enabled ? 0.7 : (currentPreset === 'night' ? 0.32 : 0.58));
-  }
 }
 
 /* ------------------------------------------------------------------
@@ -687,19 +775,6 @@ document.querySelectorAll('#viewToggle button').forEach(btn => {
       setSatellite(false);
       setTerrain(null);
       setModeChip('2D map', 'Flat vector map for fast scanning and routing.');
-    } else {
-      setSatellite(false);
-      setTerrain(null);
-      setModeChip('2D map', 'Flat vector map for fast scanning and routing.');
-      map.setTerrain({ source: 'terrain-dem', exaggeration: 1.45 });
-      map.easeTo({ pitch: 68, bearing: -28, duration: 1100 });
-    } else if (btn.dataset.view === 'satellite') {
-      setSatellite(true);
-      map.setTerrain({ source: 'terrain-dem', exaggeration: 1.8 });
-      map.easeTo({ pitch: 72, bearing: -35, duration: 1100 });
-    } else {
-      setSatellite(false);
-      map.setTerrain(null);
       map.easeTo({ pitch: 0, bearing: 0, duration: 900 });
     }
   });
@@ -803,6 +878,7 @@ const dirPanel = document.getElementById('dirPanel');
 const fromInput = document.getElementById('fromInput');
 const toInput = document.getElementById('toInput');
 const dirGo = document.getElementById('dirGo');
+const routeChoices = document.getElementById('routeChoices');
 const dirSummary = document.getElementById('dirSummary');
 const dirSteps = document.getElementById('dirSteps');
 
@@ -810,6 +886,8 @@ let dirMode = 'car';
 let fromPoint = null;   // { lng, lat, q } — q is the input text it was resolved from
 let toPoint = null;
 let fromMarker = null, toMarker = null;
+let currentRoutes = [];
+let activeRouteIndex = 0;
 
 document.getElementById('dirToggle').addEventListener('click', () => {
   dirPanel.classList.toggle('open');
@@ -838,12 +916,19 @@ document.getElementById('dirClear').addEventListener('click', clearRoute);
 function clearRoute() {
   fromPoint = toPoint = null;
   fromInput.value = toInput.value = '';
+  currentRoutes = [];
+  activeRouteIndex = 0;
+  routeChoices.innerHTML = '';
+  routeChoices.classList.remove('hasRoutes');
   dirSummary.textContent = '';
   dirSteps.innerHTML = '';
   if (fromMarker) { fromMarker.remove(); fromMarker = null; }
   if (toMarker) { toMarker.remove(); toMarker = null; }
   if (map.getSource('route')) {
     map.getSource('route').setData({ type: 'FeatureCollection', features: [] });
+  }
+  if (map.getSource('route-alternates')) {
+    map.getSource('route-alternates').setData({ type: 'FeatureCollection', features: [] });
   }
 }
 
@@ -944,11 +1029,16 @@ async function fetchRoute() {
       map.once('idle', resolve);
     });
   }
-  const profiles = { car: 'routed-car', bike: 'routed-bike', foot: 'routed-foot' };
-  const url = 'https://routing.openstreetmap.de/' + profiles[dirMode] +
-    '/route/v1/driving/' + fromPoint.lng + ',' + fromPoint.lat + ';' +
-    toPoint.lng + ',' + toPoint.lat +
-    '?overview=full&geometries=geojson&steps=true';
+  const profiles = {
+    car: { service: 'routed-car', osrmProfile: 'driving' },
+    bike: { service: 'routed-bike', osrmProfile: 'bike' },
+    foot: { service: 'routed-foot', osrmProfile: 'foot' }
+  };
+  const profile = profiles[dirMode];
+  const coords = fromPoint.lng + ',' + fromPoint.lat + ';' + toPoint.lng + ',' + toPoint.lat;
+  const url = 'https://routing.openstreetmap.de/' + profile.service +
+    '/route/v1/' + profile.osrmProfile + '/' + coords +
+    '?overview=full&geometries=geojson&steps=true&alternatives=true';
   let data;
   try {
     const res = await fetch(url);
@@ -961,31 +1051,72 @@ async function fetchRoute() {
     showToast('No route found between those points.');
     return;
   }
-  const route = data.routes[0];
+  currentRoutes = data.routes.slice(0, 3);
+  activeRouteIndex = 0;
+  renderRouteChoices();
+  selectRoute(0, true);
+}
 
-  map.getSource('route').setData({
-    type: 'Feature', properties: {}, geometry: route.geometry
+function routeFeature(route) {
+  return { type: 'Feature', properties: {}, geometry: route.geometry };
+}
+
+function renderRouteChoices() {
+  routeChoices.innerHTML = '';
+  routeChoices.classList.toggle('hasRoutes', currentRoutes.length > 1);
+  currentRoutes.forEach((route, idx) => {
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'routeChoice' + (idx === activeRouteIndex ? ' active' : '');
+    const name = idx === 0 ? 'Fastest route' : 'Alternate ' + idx;
+    button.innerHTML = '<strong>' + name + '</strong><em>' + fmtDuration(route.duration) + '</em><span>' + fmtDist(route.distance) + ' · ' + route.legs[0].summary + '</span>';
+    button.addEventListener('click', () => selectRoute(idx, false));
+    routeChoices.appendChild(button);
   });
+}
 
-  // Zoom to fit the whole route
+function selectRoute(index, fit) {
+  if (!currentRoutes[index]) return;
+  activeRouteIndex = index;
+  const route = currentRoutes[index];
+  map.getSource('route').setData(routeFeature(route));
+  if (map.getSource('route-alternates')) {
+    map.getSource('route-alternates').setData({
+      type: 'FeatureCollection',
+      features: currentRoutes.filter((_, i) => i !== index).map(routeFeature)
+    });
+  }
+  routeChoices.querySelectorAll('.routeChoice').forEach((button, i) => {
+    button.classList.toggle('active', i === index);
+  });
+  renderRouteDetails(route);
+  if (fit) fitRoute(route);
+}
+
+function fitRoute(route) {
   const coords = route.geometry.coordinates;
   const bounds = coords.reduce(
     (b, c) => b.extend(c),
     new maplibregl.LngLatBounds(coords[0], coords[0])
   );
-  map.fitBounds(bounds, { padding: { top: 90, bottom: 60, left: 40, right: 40 }, pitch: 45, duration: 1400 });
+  map.fitBounds(bounds, { padding: { top: 140, bottom: 80, left: 48, right: 48 }, pitch: dirMode === 'car' ? 55 : 45, duration: 1400 });
+}
 
-  // Summary + turn-by-turn
-  const mins = Math.round(route.duration / 60);
-  const timeTxt = mins >= 60 ? Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min' : mins + ' min';
-  dirSummary.textContent = timeTxt + '  ·  ' + fmtDist(route.distance);
-
+function renderRouteDetails(route) {
+  dirSummary.textContent = fmtDuration(route.duration) + '  ·  ' + fmtDist(route.distance) + '  ·  ' + route.legs[0].summary;
   dirSteps.innerHTML = '';
-  route.legs[0].steps.forEach(step => {
-    const div = document.createElement('div');
-    div.innerHTML = describeStep(step) + ' <span>' + (step.distance > 15 ? fmtDist(step.distance) : '') + '</span>';
-    dirSteps.appendChild(div);
-  });
+  route.legs[0].steps
+    .filter(step => step.distance > 8 || ['depart', 'arrive'].includes(step.maneuver.type))
+    .forEach((step, idx) => {
+      const div = document.createElement('div');
+      div.innerHTML = '<b>' + (idx + 1) + '.</b> ' + describeStep(step) + ' <span>' + (step.distance > 15 ? fmtDist(step.distance) : '') + '</span>';
+      dirSteps.appendChild(div);
+    });
+}
+
+function fmtDuration(seconds) {
+  const mins = Math.max(1, Math.round(seconds / 60));
+  return mins >= 60 ? Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min' : mins + ' min';
 }
 
 function fmtDist(m) {
