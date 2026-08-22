@@ -357,6 +357,14 @@ function hideLoadingScreen() {
   loadingDone = true;
   clearInterval(progressTimer);
   loadingStatus.textContent = 'Ready';
+let progress = 12;
+const progressTimer = setInterval(() => {
+  progress = Math.min(progress + Math.random() * 13, 88);
+  progressBar.style.width = progress + '%';
+}, 360);
+
+function hideLoadingScreen() {
+  clearInterval(progressTimer);
   progressBar.style.width = '100%';
   setTimeout(() => loadingScreen.classList.add('hidden'), 350);
 }
@@ -616,6 +624,8 @@ function setSatellite(enabled) {
 function setTerrain(exaggeration) {
   if (!map.getSource('terrain-dem')) return;
   map.setTerrain(exaggeration ? { source: 'terrain-dem', exaggeration } : null);
+    map.setPaintProperty('geo-tree-canopy', 'circle-opacity', enabled ? 0.7 : (currentPreset === 'night' ? 0.32 : 0.58));
+  }
 }
 
 /* ------------------------------------------------------------------
@@ -639,6 +649,15 @@ document.querySelectorAll('#viewToggle button').forEach(btn => {
       setSatellite(false);
       setTerrain(null);
       setModeChip('2D map', 'Flat vector map for fast scanning and routing.');
+      map.setTerrain({ source: 'terrain-dem', exaggeration: 1.45 });
+      map.easeTo({ pitch: 68, bearing: -28, duration: 1100 });
+    } else if (btn.dataset.view === 'satellite') {
+      setSatellite(true);
+      map.setTerrain({ source: 'terrain-dem', exaggeration: 1.8 });
+      map.easeTo({ pitch: 72, bearing: -35, duration: 1100 });
+    } else {
+      setSatellite(false);
+      map.setTerrain(null);
       map.easeTo({ pitch: 0, bearing: 0, duration: 900 });
     }
   });
