@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <title>GeoPro — Free 3D Maps</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>" />
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='black'/%3E%3Cpath d='M22 18 L84 50 L22 82 L42 50 Z' fill='%23ff2d2d' stroke='%23ff3636' stroke-width='6' stroke-linejoin='round' stroke-linecap='round'/%3E%3C/svg%3E" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet" />
 <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
@@ -14,10 +14,60 @@
     --panel-text: #1a2233;
     --accent: #3d6bff;
     --shadow: 0 4px 18px rgba(15, 25, 55, 0.18);
+    --glass-border: rgba(255, 255, 255, 0.55);
+    --panel-border: rgba(255, 255, 255, 0.48);
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-  #map { position: absolute; inset: 0; }
+  #map { position: absolute; inset: 0; background: #07111f; }
+
+  /* ---------- Loading screen ---------- */
+  #loadingScreen {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    background:
+      radial-gradient(circle at 50% 42%, rgba(255, 45, 45, .22), transparent 28rem),
+      linear-gradient(145deg, #020202 0%, #080808 48%, #151515 100%);
+    color: #fff; transition: opacity .55s ease, visibility .55s ease;
+  }
+  #loadingScreen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+  .loaderCard {
+    width: min(360px, calc(100vw - 42px)); text-align: center;
+    padding: 34px 28px; border: 1px solid rgba(255,255,255,.16);
+    border-radius: 24px; background: rgba(255,255,255,.08);
+    box-shadow: 0 24px 80px rgba(0,0,0,.38); backdrop-filter: blur(18px);
+  }
+  .appLogo {
+    width: 94px; height: 94px; margin: 0 auto 18px; border-radius: 24px;
+    background: #000; position: relative; overflow: hidden;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,.08),
+      inset 0 0 18px rgba(255,255,255,.18),
+      0 18px 48px rgba(0,0,0,.42),
+      0 0 34px rgba(255,45,45,.24);
+    animation: logoPulse 1.9s ease-in-out infinite;
+  }
+  .appLogo::before {
+    content: ''; position: absolute; inset: 18px 14px;
+    background: linear-gradient(135deg, #ff3131, #ff2020);
+    clip-path: polygon(0 0, 100% 50%, 0 100%, 28% 50%);
+    filter: drop-shadow(0 0 12px rgba(255,45,45,.42));
+  }
+  .appLogo::after {
+    content: ''; position: absolute; inset: 0; border-radius: inherit;
+    background: linear-gradient(145deg, rgba(255,255,255,.22), transparent 18%, transparent 76%, rgba(255,255,255,.16));
+    pointer-events: none;
+  }
+  .loaderCard h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: .08em; }
+  .loaderCard p { margin: 0 0 18px; color: rgba(255,255,255,.76); font-size: 14px; }
+  #loadingStatus { display: block; min-height: 18px; margin-top: 12px; color: rgba(255,255,255,.68); font-size: 12.5px; }
+  .progressTrack { height: 6px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.14); }
+  #progressBar { width: 12%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff4b4b, #ff2d2d, #ff6a3d); transition: width .35s ease; }
+  @keyframes logoPulse { 50% { transform: translateY(-4px) scale(1.035); } }
+  @media (prefers-reduced-motion: reduce) {
+    .appLogo { animation: none; }
+    #loadingScreen, #progressBar { transition: none; }
+  }
 
   /* Night/dusk tint overlay — sits on top of the map canvas */
   #tint {
@@ -65,6 +115,7 @@
   }
   .pillGroup {
     display: flex; background: var(--panel-bg); backdrop-filter: blur(10px);
+    border: 1px solid var(--glass-border);
     border-radius: 999px; box-shadow: var(--shadow); overflow: hidden;
   }
   .pillGroup button {
@@ -78,12 +129,30 @@
   /* ---------- Title chip ---------- */
   #brand {
     position: absolute; top: 14px; right: 14px; z-index: 10;
+    display: flex; align-items: center; gap: 8px;
     background: var(--panel-bg); backdrop-filter: blur(10px);
     border-radius: 12px; box-shadow: var(--shadow);
-    padding: 8px 14px; font-size: 13px; font-weight: 700; color: var(--panel-text);
+    padding: 7px 13px 7px 8px; font-size: 13px; font-weight: 700; color: var(--panel-text);
     letter-spacing: .3px; user-select: none;
   }
-  #brand span { color: var(--accent); }
+  #brand span { color: #ff2d2d; }
+  .brandLogo {
+    width: 26px; height: 26px; border-radius: 8px; background: #000; position: relative; overflow: hidden;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,.12), 0 3px 10px rgba(0,0,0,.18);
+  }
+  .brandLogo::before {
+    content: ''; position: absolute; inset: 6px 4px; background: #ff2d2d;
+    clip-path: polygon(0 0, 100% 50%, 0 100%, 28% 50%);
+  }
+  #modeChip {
+    position: absolute; right: 14px; bottom: 26px; z-index: 10;
+    max-width: min(310px, calc(100vw - 28px));
+    padding: 10px 14px; border: 1px solid var(--panel-border);
+    border-radius: 14px; background: rgba(255,255,255,.86);
+    backdrop-filter: blur(12px); box-shadow: var(--shadow);
+    color: var(--panel-text); font-size: 12.5px; line-height: 1.35;
+  }
+  #modeChip strong { display: block; color: var(--accent); font-size: 13px; margin-bottom: 2px; }
 
   /* Move maplibre zoom controls below the brand chip */
   .maplibregl-ctrl-top-right { top: 52px; }
@@ -159,17 +228,29 @@
   @media (max-width: 560px) {
     #brand { display: none; }
     .maplibregl-ctrl-top-right { top: 0; }
-    #hud { bottom: 34px; }
+    #hud { bottom: 34px; flex-wrap: wrap; justify-content: center; width: calc(100vw - 24px); }
+    #modeChip { display: none; }
     .pillGroup button { padding: 8px 12px; font-size: 12px; }
   }
 </style>
 </head>
 <body>
 
+<div id="loadingScreen" role="status" aria-live="polite">
+  <div class="loaderCard">
+    <div class="appLogo" aria-hidden="true"></div>
+    <h1>GEOPRO</h1>
+    <p>Loading satellite, terrain, trees, and 3D buildings…</p>
+    <div class="progressTrack"><div id="progressBar"></div></div>
+    <span id="loadingStatus">Preparing 3D scene…</span>
+  </div>
+</div>
+
 <div id="map"></div>
 <div id="tint"></div>
 
-<div id="brand">GEO<span>PRO</span></div>
+<div id="brand"><i class="brandLogo" aria-hidden="true"></i>GEO<span>PRO</span></div>
+<div id="modeChip"><strong>3D+ mode</strong><span>Terrain, buildings, and tree canopy are active.</span></div>
 
 <div id="searchWrap">
   <div id="searchBox">
@@ -211,7 +292,8 @@
 
 <div id="hud">
   <div class="pillGroup" id="viewToggle">
-    <button data-view="3d" class="active">3D</button>
+    <button data-view="3d" class="active">3D+</button>
+    <button data-view="satellite">Satellite</button>
     <button data-view="2d">2D</button>
   </div>
   <div class="pillGroup" id="lightToggle">
@@ -238,11 +320,11 @@ const map = new maplibregl.Map({
   style: 'https://tiles.openfreemap.org/styles/liberty', // free, keyless vector style
   center: [-73.9857, 40.7484],  // Midtown Manhattan — great skyline demo
   zoom: 15.6,
-  pitch: 60,
-  bearing: -20,
+  pitch: 68,
+  bearing: -28,
   hash: true,                   // keeps view in the URL so links are shareable
   attributionControl: { compact: true },
-  maxPitch: 72,
+  maxPitch: 85,
   antialias: true
 });
 
@@ -267,16 +349,59 @@ geolocate.on('error', err => {
 
 map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
 
+const loadingScreen = document.getElementById('loadingScreen');
+const progressBar = document.getElementById('progressBar');
+const loadingStatus = document.getElementById('loadingStatus');
+const modeChip = document.getElementById('modeChip');
+const loadingMessages = [
+  'Preparing 3D scene…',
+  'Streaming satellite imagery…',
+  'Shaping terrain elevation…',
+  'Planting tree canopy…',
+  'Extruding buildings…'
+];
+let progress = 12;
+let loadingStep = 0;
+let loadingDone = false;
+const progressTimer = setInterval(() => {
+  progress = Math.min(progress + Math.random() * 11, 92);
+  progressBar.style.width = progress + '%';
+  loadingStep = (loadingStep + 1) % loadingMessages.length;
+  loadingStatus.textContent = loadingMessages[loadingStep];
+}, 420);
+
+function hideLoadingScreen() {
+  if (loadingDone) return;
+  loadingDone = true;
+  clearInterval(progressTimer);
+  loadingStatus.textContent = 'Ready';
+  progressBar.style.width = '100%';
+  setTimeout(() => loadingScreen.classList.add('hidden'), 350);
+}
+
+setTimeout(() => {
+  if (!loadingDone) {
+    loadingStatus.textContent = 'Still loading network map tiles…';
+    hideLoadingScreen();
+  }
+}, 12000);
+
+
 // Readable map error logging (tile/network failures etc.)
 map.on('error', e => {
   const m = e && e.error ? (e.error.message || e.error.status || String(e.error)) : String(e);
   console.warn('Map error:', m, e && e.sourceId ? 'source=' + e.sourceId : '');
+  if (!loadingDone && /terrain|satellite|pmtiles|network|fetch/i.test(m)) {
+    loadingStatus.textContent = 'Some enhanced layers are unavailable, opening the map…';
+    hideLoadingScreen();
+  }
 });
 
 // Show a hint while the first tiles stream in, so a blank map doesn't look broken
 map.once('idle', () => {
   const el = document.getElementById('toast');
   if (el) el.classList.remove('show');
+  hideLoadingScreen();
 });
 setTimeout(() => { if (!map.loaded()) showToast('Loading map…'); }, 1500);
 
@@ -339,6 +464,10 @@ function buildingColorExpr(stops) {
 
 let currentPreset = 'day';
 
+function setModeChip(title, detail) {
+  modeChip.innerHTML = '<strong>' + title + '</strong><span>' + detail + '</span>';
+}
+
 function applyPreset(name) {
   currentPreset = name;
   const p = PRESETS[name];
@@ -348,6 +477,12 @@ function applyPreset(name) {
   if (map.getLayer('atlas-3d-buildings')) {
     map.setPaintProperty('atlas-3d-buildings', 'fill-extrusion-color', buildingColorExpr(p.buildingColors));
     map.setPaintProperty('atlas-3d-buildings', 'fill-extrusion-opacity', p.buildingOpacity);
+  }
+  if (map.getLayer('geo-tree-canopy')) {
+    map.setPaintProperty('geo-tree-canopy', 'circle-opacity', name === 'night' ? 0.32 : 0.58);
+  }
+  if (map.getLayer('geo-tree-shadow')) {
+    map.setPaintProperty('geo-tree-shadow', 'circle-opacity', name === 'night' ? 0.14 : 0.25);
   }
 }
 
@@ -367,6 +502,35 @@ map.on('load', () => {
 
   // Overture buildings — far more complete than OSM alone (adds Microsoft's
   // and Google's AI-detected footprints, so small towns get buildings too)
+  map.addSource('satellite-imagery', {
+    type: 'raster',
+    tiles: ['https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+    tileSize: 256,
+    attribution: 'Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community'
+  });
+
+  map.addLayer({
+    id: 'satellite-imagery',
+    type: 'raster',
+    source: 'satellite-imagery',
+    paint: {
+      'raster-opacity': 0,
+      'raster-saturation': -0.05,
+      'raster-contrast': 0.12,
+      'raster-brightness-min': 0.03
+    }
+  }, style.layers[0]?.id);
+
+  map.addSource('terrain-dem', {
+    type: 'raster-dem',
+    tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+    encoding: 'terrarium',
+    tileSize: 256,
+    maxzoom: 15,
+    attribution: 'Elevation tiles © AWS Open Data'
+  });
+  map.setTerrain({ source: 'terrain-dem', exaggeration: 1.45 });
+
   map.addSource('overture-buildings', {
     type: 'vector',
     url: 'pmtiles://https://data.source.coop/cholmes/overture/overture-buildings.pmtiles',
@@ -394,6 +558,45 @@ map.on('load', () => {
     }
   }, firstLabel);
 
+  // Stylized tree canopies. These read from the base vector style's landcover
+  // data and stay pitched with the camera for a denser 3D scene without a key.
+  if (map.getSource('openmaptiles')) {
+    map.addLayer({
+      id: 'geo-tree-shadow',
+      type: 'circle',
+      source: 'openmaptiles',
+      'source-layer': 'landcover',
+      filter: ['in', ['get', 'class'], ['literal', ['wood', 'forest', 'tree', 'park', 'grass']]],
+      minzoom: 12,
+      paint: {
+        'circle-color': '#0b2f1d',
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 1.6, 15, 5.5, 18, 13],
+        'circle-opacity': 0.25,
+        'circle-blur': 0.65,
+        'circle-translate': [2, 3],
+        'circle-pitch-scale': 'map',
+        'circle-pitch-alignment': 'map'
+      }
+    }, firstLabel);
+
+    map.addLayer({
+      id: 'geo-tree-canopy',
+      type: 'circle',
+      source: 'openmaptiles',
+      'source-layer': 'landcover',
+      filter: ['in', ['get', 'class'], ['literal', ['wood', 'forest', 'tree', 'park', 'grass']]],
+      minzoom: 12,
+      paint: {
+        'circle-color': ['interpolate', ['linear'], ['zoom'], 12, '#2f7d46', 16, '#1f6f3c'],
+        'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 1.1, 15, 4.2, 18, 10],
+        'circle-opacity': ['interpolate', ['linear'], ['zoom'], 12, 0.2, 15, 0.58],
+        'circle-blur': 0.28,
+        'circle-pitch-scale': 'map',
+        'circle-pitch-alignment': 'map'
+      }
+    }, firstLabel);
+  }
+
   // Route line (empty until directions are requested), under labels
   map.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
   map.addLayer({
@@ -417,16 +620,43 @@ map.on('load', () => {
   applyPreset(currentPreset);
 });
 
+function setSatellite(enabled) {
+  if (!map.getLayer('satellite-imagery')) return;
+  map.setPaintProperty('satellite-imagery', 'raster-opacity', enabled ? 0.94 : 0);
+  if (map.getLayer('geo-tree-canopy')) {
+    map.setPaintProperty('geo-tree-canopy', 'circle-opacity', enabled ? 0.72 : (currentPreset === 'night' ? 0.32 : 0.58));
+  }
+  if (map.getLayer('geo-tree-shadow')) {
+    map.setPaintProperty('geo-tree-shadow', 'circle-opacity', enabled ? 0.32 : (currentPreset === 'night' ? 0.14 : 0.25));
+  }
+}
+
+function setTerrain(exaggeration) {
+  if (!map.getSource('terrain-dem')) return;
+  map.setTerrain(exaggeration ? { source: 'terrain-dem', exaggeration } : null);
+}
+
 /* ------------------------------------------------------------------
-   View toggle: 3D (pitched) <-> 2D (top-down)
+   View toggle: 3D+ terrain / Satellite terrain / 2D top-down
 ------------------------------------------------------------------- */
 document.querySelectorAll('#viewToggle button').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('#viewToggle button').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     if (btn.dataset.view === '3d') {
-      map.easeTo({ pitch: 60, bearing: -20, duration: 900 });
+      setSatellite(false);
+      setTerrain(1.45);
+      setModeChip('3D+ mode', 'Terrain, buildings, and tree canopy are active.');
+      map.easeTo({ pitch: 68, bearing: -28, duration: 1100 });
+    } else if (btn.dataset.view === 'satellite') {
+      setSatellite(true);
+      setTerrain(1.8);
+      setModeChip('Satellite 3D', 'High-detail imagery with exaggerated terrain and trees.');
+      map.easeTo({ pitch: 72, bearing: -35, duration: 1100 });
     } else {
+      setSatellite(false);
+      setTerrain(null);
+      setModeChip('2D map', 'Flat vector map for fast scanning and routing.');
       map.easeTo({ pitch: 0, bearing: 0, duration: 900 });
     }
   });
@@ -508,8 +738,8 @@ function goTo(place) {
   map.flyTo({
     center: [lng, lat],
     zoom: isCity ? 12.5 : 16.2,
-    pitch: 60,
-    bearing: -20,
+    pitch: 68,
+    bearing: -28,
     duration: 2600,
     essential: true
   });
