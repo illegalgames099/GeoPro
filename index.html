@@ -28,6 +28,8 @@
     background:
       radial-gradient(circle at 50% 42%, rgba(255, 45, 45, .22), transparent 28rem),
       linear-gradient(145deg, #020202 0%, #080808 48%, #151515 100%);
+      radial-gradient(circle at 50% 42%, rgba(61, 107, 255, .34), transparent 28rem),
+      linear-gradient(145deg, #07111f 0%, #0b1830 48%, #14213d 100%);
     color: #fff; transition: opacity .55s ease, visibility .55s ease;
   }
   #loadingScreen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
@@ -57,6 +59,16 @@
     content: ''; position: absolute; inset: 0; border-radius: inherit;
     background: linear-gradient(145deg, rgba(255,255,255,.22), transparent 18%, transparent 76%, rgba(255,255,255,.16));
     pointer-events: none;
+  .globeLoader {
+    width: 86px; height: 86px; margin: 0 auto 18px; border-radius: 50%;
+    background: linear-gradient(135deg, #7dd3fc, #2563eb 52%, #22c55e);
+    box-shadow: inset -14px -12px 24px rgba(0,0,0,.24), 0 0 36px rgba(96,165,250,.5);
+    position: relative; animation: globePulse 1.8s ease-in-out infinite;
+  }
+  .globeLoader::after {
+    content: ''; position: absolute; inset: 13px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,.42); border-left-color: transparent;
+    animation: spin 1.1s linear infinite;
   }
   .loaderCard h1 { margin: 0 0 6px; font-size: 24px; letter-spacing: .08em; }
   .loaderCard p { margin: 0 0 18px; color: rgba(255,255,255,.76); font-size: 14px; }
@@ -66,6 +78,11 @@
   @keyframes logoPulse { 50% { transform: translateY(-4px) scale(1.035); } }
   @media (prefers-reduced-motion: reduce) {
     .appLogo { animation: none; }
+  #progressBar { width: 12%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #38bdf8, #60a5fa, #a78bfa); transition: width .35s ease; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes globePulse { 50% { transform: translateY(-4px) scale(1.04); } }
+  @media (prefers-reduced-motion: reduce) {
+    .globeLoader, .globeLoader::after { animation: none; }
     #loadingScreen, #progressBar { transition: none; }
   }
 
@@ -144,6 +161,7 @@
     content: ''; position: absolute; inset: 6px 4px; background: #ff2d2d;
     clip-path: polygon(0 0, 100% 50%, 0 100%, 28% 50%);
   }
+  #brand span { color: var(--accent); }
   #modeChip {
     position: absolute; right: 14px; bottom: 26px; z-index: 10;
     max-width: min(310px, calc(100vw - 28px));
@@ -239,6 +257,7 @@
 <div id="loadingScreen" role="status" aria-live="polite">
   <div class="loaderCard">
     <div class="appLogo" aria-hidden="true"></div>
+    <div class="globeLoader" aria-hidden="true"></div>
     <h1>GEOPRO</h1>
     <p>Loading satellite, terrain, trees, and 3D buildings…</p>
     <div class="progressTrack"><div id="progressBar"></div></div>
@@ -250,6 +269,7 @@
 <div id="tint"></div>
 
 <div id="brand"><i class="brandLogo" aria-hidden="true"></i>GEO<span>PRO</span></div>
+<div id="brand">GEO<span>PRO</span></div>
 <div id="modeChip"><strong>3D+ mode</strong><span>Terrain, buildings, and tree canopy are active.</span></div>
 
 <div id="searchWrap">
@@ -375,6 +395,14 @@ function hideLoadingScreen() {
   loadingDone = true;
   clearInterval(progressTimer);
   loadingStatus.textContent = 'Ready';
+let progress = 12;
+const progressTimer = setInterval(() => {
+  progress = Math.min(progress + Math.random() * 13, 88);
+  progressBar.style.width = progress + '%';
+}, 360);
+
+function hideLoadingScreen() {
+  clearInterval(progressTimer);
   progressBar.style.width = '100%';
   setTimeout(() => loadingScreen.classList.add('hidden'), 350);
 }
@@ -634,6 +662,8 @@ function setSatellite(enabled) {
 function setTerrain(exaggeration) {
   if (!map.getSource('terrain-dem')) return;
   map.setTerrain(exaggeration ? { source: 'terrain-dem', exaggeration } : null);
+    map.setPaintProperty('geo-tree-canopy', 'circle-opacity', enabled ? 0.7 : (currentPreset === 'night' ? 0.32 : 0.58));
+  }
 }
 
 /* ------------------------------------------------------------------
@@ -657,6 +687,19 @@ document.querySelectorAll('#viewToggle button').forEach(btn => {
       setSatellite(false);
       setTerrain(null);
       setModeChip('2D map', 'Flat vector map for fast scanning and routing.');
+    } else {
+      setSatellite(false);
+      setTerrain(null);
+      setModeChip('2D map', 'Flat vector map for fast scanning and routing.');
+      map.setTerrain({ source: 'terrain-dem', exaggeration: 1.45 });
+      map.easeTo({ pitch: 68, bearing: -28, duration: 1100 });
+    } else if (btn.dataset.view === 'satellite') {
+      setSatellite(true);
+      map.setTerrain({ source: 'terrain-dem', exaggeration: 1.8 });
+      map.easeTo({ pitch: 72, bearing: -35, duration: 1100 });
+    } else {
+      setSatellite(false);
+      map.setTerrain(null);
       map.easeTo({ pitch: 0, bearing: 0, duration: 900 });
     }
   });
