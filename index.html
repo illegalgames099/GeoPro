@@ -28,8 +28,6 @@
     background:
       radial-gradient(circle at 50% 42%, rgba(255, 45, 45, .22), transparent 28rem),
       linear-gradient(145deg, #020202 0%, #080808 48%, #151515 100%);
-      radial-gradient(circle at 50% 42%, rgba(61, 107, 255, .34), transparent 28rem),
-      linear-gradient(145deg, #07111f 0%, #0b1830 48%, #14213d 100%);
     color: #fff; transition: opacity .55s ease, visibility .55s ease;
   }
   #loadingScreen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
@@ -59,6 +57,7 @@
     content: ''; position: absolute; inset: 0; border-radius: inherit;
     background: linear-gradient(145deg, rgba(255,255,255,.22), transparent 18%, transparent 76%, rgba(255,255,255,.16));
     pointer-events: none;
+  }
   .globeLoader {
     width: 86px; height: 86px; margin: 0 auto 18px; border-radius: 50%;
     background: linear-gradient(135deg, #7dd3fc, #2563eb 52%, #22c55e);
@@ -76,13 +75,10 @@
   .progressTrack { height: 6px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,.14); }
   #progressBar { width: 12%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #ff4b4b, #ff2d2d, #ff6a3d); transition: width .35s ease; }
   @keyframes logoPulse { 50% { transform: translateY(-4px) scale(1.035); } }
-  @media (prefers-reduced-motion: reduce) {
-    .appLogo { animation: none; }
-  #progressBar { width: 12%; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #38bdf8, #60a5fa, #a78bfa); transition: width .35s ease; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes globePulse { 50% { transform: translateY(-4px) scale(1.04); } }
   @media (prefers-reduced-motion: reduce) {
-    .globeLoader, .globeLoader::after { animation: none; }
+    .appLogo, .globeLoader, .globeLoader::after { animation: none; }
     #loadingScreen, #progressBar { transition: none; }
   }
 
@@ -269,7 +265,6 @@
 <div id="tint"></div>
 
 <div id="brand"><i class="brandLogo" aria-hidden="true"></i>GEO<span>PRO</span></div>
-<div id="brand">GEO<span>PRO</span></div>
 <div id="modeChip"><strong>3D+ mode</strong><span>Terrain, buildings, and tree canopy are active.</span></div>
 
 <div id="searchWrap">
@@ -395,14 +390,6 @@ function hideLoadingScreen() {
   loadingDone = true;
   clearInterval(progressTimer);
   loadingStatus.textContent = 'Ready';
-let progress = 12;
-const progressTimer = setInterval(() => {
-  progress = Math.min(progress + Math.random() * 13, 88);
-  progressBar.style.width = progress + '%';
-}, 360);
-
-function hideLoadingScreen() {
-  clearInterval(progressTimer);
   progressBar.style.width = '100%';
   setTimeout(() => loadingScreen.classList.add('hidden'), 350);
 }
@@ -662,8 +649,6 @@ function setSatellite(enabled) {
 function setTerrain(exaggeration) {
   if (!map.getSource('terrain-dem')) return;
   map.setTerrain(exaggeration ? { source: 'terrain-dem', exaggeration } : null);
-    map.setPaintProperty('geo-tree-canopy', 'circle-opacity', enabled ? 0.7 : (currentPreset === 'night' ? 0.32 : 0.58));
-  }
 }
 
 /* ------------------------------------------------------------------
@@ -687,19 +672,6 @@ document.querySelectorAll('#viewToggle button').forEach(btn => {
       setSatellite(false);
       setTerrain(null);
       setModeChip('2D map', 'Flat vector map for fast scanning and routing.');
-    } else {
-      setSatellite(false);
-      setTerrain(null);
-      setModeChip('2D map', 'Flat vector map for fast scanning and routing.');
-      map.setTerrain({ source: 'terrain-dem', exaggeration: 1.45 });
-      map.easeTo({ pitch: 68, bearing: -28, duration: 1100 });
-    } else if (btn.dataset.view === 'satellite') {
-      setSatellite(true);
-      map.setTerrain({ source: 'terrain-dem', exaggeration: 1.8 });
-      map.easeTo({ pitch: 72, bearing: -35, duration: 1100 });
-    } else {
-      setSatellite(false);
-      map.setTerrain(null);
       map.easeTo({ pitch: 0, bearing: 0, duration: 900 });
     }
   });
