@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>GeoPro — Free 3D Maps</title>
+<title>GeoPro — The Premium Maps</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <link href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet" />
@@ -196,7 +196,7 @@
       <button id="dirSwap" title="Swap">⇅</button>
     </div>
     <div class="dirRow dirModes">
-      <button data-mode="car" class="active">🚗 Drive</button>
+      <button data-mode="vehicle" class="active">🚗 Drive</button>
       <button data-mode="bike">🚴 Bike</button>
       <button data-mode="foot">🚶 Walk</button>
     </div>
@@ -215,15 +215,15 @@
     <button data-view="2d">2D</button>
   </div>
   <div class="pillGroup" id="lightToggle">
-    <button data-light="day" class="active">Day</button>
-    <button data-light="dusk">Dusk</button>
-    <button data-light="night">Night</button>
+    <button data-light="day" class="active">Day Colored Buildings</button>
+    <button data-light="dusk">Dusk Colored Building</button>
+    <button data-light="night">Night Colored Buildings</button>
   </div>
 </div>
 
 <script>
 /* =========================================================================
-   GEOPRO — free Mapbox-Standard-style 3D map
+   GEOPRO — The free maps website you'll love!
    Engine : MapLibre GL JS  (open-source, free, same tech Mapbox GL is from)
    Tiles  : OpenFreeMap     (free vector tiles, no API key, no account)
    Search : Nominatim (OSM) (free geocoding, no API key)
