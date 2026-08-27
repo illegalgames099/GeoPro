@@ -5,10 +5,6 @@
 <title>GeoPro — The Premium Maps</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<script>
-  window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
-</script>
-<script defer src="/_vercel/speed-insights/script.js"></script>
 <link href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet" />
 <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
@@ -92,19 +88,6 @@
   .maplibregl-ctrl-top-right { top: 52px; }
 
   /* ---------- Directions ---------- */
-  #dirToggle {
-    flex: none; display: flex; align-items: center; justify-content: center;
-    width: 30px; height: 30px; border: none; border-radius: 8px;
-    background: var(--accent); color: #fff; cursor: pointer;
-  }
-  #dirToggle:hover { filter: brightness(1.1); }
-  #dirPanel {
-    display: none; margin-top: 6px;
-    background: var(--panel-bg); backdrop-filter: blur(10px);
-    border-radius: 12px; box-shadow: var(--shadow);
-    padding: 12px; flex-direction: column; gap: 8px;
-  }
-  #dirPanel.open { display: flex; }
   .dirRow { display: flex; align-items: center; gap: 8px; }
   .dirRow input {
     flex: 1; min-width: 0; border: 1px solid rgba(0,0,0,.12); border-radius: 8px;
@@ -181,11 +164,6 @@
       <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/>
     </svg>
     <input id="searchInput" type="text" placeholder="Search for a place or address (e.g. Central Park or Starbucks)" autocomplete="off" />
-    <button id="dirToggle" title="Directions" aria-label="Directions">
-      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M6 20v-9a3 3 0 0 1 3-3h9"/><path d="M14 4l4 4-4 4"/>
-      </svg>
-    </button>
   </div>
   <div id="results"></div>
 
@@ -590,11 +568,7 @@ let fromPoint = null;   // { lng, lat, q } — q is the input text it was resolv
 let toPoint = null;
 let fromMarker = null, toMarker = null;
 
-document.getElementById('dirToggle').addEventListener('click', () => {
-  dirPanel.classList.toggle('open');
-  resultsEl.style.display = 'none';
-  if (dirPanel.classList.contains('open')) fromInput.focus();
-});
+// (Removed search-bar directions toggle. Directions are started from search results.)
 
 document.querySelectorAll('.dirModes button').forEach(btn => {
   btn.addEventListener('click', () => {
