@@ -54,13 +54,12 @@
     border-radius: 12px; box-shadow: var(--shadow); overflow: hidden;
     display: none;
   }
-  #results div {
-    padding: 10px 14px; font-size: 13.5px; color: var(--panel-text);
-    cursor: pointer; border-bottom: 1px solid rgba(0,0,0,.06);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  }
-  #results div:last-child { border-bottom: none; }
-  #results div:hover { background: rgba(61,107,255,.1); }
+  #results .resultRow { display:flex; align-items:center; justify-content:space-between; gap:8px; padding: 10px 14px; font-size: 13.5px; color: var(--panel-text); cursor: pointer; border-bottom: 1px solid rgba(0,0,0,.06); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #results .resultRow:last-child { border-bottom: none; }
+  #results .resultRow:hover { background: rgba(61,107,255,.06); }
+  #results .resultTitle { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  #results .dirBtn { flex:none; border:none; background:transparent; color:var(--accent); font-weight:700; padding:6px 8px; border-radius:8px; cursor:pointer; }
+  #results .dirBtn:hover { background: rgba(61,107,255,.08); }
 
   /* ---------- Bottom control pills ---------- */
   #hud {
@@ -140,8 +139,9 @@
     max-height: 34vh; overflow-y: auto; font-size: 12.5px; color: var(--panel-text);
     border-top: 1px solid rgba(0,0,0,.08); padding-top: 6px;
   }
-  #dirSteps div { padding: 5px 2px; border-bottom: 1px solid rgba(0,0,0,.05); }
-  #dirSteps span { opacity: .6; }
+  #dirSteps div { padding: 8px 6px; border-bottom: 1px solid rgba(0,0,0,.05); display:flex; justify-content:space-between; align-items:center; }
+  #dirSteps .instr { flex:1; }
+  #dirSteps .meta { opacity:.6; margin-left:8px; white-space:nowrap; }
 
   /* Red GPS location dot (MapLibre's default is blue) */
   .maplibregl-user-location-dot,
@@ -180,7 +180,7 @@
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a2233" stroke-width="2.4" stroke-linecap="round">
       <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/>
     </svg>
-    <input id="searchInput" type="text" placeholder="Search a city, address, place…" autocomplete="off" />
+    <input id="searchInput" type="text" placeholder="Search for a place or address (e.g. Central Park or Starbucks)" autocomplete="off" />
     <button id="dirToggle" title="Directions" aria-label="Directions">
       <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M6 20v-9a3 3 0 0 1 3-3h9"/><path d="M14 4l4 4-4 4"/>
@@ -200,7 +200,7 @@
       <button id="dirSwap" title="Swap">⇅</button>
     </div>
     <div class="dirRow dirModes">
-      <button data-mode="vehicle" class="active">🚗 Drive</button>
+      <button data-mode="car" class="active">🚗 Drive</button>
       <button data-mode="bike">🚴 Bike</button>
       <button data-mode="foot">🚶 Walk</button>
     </div>
@@ -491,10 +491,22 @@ async function runSearch(q, goFirst = false) {
     if (!data.length) { resultsEl.style.display = 'none'; if (goFirst) showToast('No results for "' + q + '"'); return; }
     if (goFirst) { goTo(data[0]); return; }
     data.forEach(place => {
-      const div = document.createElement('div');
-      div.textContent = place.display_name;
-      div.addEventListener('click', () => goTo(place));
-      resultsEl.appendChild(div);
+      const row = document.createElement('div');
+      row.className = 'resultRow';
+
+      const title = document.createElement('div');
+      title.className = 'resultTitle';
+      title.textContent = place.display_name;
+      row.appendChild(title);
+
+      const btn = document.createElement('button');
+      btn.className = 'dirBtn';
+      btn.textContent = 'Directions';
+      btn.addEventListener('click', (ev) => { ev.stopPropagation(); startDirectionsTo(place); });
+      row.appendChild(btn);
+
+      row.addEventListener('click', () => goTo(place));
+      resultsEl.appendChild(row);
     });
     resultsEl.style.display = 'block';
   } catch (err) {
@@ -516,6 +528,42 @@ function goTo(place) {
     bearing: -20,
     duration: 2600,
     essential: true
+  });
+}
+
+// Provide a quick way to start directions to a search result (like Apple Maps' "Directions" button)
+async function startDirectionsTo(place) {
+  try {
+    dirPanel.classList.add('open');
+    resultsEl.style.display = 'none';
+    // Fill destination with a concise name
+    const shortName = place.display_name.split(',')[0];
+    toInput.value = shortName;
+    toPoint = { lng: parseFloat(place.lon), lat: parseFloat(place.lat), q: place.display_name };
+    syncMarkers();
+    // Try to get user's current location to prefill the origin — graceful fallback
+    if (!fromPoint) {
+      const pos = await getCurrentPosition({ timeout: 5000 }).catch(() => null);
+      if (pos) {
+        fromPoint = { lng: pos.coords.longitude, lat: pos.coords.latitude, q: 'Current location' };
+        fromInput.value = 'Current location';
+        syncMarkers();
+      } else {
+        // If we can't get location, focus the from input so user can type
+        fromInput.focus();
+      }
+    }
+    if (fromPoint && toPoint) await fetchRoute();
+  } catch (err) {
+    console.warn('startDirectionsTo failed', err);
+  }
+}
+
+function getCurrentPosition(options = {}) {
+  return new Promise((resolve, reject) => {
+    if (!navigator.geolocation) return reject(new Error('Geolocation unsupported'));
+    const timer = options.timeout ? setTimeout(() => reject(new Error('Geolocation timeout')), options.timeout) : null;
+    navigator.geolocation.getCurrentPosition(pos => { if (timer) clearTimeout(timer); resolve(pos); }, err => { if (timer) clearTimeout(timer); reject(err); }, { enableHighAccuracy: true });
   });
 }
 
@@ -676,7 +724,8 @@ async function fetchRoute() {
     });
   }
   const profiles = { car: 'routed-car', bike: 'routed-bike', foot: 'routed-foot' };
-  const url = 'https://routing.openstreetmap.de/' + profiles[dirMode] +
+  const profile = profiles[dirMode] || profiles['car'];
+  const url = 'https://routing.openstreetmap.de/' + profile +
     '/route/v1/driving/' + fromPoint.lng + ',' + fromPoint.lat + ';' +
     toPoint.lng + ',' + toPoint.lat +
     '?overview=full&geometries=geojson&steps=true';
@@ -706,7 +755,7 @@ async function fetchRoute() {
   );
   map.fitBounds(bounds, { padding: { top: 90, bottom: 60, left: 40, right: 40 }, pitch: 45, duration: 1400 });
 
-  // Summary + turn-by-turn
+  // Summary + turn-by-turn (Apple-like conversational phrasing)
   const mins = Math.round(route.duration / 60);
   const timeTxt = mins >= 60 ? Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min' : mins + ' min';
   dirSummary.textContent = timeTxt + '  ·  ' + fmtDist(route.distance);
@@ -714,13 +763,29 @@ async function fetchRoute() {
   dirSteps.innerHTML = '';
   route.legs[0].steps.forEach(step => {
     const div = document.createElement('div');
-    div.innerHTML = describeStep(step) + ' <span>' + (step.distance > 15 ? fmtDist(step.distance) : '') + '</span>';
+    const instr = document.createElement('div');
+    instr.className = 'instr';
+    instr.innerHTML = describeStep(step);
+    const meta = document.createElement('div');
+    meta.className = 'meta';
+    meta.textContent = (step.distance > 15 ? fmtDist(step.distance) : '');
+    div.appendChild(instr);
+    div.appendChild(meta);
     dirSteps.appendChild(div);
   });
 }
 
 function fmtDist(m) {
-  return m >= 1000 ? (m / 1000).toFixed(1) + ' km' : Math.round(m) + ' m';
+  const useImperial = navigator.language && /^en(-|$)/i.test(navigator.language) && (navigator.language.indexOf('US') !== -1 || navigator.language.indexOf('en-US') !== -1);
+  if (useImperial) {
+    const feet = m * 3.28084;
+    if (feet < 1000) return Math.round(feet) + ' ft';
+    const miles = feet / 5280;
+    return miles.toFixed(1) + ' mi';
+  } else {
+    if (m >= 1000) return (m / 1000).toFixed(1) + ' km';
+    return Math.round(m) + ' m';
+  }
 }
 
 function esc(s) {
@@ -728,22 +793,45 @@ function esc(s) {
 }
 
 function describeStep(step) {
-  const name = step.name ? 'onto <b>' + esc(step.name) + '</b>' : '';
-  const mod = step.maneuver.modifier || '';
-  switch (step.maneuver.type) {
-    case 'depart': return 'Head out' + (step.name ? ' on <b>' + esc(step.name) + '</b>' : '');
-    case 'arrive': return '<b>Arrive at your destination</b>' + (mod ? ' (on the ' + mod + ')' : '');
-    case 'roundabout':
-    case 'rotary': return 'At the roundabout, take the exit ' + (step.maneuver.exit || 1) + (name ? ' ' + name : '');
-    case 'merge': return 'Merge ' + mod + (name ? ' ' + name : '');
-    case 'on ramp': return 'Take the ramp' + (name ? ' ' + name : '');
-    case 'off ramp': return 'Take the exit' + (name ? ' ' + name : '');
-    case 'fork': return 'Keep ' + (mod || 'straight') + ' at the fork' + (name ? ' ' + name : '');
-    case 'end of road': return 'At the end of the road, turn ' + mod + (name ? ' ' + name : '');
-    case 'continue':
-    case 'new name': return mod && mod !== 'straight' ? 'Continue ' + mod + (name ? ' ' + name : '') : 'Continue' + (name ? ' ' + name : '');
-    case 'turn': return 'Turn ' + mod + (name ? ' ' + name : '');
-    default: return 'Continue' + (name ? ' ' + name : '');
+  // Apple-like conversational directions: "In 0.1 mi, turn right onto Main St."
+  const distText = step.distance >= 0 ? fmtShort(step.distance) : '';
+  const name = step.name ? esc(step.name) : '';
+  const mod = step.maneuver && step.maneuver.modifier ? step.maneuver.modifier : '';
+  const type = step.maneuver && step.maneuver.type ? step.maneuver.type : '';
+
+  function actionText() {
+    switch (type) {
+      case 'depart': return name ? 'Head out on <b>' + name + '</b>' : 'Head out';
+      case 'arrive': return '<b>You have arrived</b>' + (name ? ' at ' + name : '');
+      case 'roundabout': return 'At the roundabout, take the ' + (step.maneuver.exit || 1) + ' exit' + (name ? ' onto <b>' + name + '</b>' : '');
+      case 'merge': return 'Merge ' + (mod || '') + (name ? ' onto <b>' + name + '</b>' : '');
+      case 'on ramp': return 'Take the ramp' + (name ? ' onto <b>' + name + '</b>' : '');
+      case 'off ramp': return 'Take the exit' + (name ? ' onto <b>' + name + '</b>' : '');
+      case 'fork': return 'Keep ' + (mod || 'straight') + ' at the fork' + (name ? ' onto <b>' + name + '</b>' : '');
+      case 'end of road': return 'At the end of the road, turn ' + (mod || 'right') + (name ? ' onto <b>' + name + '</b>' : '');
+      case 'continue':
+      case 'new name': return (mod && mod !== 'straight') ? 'Continue ' + mod + (name ? ' onto <b>' + name + '</b>' : '') : 'Continue' + (name ? ' onto <b>' + name + '</b>' : '');
+      case 'turn': return 'Turn ' + (mod || '') + (name ? ' onto <b>' + name + '</b>' : '');
+      default: return 'Continue' + (name ? ' onto <b>' + name + '</b>' : '');
+    }
+  }
+
+  // Build the sentence: "In X, ACTION"
+  if (distText) return 'In ' + distText + ', ' + actionText();
+  return actionText();
+}
+
+function fmtShort(m) {
+  // Shorter distance text (use for the "In X" prefix)
+  const useImperial = navigator.language && /^en(-|$)/i.test(navigator.language) && (navigator.language.indexOf('US') !== -1 || navigator.language.indexOf('en-US') !== -1);
+  if (useImperial) {
+    const feet = m * 3.28084;
+    if (feet < 500) return Math.round(feet) + ' ft';
+    const miles = feet / 5280;
+    return miles.toFixed(1) + ' mi';
+  } else {
+    if (m < 1000) return Math.round(m) + ' m';
+    return (m / 1000).toFixed(1) + ' km';
   }
 }
 </script>
