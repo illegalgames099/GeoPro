@@ -205,7 +205,7 @@
       <button data-mode="foot">🚶 Walk</button>
     </div>
     <div class="dirRow">
-      <button id="dirGo">Get directions</button>
+      <button id="dirGo">Get Directions</button>
       <button id="dirClear" title="Clear route">✕</button>
     </div>
     <div id="dirSummary"></div>
@@ -219,9 +219,9 @@
     <button data-view="2d">2D</button>
   </div>
   <div class="pillGroup" id="lightToggle">
-    <button data-light="day" class="active">Day Colored Buildings</button>
-    <button data-light="dusk">Dusk Colored Building</button>
-    <button data-light="night">Night Colored Buildings</button>
+    <button data-light="day" class="active">Day Color</button>
+    <button data-light="dusk">Dusk Color</button>
+    <button data-light="night">Night Color</button>
   </div>
 </div>
 
@@ -350,8 +350,8 @@ function applyPreset(name) {
   map.setSky(p.sky);
   map.setLight(p.light);
   if (map.getLayer('atlas-3d-buildings')) {
-    map.setPaintProperty('atlas-3d-buildings', 'fill-extrusion-color', buildingColorExpr(p.buildingColors));
-    map.setPaintProperty('atlas-3d-buildings', 'fill-extrusion-opacity', p.buildingOpacity);
+    map.setPaintProperty('GeoPro-buildings', 'fill-extrusion-color', buildingColorExpr(p.buildingColors));
+    map.setPaintProperty('GeoPro-buildings', 'fill-extrusion-opacity', p.buildingOpacity);
   }
 }
 
@@ -734,7 +734,7 @@ function describeStep(step) {
     case 'depart': return 'Head out' + (step.name ? ' on <b>' + esc(step.name) + '</b>' : '');
     case 'arrive': return '<b>Arrive at your destination</b>' + (mod ? ' (on the ' + mod + ')' : '');
     case 'roundabout':
-    case 'rotary': return 'At the roundabout, take exit ' + (step.maneuver.exit || 1) + (name ? ' ' + name : '');
+    case 'rotary': return 'At the roundabout, take the exit ' + (step.maneuver.exit || 1) + (name ? ' ' + name : '');
     case 'merge': return 'Merge ' + mod + (name ? ' ' + name : '');
     case 'on ramp': return 'Take the ramp' + (name ? ' ' + name : '');
     case 'off ramp': return 'Take the exit' + (name ? ' ' + name : '');
