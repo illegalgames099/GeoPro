@@ -2,811 +2,1894 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>GeoPro — The Premium Maps</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>GeoPro — 3D Maps &amp; Navigation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
+<meta name="description" content="GeoPro: free, open 3D maps with lane-level turn-by-turn navigation. Built on MapLibre, Overture Maps and OpenStreetMap." />
+<meta name="theme-color" content="#f6f7f9" />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#127758;</text></svg>" />
 <link href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet" />
 <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
 <script src="https://unpkg.com/pmtiles@3.2.1/dist/pmtiles.js"></script>
 <style>
-  :root {
-    --panel-bg: rgba(255, 255, 255, 0.92);
-    --panel-text: #1a2233;
-    --accent: #3d6bff;
-    --shadow: 0 4px 18px rgba(15, 25, 55, 0.18);
+  :root{
+    --bg:#f6f7f9;
+    --panel:rgba(255,255,255,.90);
+    --solid:#fff;
+    --text:#131722;
+    --dim:#5b6577;
+    --line:rgba(12,18,32,.10);
+    --fill:rgba(12,18,32,.06);
+    --accent:#0a68ff;
+    --ink:#fff;
+    --green:#12b76a;
+    --red:#e14b4b;
+    --traffic-mod:#f59e0b;
+    --shadow:0 6px 28px rgba(12,20,40,.16),0 1px 2px rgba(12,20,40,.08);
+    --r:16px;
+    --safe-b:env(safe-area-inset-bottom,0px);
+    --safe-t:env(safe-area-inset-top,0px);
   }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-  #map { position: absolute; inset: 0; }
+  body.night{
+    --bg:#0d1017;
+    --panel:rgba(22,26,36,.88);
+    --solid:#161a24;
+    --text:#eef2f8;
+    --dim:#9aa5b8;
+    --line:rgba(255,255,255,.10);
+    --fill:rgba(255,255,255,.08);
+    --accent:#4d8bff;
+    --shadow:0 6px 28px rgba(0,0,0,.5),0 1px 2px rgba(0,0,0,.4);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);
+    font:15px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,Helvetica,Arial,sans-serif;
+    color:var(--text);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
+  #map{position:absolute;inset:0}
+  #tint{position:absolute;inset:0;pointer-events:none;mix-blend-mode:multiply;background:transparent;
+    transition:background 1s ease;z-index:2}
+  button,input{font-family:inherit}
+  button{cursor:pointer}
+  button:focus-visible,input:focus-visible,[tabindex]:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .glass{background:var(--panel);backdrop-filter:blur(18px) saturate(1.4);
+    -webkit-backdrop-filter:blur(18px) saturate(1.4);box-shadow:var(--shadow);border-radius:var(--r)}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-  /* Night/dusk tint overlay — sits on top of the map canvas */
-  #tint {
-    position: absolute; inset: 0;
-    pointer-events: none;
-    mix-blend-mode: multiply;
-    background: transparent;
-    transition: background 1.2s ease;
-    z-index: 2;
-  }
+  /* ---------- brand ---------- */
+  #brand{position:absolute;top:calc(14px + var(--safe-t));right:68px;z-index:11;padding:9px 14px;
+    font-weight:800;letter-spacing:.5px;font-size:13px;user-select:none}
+  #brand i{color:var(--accent);font-style:normal}
+  @media(max-width:860px){#brand{display:none}}
 
-  /* ---------- Search bar ---------- */
-  #searchWrap {
-    position: absolute; top: 14px; left: 14px; z-index: 10;
-    width: min(340px, calc(100vw - 28px));
-  }
-  #searchBox {
-    display: flex; align-items: center; gap: 8px;
-    background: var(--panel-bg); backdrop-filter: blur(10px);
-    border-radius: 12px; box-shadow: var(--shadow);
-    padding: 10px 14px;
-  }
-  #searchBox svg { flex: none; opacity: .55; }
-  #searchInput {
-    flex: 1; border: none; outline: none; background: transparent;
-    font-size: 15px; color: var(--panel-text);
-  }
-  #results {
-    margin-top: 6px; background: var(--panel-bg); backdrop-filter: blur(10px);
-    border-radius: 12px; box-shadow: var(--shadow); overflow: hidden;
-    display: none;
-  }
-  #results .resultRow { display:flex; align-items:center; justify-content:space-between; gap:8px; padding: 10px 14px; font-size: 13.5px; color: var(--panel-text); cursor: pointer; border-bottom: 1px solid rgba(0,0,0,.06); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #results .resultRow:last-child { border-bottom: none; }
-  #results .resultRow:hover { background: rgba(61,107,255,.06); }
-  #results .resultTitle { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
-  #results .dirBtn { flex:none; border:none; background:transparent; color:var(--accent); font-weight:700; padding:6px 8px; border-radius:8px; cursor:pointer; }
-  #results .dirBtn:hover { background: rgba(61,107,255,.08); }
+  /* ---------- left panel ---------- */
+  #panel{position:absolute;top:calc(14px + var(--safe-t));left:14px;z-index:12;
+    width:min(384px,calc(100vw - 28px));display:flex;flex-direction:column;gap:8px;
+    max-height:calc(100vh - 28px - var(--safe-t))}
+  #searchCard{display:flex;align-items:center;gap:10px;padding:12px 14px}
+  #searchCard.hide{display:none}
+  #searchCard .ic{flex:none;opacity:.5;display:flex}
+  #q{flex:1;min-width:0;border:0;background:transparent;font-size:15.5px;color:var(--text);outline:none}
+  #q::placeholder{color:var(--dim)}
+  #q::-webkit-search-cancel-button{display:none}
+  #qClear{display:none}
+  #qClear.on{display:flex}
 
-  /* ---------- Bottom control pills ---------- */
-  #hud {
-    position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%);
-    z-index: 10; display: flex; gap: 10px; align-items: center;
-  }
-  .pillGroup {
-    display: flex; background: var(--panel-bg); backdrop-filter: blur(10px);
-    border-radius: 999px; box-shadow: var(--shadow); overflow: hidden;
-  }
-  .pillGroup button {
-    border: none; background: transparent; padding: 9px 16px;
-    font-size: 13px; font-weight: 600; color: var(--panel-text);
-    cursor: pointer; transition: background .15s, color .15s;
-  }
-  .pillGroup button.active { background: var(--accent); color: #fff; }
-  .pillGroup button:not(.active):hover { background: rgba(61,107,255,.12); }
+  .iconbtn{flex:none;width:32px;height:32px;border:0;border-radius:10px;display:flex;align-items:center;
+    justify-content:center;background:transparent;color:var(--text);transition:background .15s}
+  .iconbtn:hover{background:rgba(10,104,255,.13)}
+  .iconbtn.primary{background:var(--accent);color:var(--ink)}
+  .iconbtn.primary:hover{filter:brightness(1.08)}
 
-  /* ---------- Title chip ---------- */
-  #brand {
-    position: absolute; top: 14px; right: 14px; z-index: 10;
-    background: var(--panel-bg); backdrop-filter: blur(10px);
-    border-radius: 12px; box-shadow: var(--shadow);
-    padding: 8px 14px; font-size: 13px; font-weight: 700; color: var(--panel-text);
-    letter-spacing: .3px; user-select: none;
-  }
-  #brand span { color: var(--accent); }
+  /* ---------- results / recents ---------- */
+  #results{overflow:auto;overscroll-behavior:contain;max-height:46vh;display:none}
+  #results.on{display:block}
+  #results .head{padding:9px 14px 5px;font-size:11px;font-weight:800;letter-spacing:.6px;
+    text-transform:uppercase;color:var(--dim);display:flex;justify-content:space-between;align-items:center}
+  #results .head button{border:0;background:transparent;color:var(--accent);font-size:11px;font-weight:800}
+  #results .row{display:flex;gap:11px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+  #results .row:last-child{border-bottom:0}
+  #results .row:hover,#results .row[aria-selected=true]{background:rgba(10,104,255,.12)}
+  #results .kind{flex:none;width:28px;height:28px;border-radius:9px;background:rgba(10,104,255,.14);
+    display:flex;align-items:center;justify-content:center;font-size:14px}
+  #results .col{min-width:0;flex:1}
+  #results .t{display:block;font-size:14px;font-weight:600}
+  #results .s{display:block;font-size:12px;color:var(--dim)}
+  #results .far{flex:none;font-size:11.5px;font-weight:700;color:var(--dim)}
 
-  /* Move maplibre zoom controls below the brand chip */
-  .maplibregl-ctrl-top-right { top: 52px; }
+  /* ---------- place card ---------- */
+  #place{display:none;padding:14px;gap:11px;flex-direction:column}
+  #place.on{display:flex}
+  #place .top{display:flex;gap:10px;align-items:flex-start}
+  #place h2{margin:0;font-size:17.5px;line-height:1.25;flex:1}
+  #place .sub{font-size:12.5px;color:var(--dim);margin-top:3px}
+  #place .meta{display:flex;gap:8px;flex-wrap:wrap;font-size:11.5px;color:var(--dim)}
+  #place .chip{background:var(--fill);padding:4px 9px;border-radius:999px}
+  #place .acts{display:flex;gap:8px;flex-wrap:wrap}
+  .btn{border:0;border-radius:11px;padding:9px 14px;font-size:13px;font-weight:700;
+    background:rgba(10,104,255,.13);color:var(--accent); display:flex; align-items:center; justify-content:center;}
+  .btn.fill{background:var(--accent);color:var(--ink)}
+  .btn.ghost{background:transparent;color:var(--dim)}
+  .btn:hover{filter:brightness(1.06)}
+  .btn:disabled{opacity:.5;cursor:default;filter:none}
 
-  /* ---------- Directions ---------- */
-  .dirRow { display: flex; align-items: center; gap: 8px; }
-  .dirRow input {
-    flex: 1; min-width: 0; border: 1px solid rgba(0,0,0,.12); border-radius: 8px;
-    padding: 8px 10px; font-size: 13.5px; color: var(--panel-text);
-    background: rgba(255,255,255,.7); outline: none;
-  }
-  .dirRow input:focus { border-color: var(--accent); }
-  .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; }
-  .dotA { background: #2ecc71; }
-  .dotB { background: #e74c3c; }
-  #dirSwap, #dirClear {
-    flex: none; border: none; border-radius: 8px; width: 32px; height: 32px;
-    background: rgba(0,0,0,.06); color: var(--panel-text); cursor: pointer; font-size: 14px;
-  }
-  #dirSwap:hover, #dirClear:hover { background: rgba(0,0,0,.12); }
-  .dirModes { gap: 6px; }
-  .dirModes button {
-    flex: 1; border: none; border-radius: 8px; padding: 7px 4px;
-    font-size: 12.5px; font-weight: 600; color: var(--panel-text);
-    background: rgba(0,0,0,.06); cursor: pointer;
-  }
-  .dirModes button.active { background: var(--accent); color: #fff; }
-  #dirGo {
-    flex: 1; border: none; border-radius: 8px; padding: 9px;
-    background: var(--accent); color: #fff; font-size: 13.5px; font-weight: 700; cursor: pointer;
-  }
-  #dirGo:hover { filter: brightness(1.1); }
-  #dirGo:disabled { opacity: .55; cursor: wait; }
-  #dirSummary { font-size: 13.5px; font-weight: 700; color: var(--panel-text); }
-  #dirSummary:empty, #dirSteps:empty { display: none; }
-  #dirSteps {
-    max-height: 34vh; overflow-y: auto; font-size: 12.5px; color: var(--panel-text);
-    border-top: 1px solid rgba(0,0,0,.08); padding-top: 6px;
-  }
-  #dirSteps div { padding: 8px 6px; border-bottom: 1px solid rgba(0,0,0,.05); display:flex; justify-content:space-between; align-items:center; }
-  #dirSteps .instr { flex:1; }
-  #dirSteps .meta { opacity:.6; margin-left:8px; white-space:nowrap; }
+  /* ---------- directions ---------- */
+  #dir{display:none;flex-direction:column;gap:12px;padding:12px;overflow:hidden; position:relative;}
+  #dir.on{display:flex}
+  #dir .hdr{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+  #dir .hdr b{flex:1;font-size:16px; letter-spacing:-.2px;}
+  
+  .waypoint-block { position:relative; display:flex; flex-direction:column; gap:10px; padding-right: 44px; }
+  .stop-line { position:absolute; left: 16px; top: 22px; bottom: 22px; width: 2px; background:var(--line); z-index:1; }
+  
+  .field{display:flex;align-items:center;gap:12px; position:relative; z-index:2;}
+  .field input{flex:1;min-width:0;border:1px solid transparent;border-radius:11px;padding:10px 12px;
+    font-size:14px;background:var(--fill);color:var(--text);outline:none; transition: background .15s, border .15s;}
+  .field input:focus{border-color:var(--accent); background:var(--solid); box-shadow: 0 0 0 2px rgba(10,104,255,.15);}
+  .dot{flex:none;width:12px;height:12px;border-radius:50%; border:2px solid var(--solid); box-shadow: 0 0 0 1px var(--dim);}
+  .dotA{background:var(--green); box-shadow: 0 0 0 1px var(--green);} 
+  .dotB{background:var(--red); box-shadow: 0 0 0 1px var(--red);} 
+  .dotV{background:var(--dim);}
+  
+  .swap-btn { position:absolute; right: 0; top: 50%; transform: translateY(-50%); width:36px; height:36px; border-radius:50%; background:var(--fill); z-index:3; border: 1px solid var(--line); font-size:16px;}
+  .swap-btn:hover { background: rgba(10,104,255,.12); color: var(--accent); border-color:transparent;}
 
-  /* Red GPS location dot (MapLibre's default is blue) */
-  .maplibregl-user-location-dot,
-  .maplibregl-user-location-dot::before {
-    background-color: #e63b3b;
-  }
+  #modes{display:flex;gap:6px; margin-top: 4px;}
+  #modes button{flex:1;border:0;border-radius:11px;padding:10px 4px;font-size:13px;font-weight:700;
+    background:var(--fill);color:var(--text); transition: background .15s;}
+  #modes button[aria-pressed=true]{background:var(--accent);color:var(--ink)}
+  
+  #alts{display:none;gap:6px;flex-wrap:wrap}
+  #alts.on{display:flex}
+  #alts button{border:1px solid var(--line);border-radius:999px;padding:6px 11px;font-size:12px;
+    font-weight:700;background:transparent;color:var(--text)}
+  #alts button[aria-pressed=true]{background:var(--accent);color:var(--ink);border-color:transparent}
+  
+  #summary{display:none;align-items:baseline;gap:8px;flex-wrap:wrap; padding: 4px 0;}
+  #summary.on{display:flex}
+  #summary b{font-size:22px;letter-spacing:-.4px; font-weight:800;}
+  #summary span{font-size:13.5px;color:var(--dim)}
+  
+  #steps{overflow:auto;overscroll-behavior:contain;max-height:31vh;border-top:1px solid var(--line); margin: 0 -12px; padding: 0 12px;}
+  #steps .st{display:flex;gap:12px;align-items:flex-start;padding:12px 6px;border-bottom:1px solid var(--line); transition: background 0.15s; border-radius: 8px;}
+  #steps .st:hover{background:var(--fill); cursor:pointer;}
+  #steps .st:last-child{border-bottom:0}
+  #steps .st.now{background:rgba(10,104,255,.10);}
+  #steps .gl{flex:none;width:32px;height:32px;border-radius:9px;background:rgba(10,104,255,.13);
+    color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700}
+  #steps .tx{flex:1;min-width:0;font-size:14px; line-height: 1.4;}
+  #steps .d{display:block;font-size:12px;color:var(--dim);margin-top:4px; font-weight:600;}
+  
+  .lanes{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
+  .lane{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+    font-size:14px;background:var(--line);color:var(--dim)}
+  .lane.ok{background:var(--accent);color:var(--ink)}
 
-  /* ---------- Toast ---------- */
-  #toast {
-    position: absolute; top: 74px; left: 50%; transform: translateX(-50%) translateY(-8px);
-    z-index: 20; max-width: min(420px, calc(100vw - 28px));
-    background: rgba(26, 34, 51, 0.94); color: #fff;
-    padding: 10px 16px; border-radius: 10px; font-size: 13.5px;
-    box-shadow: var(--shadow); opacity: 0; pointer-events: none;
-    transition: opacity .25s, transform .25s;
-  }
-  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  /* ---------- right control stack ---------- */
+  #stack{position:absolute;top:calc(58px + var(--safe-t));right:14px;z-index:11;display:flex;
+    flex-direction:column;gap:8px;align-items:flex-end}
+  #stack .grp{display:flex;flex-direction:column;overflow:hidden;border-radius:14px}
+  #stack .grp button{width:42px;height:42px;border:0;background:transparent;color:var(--text);
+    font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;
+    border-bottom:1px solid var(--line)}
+  #stack .grp button:last-child{border-bottom:0}
+  #stack .grp button[aria-pressed=true]{background:var(--accent);color:var(--ink)}
+  #stack .grp button:not([aria-pressed=true]):hover{background:rgba(10,104,255,.12)}
+  #btnCompass svg{transition:transform .1s linear}
+  .maplibregl-ctrl-top-right{display:none}
 
-  @media (max-width: 560px) {
-    #brand { display: none; }
-    .maplibregl-ctrl-top-right { top: 0; }
-    #hud { bottom: 34px; }
-    .pillGroup button { padding: 8px 12px; font-size: 12px; }
+  /* ---------- bottom pills ---------- */
+  #hud{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(24px + var(--safe-b));z-index:11;
+    display:flex;gap:9px}
+  .pills{display:flex;overflow:hidden;border-radius:999px}
+  .pills button{border:0;background:transparent;padding:9px 15px;font-size:12.5px;font-weight:700;color:var(--text)}
+  .pills button[aria-pressed=true]{background:var(--accent);color:var(--ink)}
+  .pills button:not([aria-pressed=true]):hover{background:rgba(10,104,255,.12)}
+  #hud.hide,#panel.hide,#stack.hide,#brand.hide{display:none}
+
+  /* ---------- navigation chrome ---------- */
+  #navTop{position:absolute;top:calc(12px + var(--safe-t));left:50%;
+    transform:translateX(-50%) translateY(-140%);z-index:14;width:min(440px,calc(100vw - 24px));
+    padding:14px;display:flex;flex-direction:column;gap:10px;
+    transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+  #navTop.on{transform:translateX(-50%) translateY(0)}
+  #navTop .main{display:flex;gap:13px;align-items:center}
+  #navTop .arrow{flex:none;width:54px;height:54px;border-radius:15px;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-size:29px;line-height:1}
+  #navTop .meta{flex:1;min-width:0}
+  #navTop .dist{font-size:25px;font-weight:800;letter-spacing:-.5px}
+  #navTop .road{font-size:13.5px;color:var(--dim)}
+  #navTop .then{font-size:12px;color:var(--dim);border-top:1px solid var(--line);padding-top:8px}
+  #navLanes{display:flex;gap:4px;justify-content:center}
+  #navLanes:empty{display:none}
+  #navLanes .lane{width:30px;height:30px;border-radius:8px;font-size:17px}
+  #navBottom{position:absolute;left:50%;transform:translateX(-50%) translateY(170%);z-index:14;
+    bottom:calc(18px + var(--safe-b));width:min(440px,calc(100vw - 24px));padding:12px 14px;
+    display:flex;align-items:center;gap:10px;transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+  #navBottom.on{transform:translateX(-50%) translateY(0)}
+  #navBottom .eta{flex:1;min-width:0}
+  #navBottom .eta b{font-size:19px;letter-spacing:-.3px}
+  #navBottom .eta div{font-size:12.5px;color:var(--dim)}
+  #navBottom .end{background:var(--red);color:#fff}
+  #navMode{position:absolute;top:calc(12px + var(--safe-t));right:14px;z-index:14;display:none;
+    padding:7px 12px;font-size:11.5px;font-weight:800;letter-spacing:.4px; border-radius: 8px;}
+  #navMode.on{display:block}
+
+  /* ---------- toast ---------- */
+  #toast{position:absolute;top:calc(16px + var(--safe-t));left:50%;
+    transform:translateX(-50%) translateY(-16px);z-index:30;max-width:min(460px,calc(100vw - 24px));
+    background:rgba(16,20,30,.94);color:#fff;padding:11px 16px;border-radius:12px;font-size:13.5px;
+    box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s}
+  #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  .maplibregl-user-location-dot,.maplibregl-user-location-dot::before{background-color:var(--red)}
+  .puck{width:28px;height:28px;border-radius:50%;background:var(--red);border:3px solid #fff;
+    box-shadow:0 2px 12px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center}
+  .puck::after{content:"";width:0;height:0;border-left:5px solid transparent;
+    border-right:5px solid transparent;border-bottom:9px solid #fff;margin-bottom:3px}
+
+  @media(max-width:560px){
+    #panel{top:auto;bottom:calc(12px + var(--safe-b));left:10px;width:calc(100vw - 20px);max-height:72vh}
+    #hud{bottom:auto;top:calc(12px + var(--safe-t));left:12px;transform:none;flex-wrap:wrap;
+      max-width:calc(100vw - 84px)}
+    #stack{top:calc(64px + var(--safe-t))}
+    #results{max-height:36vh}
+    #steps{max-height:26vh}
   }
+  @media(prefers-reduced-motion:reduce){*{transition-duration:.01ms!important}}
 </style>
 </head>
 <body>
 
-<div id="map"></div>
-<div id="tint"></div>
+<div id="map" role="application" aria-label="Interactive 3D map"></div>
+<div id="tint" aria-hidden="true"></div>
+<div id="brand" class="glass" aria-hidden="true">GEO<i>PRO</i></div>
 
-<div id="brand">GEO<span>PRO</span></div>
-
-<div id="searchWrap">
-  <div id="searchBox">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a2233" stroke-width="2.4" stroke-linecap="round">
-      <circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/>
-    </svg>
-    <input id="searchInput" type="text" placeholder="Search for a place or address (e.g. Central Park or Starbucks)" autocomplete="off" />
+<div id="panel">
+  <div id="searchCard" class="glass">
+    <span class="ic" aria-hidden="true">
+      <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
+    </span>
+    <label class="sr" for="q">Search places</label>
+    <input id="q" type="search" placeholder="Search GeoPro" autocomplete="off"
+           role="combobox" aria-expanded="false" aria-controls="results" aria-autocomplete="list" />
+    <button id="qClear" class="iconbtn" title="Clear search" aria-label="Clear search">&#10005;</button>
   </div>
-  <div id="results"></div>
 
-  <div id="dirPanel">
-    <div class="dirRow">
-      <span class="dot dotA"></span>
-      <input id="fromInput" type="text" placeholder="From — type, or click the map" autocomplete="off" />
+  <div id="place" class="glass">
+    <div class="top">
+      <h2 id="placeName">Place</h2>
+      <button id="placeClose" class="iconbtn" title="Close" aria-label="Close place details">&#10005;</button>
     </div>
-    <div class="dirRow">
-      <span class="dot dotB"></span>
-      <input id="toInput" type="text" placeholder="To — type, or click the map" autocomplete="off" />
-      <button id="dirSwap" title="Swap">⇅</button>
+    <div>
+      <div class="sub" id="placeSub"></div>
+      <div class="meta" id="placeMeta"></div>
     </div>
-    <div class="dirRow dirModes">
-      <button data-mode="car" class="active">🚗 Drive</button>
-      <button data-mode="bike">🚴 Bike</button>
-      <button data-mode="foot">🚶 Walk</button>
+    <div class="acts">
+      <button class="btn fill" id="placeTo">Directions</button>
+      <button class="btn" id="placeFrom">From here</button>
+      <button class="btn" id="placeSave">Save</button>
+      <button class="btn ghost" id="placeShare">Share</button>
     </div>
-    <div class="dirRow">
-      <button id="dirGo">Get Directions</button>
-      <button id="dirClear" title="Clear route">✕</button>
+  </div>
+
+  <div id="dir" class="glass">
+    <div class="hdr">
+      <b>Directions</b>
+      <button class="iconbtn" id="addStopBtn" title="Add stop" aria-label="Add a stop">&#43;</button>
+      <button class="iconbtn" id="dirClose" title="Close directions" aria-label="Close directions">&#10005;</button>
     </div>
-    <div id="dirSummary"></div>
-    <div id="dirSteps"></div>
+    <div class="waypoint-block">
+      <div class="stop-line" aria-hidden="true"></div>
+      <div id="stops"></div>
+      <button class="iconbtn swap-btn" id="swap" title="Swap start and destination" aria-label="Swap start and destination">&#8645;</button>
+    </div>
+    <div id="modes" role="group" aria-label="Travel mode">
+      <button data-mode="car" aria-pressed="true">&#128663; Drive</button>
+      <button data-mode="bike" aria-pressed="false">&#128690; Bike</button>
+      <button data-mode="foot" aria-pressed="false">&#128694; Walk</button>
+    </div>
+    <div id="alts" role="group" aria-label="Route options"></div>
+    <div id="summary" aria-live="polite"><b id="sumTime"></b><span id="sumDist"></span></div>
+    <div id="steps"></div>
+    <button class="btn fill" id="navBtn" disabled style="width: 100%; padding: 12px; font-size: 15px;">Start Navigation</button>
+  </div>
+  
+  <div id="results" class="glass" role="listbox" aria-label="Search results"></div>
+</div>
+
+<div id="stack">
+  <div class="grp glass">
+    <button id="btnLoc" title="My location (L)" aria-label="My location">&#9678;</button>
+    <button id="btnCompass" title="Reset bearing" aria-label="Reset bearing to north">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3l4.5 15L12 15l-4.5 3z"/></svg>
+    </button>
+  </div>
+  <div class="grp glass">
+    <button id="btnTerrain" aria-pressed="false" title="Terrain" aria-label="Toggle 3D terrain">&#9968;</button>
+    <button id="btnSat" aria-pressed="false" title="Satellite" aria-label="Toggle satellite imagery">&#128752;</button>
+    <button id="btnZin" title="Zoom in" aria-label="Zoom in">&#65291;</button>
+    <button id="btnZout" title="Zoom out" aria-label="Zoom out">&#65293;</button>
   </div>
 </div>
 
 <div id="hud">
-  <div class="pillGroup" id="viewToggle">
-    <button data-view="3d" class="active">3D</button>
-    <button data-view="2d">2D</button>
+  <div class="pills glass" id="viewPills" role="group" aria-label="Camera">
+    <button data-view="3d" aria-pressed="true">3D</button>
+    <button data-view="2d" aria-pressed="false">2D</button>
   </div>
-  <div class="pillGroup" id="lightToggle">
-    <button data-light="day" class="active">Day Color</button>
-    <button data-light="dusk">Dusk Color</button>
-    <button data-light="night">Night Color</button>
+  <div class="pills glass" id="lightPills" role="group" aria-label="Lighting">
+    <button data-light="auto" aria-pressed="true">Auto</button>
+    <button data-light="day" aria-pressed="false">Day</button>
+    <button data-light="dusk" aria-pressed="false">Dusk</button>
+    <button data-light="night" aria-pressed="false">Night</button>
   </div>
 </div>
 
+<div id="navMode" class="glass">WAITING FOR GPS</div>
+
+<div id="navTop" class="glass" role="status" aria-live="polite">
+  <div class="main">
+    <div class="arrow" id="navArrow">&#8593;</div>
+    <div class="meta">
+      <div class="dist" id="navDist">&mdash;</div>
+      <div class="road ell" id="navRoad"></div>
+    </div>
+  </div>
+  <div id="navLanes"></div>
+  <div class="then ell" id="navThen"></div>
+</div>
+
+<div id="navBottom" class="glass">
+  <div class="eta">
+    <b id="navEta">&mdash;</b>
+    <div id="navRemain"></div>
+  </div>
+  <button class="btn" id="navVoice" aria-pressed="true" title="Voice guidance" aria-label="Toggle voice guidance">&#128266;</button>
+  <button class="btn" id="navOverview" title="Route overview" aria-label="Route overview">&#9974;</button>
+  <button class="btn fill end" id="navEnd">End</button>
+</div>
+
+<div id="toast" role="status" aria-live="polite"></div>
+
 <script>
-/* =========================================================================
-   GEOPRO — The free maps website you'll love!
-   Engine : MapLibre GL JS  (open-source, free, same tech Mapbox GL is from)
-   Tiles  : OpenFreeMap     (free vector tiles, no API key, no account)
-   Search : Nominatim (OSM) (free geocoding, no API key)
-   ========================================================================= */
+/* ============================================================================
+   GEOPRO — an open-stack alternative to Apple Maps, in one HTML file.
 
-// Overture Maps buildings (OSM + Microsoft + Google AI footprints combined)
-// served as PMTiles straight from source.coop — free, no key.
-maplibregl.addProtocol('pmtiles', new pmtiles.Protocol().tile);
+   Rendering  MapLibre GL JS (BSD)
+   Basemap    OpenFreeMap "Liberty" vector tiles - keyless, free
+   Buildings  Overture Maps buildings read directly as PMTiles (probed at
+              runtime; falls back to the basemap's OpenMapTiles heights)
+   Search     Photon (komoot) typeahead, Nominatim resolve + reverse geocode
+   Routing    OSRM (FOSSGIS) - returns intersection lane data
+   Terrain    Mapzen / AWS terrarium DEM tiles
+   Imagery    Esri World Imagery
 
+   All public demo services. Fine for personal use; self-host or buy capacity
+   before pointing real traffic at it.
+============================================================================ */
+
+/* ------------------------------------------------------------------ utils */
+const $ = id => document.getElementById(id);
+const RAD = Math.PI / 180;
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const IMPERIAL = /^en-(US|LR)|^my/i.test(navigator.language || 'en');
+const STORE = 'geopro.';
+
+let toastT;
+function toast(msg, ms = 4200) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('on'), ms);
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const stripTags = s => String(s).replace(/<[^>]+>/g, '');
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+
+function load(key, fallback) {
+  try { return JSON.parse(localStorage.getItem(STORE + key)) ?? fallback; }
+  catch (e) { return fallback; }
+}
+function save(key, val) {
+  try { localStorage.setItem(STORE + key, JSON.stringify(val)); } catch (e) {}
+}
+
+/** Metres per degree of lat / lng at a given latitude. */
+function mpd(lat) {
+  const c = Math.cos(lat * RAD);
+  return {
+    lat: 111132.92 - 559.82 * Math.cos(2 * lat * RAD) + 1.175 * Math.cos(4 * lat * RAD),
+    lng: 111412.84 * c - 93.5 * Math.cos(3 * lat * RAD)
+  };
+}
+/** Planar distance in metres. Accurate enough at street scale. */
+function dist2(a, b) {
+  const m = mpd((a[1] + b[1]) / 2);
+  return Math.hypot((b[0] - a[0]) * m.lng, (b[1] - a[1]) * m.lat);
+}
+function bearingOf(a, b) {
+  const p1 = a[1] * RAD, p2 = b[1] * RAD, dl = (b[0] - a[0]) * RAD;
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return (Math.atan2(y, x) / RAD + 360) % 360;
+}
+function fmtDist(m, imperial = IMPERIAL) {
+  if (imperial) {
+    const ft = m * 3.28084;
+    if (ft < 1000) return Math.max(10, Math.round(ft / 10) * 10) + ' ft';
+    const mi = ft / 5280;
+    return (mi < 10 ? mi.toFixed(1) : Math.round(mi)) + ' mi';
+  }
+  if (m < 1000) return Math.max(10, Math.round(m / 10) * 10) + ' m';
+  const km = m / 1000;
+  return (km < 10 ? km.toFixed(1) : Math.round(km)) + ' km';
+}
+function fmtDur(s) {
+  const m = Math.round(s / 60);
+  if (m < 1) return 'under a minute';
+  if (m < 60) return m + ' min';
+  const h = Math.floor(m / 60);
+  return h >= 24 ? Math.floor(h / 24) + ' d ' + (h % 24) + ' hr' : h + ' hr ' + (m % 60) + ' min';
+}
+const fmtClock = d => d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+
+/** Small fetch wrapper: timeout, abort, and a readable error. */
+async function getJSON(url, { timeout = 12000, headers } = {}) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeout);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal, headers });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return await r.json();
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+/* -------------------------------------------------------- map bootstrap */
+const pmProtocol = new pmtiles.Protocol();
+maplibregl.addProtocol('pmtiles', pmProtocol.tile);
+
+const startView = load('view', null);
 const map = new maplibregl.Map({
   container: 'map',
-  style: 'https://tiles.openfreemap.org/styles/liberty', // free, keyless vector style
-  center: [-73.9857, 40.7484],  // Midtown Manhattan — great skyline demo
-  zoom: 15.6,
-  pitch: 60,
-  bearing: -20,
-  hash: true,                   // keeps view in the URL so links are shareable
-  attributionControl: { compact: true },
-  maxPitch: 72,
-  antialias: true
+  style: 'https://tiles.openfreemap.org/styles/liberty',
+  center: startView ? startView.center : [-73.9857, 40.7484],
+  zoom: startView ? startView.zoom : 15.4,
+  pitch: startView ? startView.pitch : 58,
+  bearing: startView ? startView.bearing : -18,
+  hash: true,
+  maxPitch: 80,
+  antialias: true,
+  attributionControl: { compact: true }
 });
-
-map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), 'top-right');
 
 const geolocate = new maplibregl.GeolocateControl({
   positionOptions: { enableHighAccuracy: true },
   trackUserLocation: true,
-  showAccuracyCircle: true,
+  showUserHeading: true,
   fitBoundsOptions: { maxZoom: 16.5 }
 });
 map.addControl(geolocate, 'top-right');
+map.addControl(new maplibregl.ScaleControl({ unit: IMPERIAL ? 'imperial' : 'metric' }), 'bottom-left');
 
-// Surface GPS problems instead of failing silently. Real GPS needs HTTPS
-// (GitHub Pages / Netlify / Cloudflare are all HTTPS, so it works there).
 geolocate.on('error', err => {
-  const msg = err && err.code === 1
-    ? 'Location permission denied — allow location access in your browser to use GPS.'
-    : 'Could not get your location. GPS needs a secure (https) connection and location enabled.';
-  showToast(msg);
+  toast(err && err.code === 1
+    ? 'Location permission denied. Allow location access to use GPS.'
+    : 'Could not get your location. GPS needs an https connection.');
 });
+geolocate.on('geolocate', e => { myLocation = [e.coords.longitude, e.coords.latitude]; });
+let myLocation = null;
 
-map.addControl(new maplibregl.ScaleControl({ unit: 'metric' }), 'bottom-left');
-
-// Readable map error logging (tile/network failures etc.)
 map.on('error', e => {
   const m = e && e.error ? (e.error.message || e.error.status || String(e.error)) : String(e);
-  console.warn('Map error:', m, e && e.sourceId ? 'source=' + e.sourceId : '');
+  console.warn('[geopro]', m, e && e.sourceId ? 'source=' + e.sourceId : '');
+});
+setTimeout(() => { if (!map.loaded()) toast('Loading tiles...', 2500); }, 1600);
+
+// Remember the camera between visits, and keep the compass needle honest.
+map.on('moveend', () => {
+  if (navState.active) return;
+  const c = map.getCenter();
+  save('view', { center: [c.lng, c.lat], zoom: map.getZoom(), pitch: map.getPitch(), bearing: map.getBearing() });
+});
+map.on('rotate', () => {
+  const svg = $('btnCompass').firstElementChild;
+  if (svg) svg.style.transform = `rotate(${-map.getBearing()}deg)`;
 });
 
-// Show a hint while the first tiles stream in, so a blank map doesn't look broken
-map.once('idle', () => {
-  const el = document.getElementById('toast');
-  if (el) el.classList.remove('show');
-});
-setTimeout(() => { if (!map.loaded()) showToast('Loading map…'); }, 1500);
-
-let toastTimer = null;
-function showToast(text) {
-  let el = document.getElementById('toast');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'toast';
-    document.body.appendChild(el);
-  }
-  el.textContent = text;
-  el.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.classList.remove('show'), 5000);
-}
-
-/* ------------------------------------------------------------------
-   Lighting presets (mimics Mapbox Standard's day / dusk / night)
-------------------------------------------------------------------- */
+/* ----------------------------------------------------- lighting presets */
 const PRESETS = {
   day: {
-    tint: 'transparent',
-    sky: { 'sky-color': '#8fc6f7', 'horizon-color': '#eaf4fb', 'fog-color': '#f4f8fb',
-           'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.7 },
-    light: { anchor: 'viewport', color: '#ffffff', intensity: 0.35, position: [1.3, 210, 30] },
-    buildingColors: [0, '#e8eaee', 20, '#dfe3e9', 60, '#ccd3dd', 120, '#b7c1cf', 250, '#a3aec0'],
-    buildingOpacity: 0.96
+    tint: 'transparent', night: false,
+    sky: { 'sky-color': '#8ec5f5', 'horizon-color': '#e9f3fb', 'fog-color': '#f2f6fa',
+           'sky-horizon-blend': .6, 'horizon-fog-blend': .6, 'fog-ground-blend': .72 },
+    light: { anchor: 'viewport', color: '#ffffff', intensity: .34, position: [1.3, 210, 30] },
+    bld: [0, '#e9ebef', 20, '#e0e4ea', 60, '#ccd3dd', 140, '#b6c0ce', 280, '#a1acbe'],
+    route: '#0a68ff', edge: '#0a3fa8', done: '#9aa4b6'
   },
   dusk: {
-    tint: 'rgba(255, 196, 150, 0.14)',
-    sky: { 'sky-color': '#4a5b8c', 'horizon-color': '#f2a65e', 'fog-color': '#e8b98a',
-           'sky-horizon-blend': 0.5, 'horizon-fog-blend': 0.6, 'fog-ground-blend': 0.6 },
-    light: { anchor: 'viewport', color: '#ffd9a8', intensity: 0.4, position: [1.4, 110, 15] },
-    buildingColors: [0, '#f2e0cf', 20, '#ecd4be', 60, '#dfc0a6', 120, '#ceab90', 250, '#bd977e'],
-    buildingOpacity: 0.97
+    tint: 'rgba(255,192,142,.15)', night: false,
+    sky: { 'sky-color': '#455887', 'horizon-color': '#f4a55c', 'fog-color': '#e6b98c',
+           'sky-horizon-blend': .5, 'horizon-fog-blend': .6, 'fog-ground-blend': .62 },
+    light: { anchor: 'viewport', color: '#ffd7a4', intensity: .42, position: [1.4, 110, 15] },
+    bld: [0, '#f3e1cf', 20, '#ecd4bd', 60, '#dec0a5', 140, '#cca98e', 280, '#ba957c'],
+    route: '#2f7bff', edge: '#123a86', done: '#8d8397'
   },
   night: {
-    tint: 'rgba(70, 90, 150, 0.30)',
-    sky: { 'sky-color': '#0b1026', 'horizon-color': '#1d2a52', 'fog-color': '#141b38',
-           'sky-horizon-blend': 0.45, 'horizon-fog-blend': 0.5, 'fog-ground-blend': 0.55 },
-    light: { anchor: 'viewport', color: '#b8c6ff', intensity: 0.5, position: [1.5, 300, 55] },
-    buildingColors: [0, '#5d6a8f', 20, '#576388', 60, '#4c577b', 120, '#424c6e', 250, '#394262'],
-    buildingOpacity: 0.98
+    tint: 'rgba(64,84,148,.32)', night: true,
+    sky: { 'sky-color': '#080d1f', 'horizon-color': '#1b2750', 'fog-color': '#121935',
+           'sky-horizon-blend': .45, 'horizon-fog-blend': .5, 'fog-ground-blend': .55 },
+    light: { anchor: 'viewport', color: '#b9c7ff', intensity: .5, position: [1.5, 300, 55] },
+    bld: [0, '#5c688c', 20, '#556183', 60, '#4a5577', 140, '#404a6a', 280, '#37405e'],
+    route: '#4d8bff', edge: '#0b2a63', done: '#3c455e'
   }
 };
 
-// Overture height in meters where known; else estimate from floor count; else
-// a sensible small-building default.
-const BUILDING_HEIGHT = ['coalesce',
-  ['get', 'height'],
-  ['case', ['has', 'numfloors'], ['*', ['coalesce', ['get', 'numfloors'], 2], 3.2], 8]
+let lightMode = load('light', 'auto');   // auto | day | dusk | night
+let preset = 'day';
+
+/** Local clock picks the preset when the mode is auto. */
+function autoPreset() {
+  const h = new Date().getHours();
+  if (h >= 7 && h < 18) return 'day';
+  if (h >= 18 && h < 21) return 'dusk';
+  return h >= 5 && h < 7 ? 'dusk' : 'night';
+}
+function setLightMode(mode) {
+  lightMode = mode;
+  save('light', mode);
+  applyPreset(mode === 'auto' ? autoPreset() : mode);
+}
+function applyPreset(name) {
+  preset = name;
+  const p = PRESETS[name];
+  $('tint').style.background = p.tint;
+  document.body.classList.toggle('night', p.night);
+  document.querySelector('meta[name=theme-color]').setAttribute('content', p.night ? '#0d1017' : '#f6f7f9');
+  try { map.setSky(p.sky); } catch (e) {}
+  try { map.setLight(p.light); } catch (e) {}
+  if (map.getLayer('geo-buildings')) {
+    map.setPaintProperty('geo-buildings', 'fill-extrusion-color', bldColor(p.bld));
+  }
+  if (map.getLayer('route-line')) paintRoute();
+}
+// Re-evaluate auto lighting every 10 minutes so a long session drifts with the day.
+setInterval(() => { if (lightMode === 'auto') applyPreset(autoPreset()); }, 600000);
+
+/* --------------------------------------------------------- 3D buildings */
+const OVERTURE_URLS = [
+  'https://data.source.coop/cholmes/overture/overture-buildings.pmtiles',
+  'https://data.source.coop/protomaps/openstreetmap/v4.pmtiles'
 ];
 
-function buildingColorExpr(stops) {
-  const expr = ['interpolate', ['linear'], BUILDING_HEIGHT];
-  for (let i = 0; i < stops.length; i += 2) expr.push(stops[i], stops[i + 1]);
-  return expr;
-}
-
-let currentPreset = 'day';
-
-function applyPreset(name) {
-  currentPreset = name;
-  const p = PRESETS[name];
-  document.getElementById('tint').style.background = p.tint;
-  map.setSky(p.sky);
-  map.setLight(p.light);
-  if (map.getLayer('atlas-3d-buildings')) {
-    map.setPaintProperty('GeoPro-buildings', 'fill-extrusion-color', buildingColorExpr(p.buildingColors));
-    map.setPaintProperty('GeoPro-buildings', 'fill-extrusion-opacity', p.buildingOpacity);
+async function probeOverture() {
+  for (const url of OVERTURE_URLS) {
+    try {
+      const p = new pmtiles.PMTiles(url);
+      const header = await p.getHeader();
+      const meta = await p.getMetadata();
+      const layers = (meta && meta.vector_layers) || [];
+      const layer = layers.find(l => /^buildings?$/i.test(l.id)) || layers.find(l => /build/i.test(l.id));
+      if (!layer) continue;
+      pmProtocol.add(p);
+      return { url, layer: layer.id, maxzoom: header.maxZoom ?? 15 };
+    } catch (e) {
+      console.warn('[geopro] Overture mirror unavailable:', url, e && e.message);
+    }
   }
+  return null;
 }
 
-/* ------------------------------------------------------------------
-   3D buildings — realistic extrusions from OSM height data
-------------------------------------------------------------------- */
-map.on('load', () => {
-  const style = map.getStyle();
+// Height in metres where Overture knows it, else floors x 3.2, else a default.
+const H_OVERTURE = ['coalesce',
+  ['get', 'height'],
+  ['*', ['coalesce', ['get', 'num_floors'], ['get', 'numfloors'], 2], 3.2]
+];
+// OpenMapTiles / Liberty schema fallback.
+const H_OMT = ['coalesce',
+  ['get', 'render_height'], ['get', 'height'],
+  ['*', ['coalesce', ['get', 'levels'], ['get', 'building:levels'], 2], 3.2]
+];
+let H_ACTIVE = H_OVERTURE;
 
-  // Remove any fill-extrusion layers the base style ships, so ours is the only one
-  style.layers
-    .filter(l => l.type === 'fill-extrusion')
-    .forEach(l => map.removeLayer(l.id));
+function bldColor(stops) {
+  const e = ['interpolate', ['linear'], H_ACTIVE];
+  for (let i = 0; i < stops.length; i += 2) e.push(stops[i], stops[i + 1]);
+  return e;
+}
 
-  // Insert our buildings just below the first label layer so text stays on top
-  const firstLabel = map.getStyle().layers.find(l => l.type === 'symbol')?.id;
+/* ----------------------------------------------------- chevron sprite */
+function chevronImage(size = 64) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  const x = c.getContext('2d');
+  x.translate(size / 2, size / 2);
+  x.strokeStyle = 'rgba(255,255,255,.95)';
+  x.lineWidth = size * 0.13;
+  x.lineCap = x.lineJoin = 'round';
+  x.beginPath();
+  x.moveTo(-size * 0.22, size * 0.12);
+  x.lineTo(0, -size * 0.16);
+  x.lineTo(size * 0.22, size * 0.12);
+  x.stroke();
+  return x.getImageData(0, 0, size, size);
+}
 
-  // Overture buildings — far more complete than OSM alone (adds Microsoft's
-  // and Google's AI-detected footprints, so small towns get buildings too)
-  map.addSource('overture-buildings', {
-    type: 'vector',
-    url: 'pmtiles://https://data.source.coop/cholmes/overture/overture-buildings.pmtiles',
-    attribution: '© Overture Maps Foundation'
+/* ------------------------------------------------------- layer assembly */
+let baseLayers = [];
+let firstSymbolId = null;
+const empty = () => ({ type: 'FeatureCollection', features: [] });
+
+map.on('load', async () => {
+  baseLayers = map.getStyle().layers.map(l => ({ id: l.id, type: l.type }));
+
+  // Drop extrusions the basemap ships so ours is the only source of truth.
+  baseLayers.filter(l => l.type === 'fill-extrusion').forEach(l => {
+    try { map.removeLayer(l.id); } catch (e) {}
+  });
+  firstSymbolId = map.getStyle().layers.find(l => l.type === 'symbol')?.id;
+
+  const ov = await probeOverture();
+  if (ov) {
+    H_ACTIVE = H_OVERTURE;
+    map.addSource('overture', {
+      type: 'vector', url: 'pmtiles://' + ov.url,
+      attribution: '&copy; Overture Maps Foundation'
+    });
+    addBuildings('overture', ov.layer);
+  } else {
+    H_ACTIVE = H_OMT;
+    const sources = map.getStyle().sources;
+    const src = sources.openmaptiles ? 'openmaptiles' : Object.keys(sources)[0];
+    addBuildings(src, 'building');
+    toast('Overture tiles unreachable - using OpenStreetMap building heights.', 5200);
+  }
+
+  map.addImage('geo-chevron', chevronImage(), { pixelRatio: 2 });
+
+  ['route-alts', 'route-line', 'route-pins']
+    .forEach(id => map.addSource(id, { type: 'geojson', data: empty() }));
+
+  // Unchosen alternatives, tappable to switch.
+  map.addLayer({
+    id: 'route-alts-line', type: 'line', source: 'route-alts',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': '#8a93a6', 'line-opacity': .75,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 8, 3, 16, 7]
+    }
+  }, firstSymbolId);
+
+  // Flat line casing for the highlighted route
+  map.addLayer({
+    id: 'route-line-casing', type: 'line', source: 'route-line',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': PRESETS.day.edge,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 8, 6, 15, 14, 20, 20]
+    }
+  }, firstSymbolId);
+  
+  // The primary highlighted 2D route line (colored by traffic congestion logic)
+  map.addLayer({
+    id: 'route-line', type: 'line', source: 'route-line',
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': PRESETS.day.route,
+      'line-width': ['interpolate', ['linear'], ['zoom'], 8, 3.4, 15, 9, 20, 14]
+    }
+  }, firstSymbolId);
+
+  map.addLayer({
+    id: 'route-chevrons', type: 'symbol', source: 'route-line',
+    layout: {
+      'symbol-placement': 'line', 'symbol-spacing': 74,
+      'icon-image': 'geo-chevron',
+      'icon-size': ['interpolate', ['linear'], ['zoom'], 12, .38, 18, .72],
+      'icon-rotation-alignment': 'map', 'icon-allow-overlap': true, 'icon-ignore-placement': true
+    },
+    paint: { 'icon-opacity': .9 }
   });
 
   map.addLayer({
-    id: 'atlas-3d-buildings',
-    type: 'fill-extrusion',
-    source: 'overture-buildings',
-    'source-layer': 'buildings',
-    minzoom: 13.5,
+    id: 'route-pins', type: 'circle', source: 'route-pins',
     paint: {
-      'fill-extrusion-color': buildingColorExpr(PRESETS.day.buildingColors),
-      // Grow buildings in as you cross z14 — same reveal Mapbox Standard does
-      'fill-extrusion-height': [
-        'interpolate', ['exponential', 1.4], ['zoom'],
-        13.5, 0,
-        15.5, BUILDING_HEIGHT
-      ],
-      'fill-extrusion-base': 0,
-      'fill-extrusion-opacity': PRESETS.day.buildingOpacity,
-      // Darkens walls toward the ground — fakes ambient occlusion, sells the 3D
+      'circle-radius': ['interpolate', ['linear'], ['zoom'], 12, 3.5, 17, 6],
+      'circle-color': '#ffffff',
+      'circle-stroke-color': PRESETS.day.edge,
+      'circle-stroke-width': 2,
+      'circle-opacity': .95
+    }
+  });
+
+  setLightMode(lightMode);
+  map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+  runDeepLink();
+  geolocate.trigger();
+});
+
+function addBuildings(source, sourceLayer) {
+  map.addLayer({
+    id: 'geo-buildings', type: 'fill-extrusion', source, 'source-layer': sourceLayer, minzoom: 13.5,
+    paint: {
+      'fill-extrusion-color': bldColor(PRESETS[preset].bld),
+      'fill-extrusion-height': ['interpolate', ['exponential', 1.4], ['zoom'], 13.5, 0, 15.6, H_ACTIVE],
+      'fill-extrusion-base': ['case', ['has', 'render_min_height'], ['get', 'render_min_height'], 0],
+      'fill-extrusion-opacity': .96,
       'fill-extrusion-vertical-gradient': true
     }
-  }, firstLabel);
-
-  // Route line (empty until directions are requested), under labels
-  map.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
-  map.addLayer({
-    id: 'route-casing', type: 'line', source: 'route',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': '#1d4ed8',
-      'line-width': ['interpolate', ['linear'], ['zoom'], 10, 7, 16, 13],
-      'line-opacity': 0.85
-    }
-  }, firstLabel);
-  map.addLayer({
-    id: 'route-line', type: 'line', source: 'route',
-    layout: { 'line-cap': 'round', 'line-join': 'round' },
-    paint: {
-      'line-color': '#4d8bff',
-      'line-width': ['interpolate', ['linear'], ['zoom'], 10, 4, 16, 8]
-    }
-  }, firstLabel);
-
-  applyPreset(currentPreset);
-});
-
-/* ------------------------------------------------------------------
-   View toggle: 3D (pitched) <-> 2D (top-down)
-------------------------------------------------------------------- */
-document.querySelectorAll('#viewToggle button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#viewToggle button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    if (btn.dataset.view === '3d') {
-      map.easeTo({ pitch: 60, bearing: -20, duration: 900 });
-    } else {
-      map.easeTo({ pitch: 0, bearing: 0, duration: 900 });
-    }
-  });
-});
-
-/* ------------------------------------------------------------------
-   Light preset toggle
-------------------------------------------------------------------- */
-document.querySelectorAll('#lightToggle button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('#lightToggle button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    applyPreset(btn.dataset.light);
-  });
-});
-
-/* ------------------------------------------------------------------
-   Search — Nominatim (free OSM geocoder, no key). Debounced to respect
-   their usage policy (max 1 req/sec).
-------------------------------------------------------------------- */
-const input = document.getElementById('searchInput');
-const resultsEl = document.getElementById('results');
-let debounceTimer = null;
-let searchMarker = null;
-let lastResults = [];
-let lastQuery = '';
-
-input.addEventListener('input', () => {
-  clearTimeout(debounceTimer);
-  const q = input.value.trim();
-  if (q.length < 3) { resultsEl.style.display = 'none'; return; }
-  debounceTimer = setTimeout(() => runSearch(q), 1100);
-});
-
-input.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    clearTimeout(debounceTimer);
-    const q = input.value.trim();
-    // Reuse results we already fetched for this query — avoids a second
-    // Nominatim request inside their 1 req/sec limit.
-    if (q === lastQuery && lastResults.length) {
-      goTo(lastResults[0]);
-    } else if (q.length >= 2) {
-      runSearch(q, true);
-    }
-  }
-  if (e.key === 'Escape') resultsEl.style.display = 'none';
-});
-
-async function runSearch(q, goFirst = false) {
-  try {
-    const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&q=' + encodeURIComponent(q);
-    const res = await fetch(url, { headers: { 'Accept-Language': navigator.language || 'en' } });
-    const data = await res.json();
-    lastResults = data;
-    lastQuery = q;
-    resultsEl.innerHTML = '';
-    if (!data.length) { resultsEl.style.display = 'none'; if (goFirst) showToast('No results for "' + q + '"'); return; }
-    if (goFirst) { goTo(data[0]); return; }
-    data.forEach(place => {
-      const row = document.createElement('div');
-      row.className = 'resultRow';
-
-      const title = document.createElement('div');
-      title.className = 'resultTitle';
-      title.textContent = place.display_name;
-      row.appendChild(title);
-
-      const btn = document.createElement('button');
-      btn.className = 'dirBtn';
-      btn.textContent = 'Directions';
-      btn.addEventListener('click', (ev) => { ev.stopPropagation(); startDirectionsTo(place); });
-      row.appendChild(btn);
-
-      row.addEventListener('click', () => goTo(place));
-      resultsEl.appendChild(row);
-    });
-    resultsEl.style.display = 'block';
-  } catch (err) {
-    console.warn('Search failed:', err);
-  }
+  }, firstSymbolId);
 }
 
-function goTo(place) {
-  resultsEl.style.display = 'none';
-  input.value = place.display_name.split(',')[0];
-  const lng = parseFloat(place.lon), lat = parseFloat(place.lat);
-  if (searchMarker) searchMarker.remove();
-  searchMarker = new maplibregl.Marker({ color: '#3d6bff' }).setLngLat([lng, lat]).addTo(map);
-  const isCity = ['city', 'town', 'state', 'country', 'county'].includes(place.type);
-  map.flyTo({
-    center: [lng, lat],
-    zoom: isCity ? 12.5 : 16.2,
-    pitch: 60,
-    bearing: -20,
-    duration: 2600,
-    essential: true
-  });
+/** Repaint route colours for the current preset and traffic data. */
+function paintRoute() {
+  const p = PRESETS[preset];
+  
+  // Apply traffic colors on top of the preset's native route color
+  map.setPaintProperty('route-line', 'line-color', [
+    'match', ['get', 'congestion'],
+    'heavy', '#e14b4b',
+    'moderate', '#f59e0b',
+    p.route
+  ]);
+  
+  map.setPaintProperty('route-line-casing', 'line-color', p.edge);
+  map.setPaintProperty('route-pins', 'circle-stroke-color', p.edge);
 }
 
-// Provide a quick way to start directions to a search result (like Apple Maps' "Directions" button)
-async function startDirectionsTo(place) {
-  try {
-    dirPanel.classList.add('open');
-    resultsEl.style.display = 'none';
-    // Fill destination with a concise name
-    const shortName = place.display_name.split(',')[0];
-    toInput.value = shortName;
-    toPoint = { lng: parseFloat(place.lon), lat: parseFloat(place.lat), q: place.display_name };
-    syncMarkers();
-    // Try to get user's current location to prefill the origin — graceful fallback
-    if (!fromPoint) {
-      const pos = await getCurrentPosition({ timeout: 5000 }).catch(() => null);
-      if (pos) {
-        fromPoint = { lng: pos.coords.longitude, lat: pos.coords.latitude, q: 'Current location' };
-        fromInput.value = 'Current location';
-        syncMarkers();
-      } else {
-        // If we can't get location, focus the from input so user can type
-        fromInput.focus();
-      }
-    }
-    if (fromPoint && toPoint) await fetchRoute();
-  } catch (err) {
-    console.warn('startDirectionsTo failed', err);
-  }
+/* -------------------------------------------------------- camera & tools */
+function press(group, el) {
+  document.querySelectorAll(group + ' button').forEach(b => b.setAttribute('aria-pressed', String(b === el)));
 }
-
-function getCurrentPosition(options = {}) {
-  return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject(new Error('Geolocation unsupported'));
-    const timer = options.timeout ? setTimeout(() => reject(new Error('Geolocation timeout')), options.timeout) : null;
-    navigator.geolocation.getCurrentPosition(pos => { if (timer) clearTimeout(timer); resolve(pos); }, err => { if (timer) clearTimeout(timer); reject(err); }, { enableHighAccuracy: true });
-  });
-}
-
-// Click anywhere on the results list's outside to close it
-document.addEventListener('click', e => {
-  if (!document.getElementById('searchWrap').contains(e.target)) {
-    resultsEl.style.display = 'none';
-  }
+document.querySelectorAll('#viewPills button').forEach(b => b.onclick = () => {
+  press('#viewPills', b);
+  const to = b.dataset.view === '3d' ? { pitch: 58, bearing: -18 } : { pitch: 0, bearing: 0 };
+  map.easeTo({ ...to, duration: reduceMotion ? 0 : 850 });
 });
-
-/* ------------------------------------------------------------------
-   Directions — OSRM public routing (routing.openstreetmap.de, run by
-   FOSSGIS on OpenStreetMap data). Free, no API key. Car / bike / foot.
-------------------------------------------------------------------- */
-const dirPanel = document.getElementById('dirPanel');
-const fromInput = document.getElementById('fromInput');
-const toInput = document.getElementById('toInput');
-const dirGo = document.getElementById('dirGo');
-const dirSummary = document.getElementById('dirSummary');
-const dirSteps = document.getElementById('dirSteps');
-
-let dirMode = 'car';
-let fromPoint = null;   // { lng, lat, q } — q is the input text it was resolved from
-let toPoint = null;
-let fromMarker = null, toMarker = null;
-
-// (Removed search-bar directions toggle. Directions are started from search results.)
-
-document.querySelectorAll('.dirModes button').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.dirModes button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    dirMode = btn.dataset.mode;
-    if (fromPoint && toPoint) fetchRoute();
-  });
+document.querySelectorAll('#lightPills button').forEach(b => {
+  b.setAttribute('aria-pressed', String(b.dataset.light === lightMode));
+  b.onclick = () => { press('#lightPills', b); setLightMode(b.dataset.light); };
 });
+$('btnZin').onclick = () => map.zoomIn();
+$('btnZout').onclick = () => map.zoomOut();
+$('btnCompass').onclick = () => map.easeTo({ bearing: 0, duration: reduceMotion ? 0 : 500 });
+$('btnLoc').onclick = () => geolocate.trigger();
 
-document.getElementById('dirSwap').addEventListener('click', () => {
-  [fromPoint, toPoint] = [toPoint, fromPoint];
-  [fromInput.value, toInput.value] = [toInput.value, fromInput.value];
-  syncMarkers();
-  if (fromPoint && toPoint) fetchRoute();
-});
-
-document.getElementById('dirClear').addEventListener('click', clearRoute);
-
-function clearRoute() {
-  fromPoint = toPoint = null;
-  fromInput.value = toInput.value = '';
-  dirSummary.textContent = '';
-  dirSteps.innerHTML = '';
-  if (fromMarker) { fromMarker.remove(); fromMarker = null; }
-  if (toMarker) { toMarker.remove(); toMarker = null; }
-  if (map.getSource('route')) {
-    map.getSource('route').setData({ type: 'FeatureCollection', features: [] });
-  }
-}
-
-function makeDragMarker(color, onDrag) {
-  const m = new maplibregl.Marker({ color, draggable: true });
-  m.on('dragend', () => {
-    const p = m.getLngLat();
-    onDrag({ lng: p.lng, lat: p.lat, q: null });
-  });
-  return m;
-}
-
-function syncMarkers() {
-  if (fromPoint) {
-    if (!fromMarker) {
-      fromMarker = makeDragMarker('#2ecc71', p => {
-        fromPoint = p;
-        fromInput.value = fmtLngLat(p);
-        if (toPoint) fetchRoute();
+$('btnTerrain').onclick = e => {
+  const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+  e.currentTarget.setAttribute('aria-pressed', String(on));
+  if (on) {
+    if (!map.getSource('dem')) {
+      map.addSource('dem', {
+        type: 'raster-dem', encoding: 'terrarium', tileSize: 256, maxzoom: 14,
+        tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
+        attribution: 'Elevation: Mapzen / AWS Open Data'
       });
     }
-    fromMarker.setLngLat([fromPoint.lng, fromPoint.lat]).addTo(map);
-  } else if (fromMarker) { fromMarker.remove(); fromMarker = null; }
-  if (toPoint) {
-    if (!toMarker) {
-      toMarker = makeDragMarker('#e74c3c', p => {
-        toPoint = p;
-        toInput.value = fmtLngLat(p);
-        if (fromPoint) fetchRoute();
-      });
-    }
-    toMarker.setLngLat([toPoint.lng, toPoint.lat]).addTo(map);
-  } else if (toMarker) { toMarker.remove(); toMarker = null; }
-}
-
-function fmtLngLat(p) {
-  return p.lat.toFixed(5) + ', ' + p.lng.toFixed(5);
-}
-
-// With the panel open, clicking the map drops A first, then B
-map.on('click', e => {
-  if (!dirPanel.classList.contains('open')) return;
-  const p = { lng: e.lngLat.lng, lat: e.lngLat.lat, q: null };
-  if (!fromPoint) {
-    fromPoint = p; fromInput.value = fmtLngLat(p);
+    map.setTerrain({ source: 'dem', exaggeration: 1.15 });
   } else {
-    toPoint = p; toInput.value = fmtLngLat(p);
+    map.setTerrain(null);
   }
-  syncMarkers();
-  if (fromPoint && toPoint) fetchRoute();
-});
+};
 
-async function geocodeOne(q) {
-  const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent(q);
-  const res = await fetch(url, { headers: { 'Accept-Language': navigator.language || 'en' } });
-  const data = await res.json();
-  if (!data.length) throw new Error('No results for "' + q + '"');
-  return { lng: parseFloat(data[0].lon), lat: parseFloat(data[0].lat), q };
+const SAT_URL = 'https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+$('btnSat').onclick = e => {
+  const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+  e.currentTarget.setAttribute('aria-pressed', String(on));
+  if (on && !map.getSource('sat')) {
+    map.addSource('sat', {
+      type: 'raster', tiles: [SAT_URL], tileSize: 256, maxzoom: 19,
+      attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics'
+    });
+    map.addLayer({ id: 'sat', type: 'raster', source: 'sat', paint: { 'raster-opacity': 1 } },
+      map.getStyle().layers[1]?.id);
+  }
+  if (map.getLayer('sat')) map.setLayoutProperty('sat', 'visibility', on ? 'visible' : 'none');
+  baseLayers.forEach(l => {
+    if ((l.type === 'fill' || l.type === 'background') && map.getLayer(l.id)) {
+      map.setLayoutProperty(l.id, 'visibility', on ? 'none' : 'visible');
+    }
+  });
+};
+
+/* ------------------------------------------------------------ geocoding */
+const PHOTON = 'https://photon.komoot.io/api/';
+const NOMINATIM = 'https://nominatim.openstreetmap.org/';
+const lang2 = (navigator.language || 'en').slice(0, 2);
+const photonLang = /^(en|de|fr|it)$/.test(lang2) ? lang2 : 'en';
+const acceptLang = { 'Accept-Language': navigator.language || 'en' };
+
+const suggestCache = new Map();
+
+function labelFor(p) {
+  const street = p.housenumber && p.street ? p.housenumber + ' ' + p.street : p.street;
+  return p.name || street || p.city || p.county || 'Unnamed place';
+}
+function subFor(p) {
+  const street = p.name && p.street ? (p.housenumber ? p.housenumber + ' ' + p.street : p.street) : null;
+  return [street, p.city || p.county, p.state, p.country].filter(Boolean).join(', ');
 }
 
-const sleep = ms => new Promise(r => setTimeout(r, ms));
+/** Typeahead. Photon first (no rate ceiling), Nominatim as a backup. */
+async function suggest(text) {
+  const c = map.getCenter();
+  const key = text.toLowerCase() + '|' + c.lat.toFixed(1) + ',' + c.lng.toFixed(1);
+  if (suggestCache.has(key)) return suggestCache.get(key);
 
-dirGo.addEventListener('click', async () => {
-  dirGo.disabled = true;
-  dirGo.textContent = 'Finding route…';
+  let out;
   try {
-    // Resolve typed addresses that aren't resolved yet (spaced ≥1s for Nominatim)
-    let geocoded = false;
-    if (fromInput.value.trim() && (!fromPoint || (fromPoint.q && fromPoint.q !== fromInput.value.trim()))) {
-      fromPoint = await geocodeOne(fromInput.value.trim());
-      geocoded = true;
-    }
-    if (toInput.value.trim() && (!toPoint || (toPoint.q && toPoint.q !== toInput.value.trim()))) {
-      if (geocoded) await sleep(1100);
-      toPoint = await geocodeOne(toInput.value.trim());
-    }
-    if (!fromPoint || !toPoint) { showToast('Set both a start and a destination.'); return; }
-    syncMarkers();
-    await fetchRoute();
-  } catch (err) {
-    showToast(err.message || 'Could not find that place.');
-  } finally {
-    dirGo.disabled = false;
-    dirGo.textContent = 'Get directions';
+    const j = await getJSON(`${PHOTON}?q=${encodeURIComponent(text)}&limit=7&lang=${photonLang}` +
+      `&lat=${c.lat.toFixed(4)}&lon=${c.lng.toFixed(4)}`, { timeout: 7000 });
+    out = (j.features || []).map(f => {
+      const p = f.properties || {};
+      return {
+        label: labelFor(p), sub: subFor(p),
+        lng: f.geometry.coordinates[0], lat: f.geometry.coordinates[1],
+        kind: p.osm_key || 'place',
+        broad: /^(city|state|country|county|region)$/.test(p.type || '')
+      };
+    });
+  } catch (e) {
+    const j = await getJSON(`${NOMINATIM}search?format=jsonv2&limit=7&q=${encodeURIComponent(text)}`,
+      { headers: acceptLang });
+    out = j.map(p => ({
+      label: p.display_name.split(',')[0],
+      sub: p.display_name.split(',').slice(1, 4).join(',').trim(),
+      lng: +p.lon, lat: +p.lat, kind: p.category || 'place',
+      broad: ['city', 'town', 'state', 'country', 'county'].includes(p.type)
+    }));
   }
+  // Deduplicate near-identical hits, which both geocoders emit freely.
+  const seen = new Set();
+  out = out.filter(p => {
+    const k = p.label + '|' + p.lat.toFixed(3) + ',' + p.lng.toFixed(3);
+    return seen.has(k) ? false : (seen.add(k), true);
+  });
+  suggestCache.set(key, out);
+  if (suggestCache.size > 60) suggestCache.delete(suggestCache.keys().next().value);
+  return out;
+}
+
+/** Accepts "lat, lng" directly so pasted coordinates just work. */
+function parseLatLng(text) {
+  const m = text.match(/^\s*(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)\s*$/);
+  if (!m) return null;
+  const lat = +m[1], lng = +m[2];
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat, lng, label: lat.toFixed(5) + ', ' + lng.toFixed(5), sub: 'Coordinates', kind: 'place' };
+}
+
+async function geocodeOne(text) {
+  const coord = parseLatLng(text);
+  if (coord) return { lng: coord.lng, lat: coord.lat, q: text, label: coord.label };
+  const list = await suggest(text);
+  if (!list.length) throw new Error(`No match for "${text}"`);
+  return { lng: list[0].lng, lat: list[0].lat, q: text, label: list[0].label };
+}
+
+async function reverse(lng, lat) {
+  try {
+    const j = await getJSON(`${NOMINATIM}reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18`,
+      { headers: acceptLang, timeout: 8000 });
+    const a = j.address || {};
+    return {
+      label: j.name || [a.house_number, a.road].filter(Boolean).join(' ') || a.suburb || a.city || 'Dropped pin',
+      sub: j.display_name || ''
+    };
+  } catch (e) {
+    return { label: 'Dropped pin', sub: lat.toFixed(5) + ', ' + lng.toFixed(5) };
+  }
+}
+
+/* ----------------------------------------------------------- search UI */
+const qEl = $('q'), resultsEl = $('results');
+let searchT = null, searchSeq = 0, lastList = [], selIdx = -1, searchMarker = null;
+
+// Track which input is actively triggering the search (Main search or Waypoints)
+let activeInput = qEl; 
+let activeStopIdx = -1;
+
+function bindAutocomplete(inputEl, stopIdx = -1) {
+  inputEl.addEventListener('focus', () => {
+    activeInput = inputEl;
+    activeStopIdx = stopIdx;
+    if (!inputEl.value.trim()) showRecents();
+  });
+  
+  inputEl.addEventListener('input', () => {
+    clearTimeout(searchT);
+    const text = inputEl.value.trim();
+    if (inputEl === qEl) $('qClear').classList.toggle('on', !!text);
+    
+    if (!text) { showRecents(); return; }
+    if (text.length < 2) { closeResults(); return; }
+
+    const coord = parseLatLng(text);
+    if (coord) { renderResults([coord]); return; }
+
+    const seq = ++searchSeq;
+    searchT = setTimeout(async () => {
+      try {
+        const list = await suggest(text);
+        if (seq === searchSeq) renderResults(list);
+      } catch (e) {
+        if (seq === searchSeq) toast('Search is unavailable right now.');
+      }
+    }, 200);
+  });
+
+  inputEl.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (!lastList.length) return;
+      selIdx = clamp(selIdx + (e.key === 'ArrowDown' ? 1 : -1), 0, lastList.length - 1);
+      highlight();
+    } else if (e.key === 'Enter') {
+      if (lastList.length) pickPlace(lastList[Math.max(0, selIdx)]);
+    } else if (e.key === 'Escape') {
+      closeResults(); inputEl.blur();
+    }
+  });
+}
+
+// Bind Main Search Bar
+bindAutocomplete(qEl, -1);
+
+function highlight() {
+  const rows = [...resultsEl.querySelectorAll('.row')];
+  rows.forEach((c, i) => c.setAttribute('aria-selected', String(i === selIdx)));
+  if (rows[selIdx]) rows[selIdx].scrollIntoView({ block: 'nearest' });
+}
+
+$('qClear').onclick = () => {
+  qEl.value = '';
+  $('qClear').classList.remove('on');
+  closeResults();
+  if (searchMarker) { searchMarker.remove(); searchMarker = null; }
+  $('place').classList.remove('on');
+  qEl.focus();
+};
+
+function closeResults() {
+  resultsEl.classList.remove('on');
+  if (activeInput) activeInput.setAttribute('aria-expanded', 'false');
+  lastList = []; selIdx = -1;
+}
+
+const KIND_ICON = {
+  place: '\u{1F4CD}', amenity: '\u2615', shop: '\u{1F6CD}', tourism: '\u{1F3DB}', railway: '\u{1F689}',
+  aeroway: '\u2708', highway: '\u{1F6E4}', building: '\u{1F3E2}', natural: '\u{1F332}',
+  leisure: '\u{1F3DE}', office: '\u{1F4BC}', historic: '\u{1F5FF}', recent: '\u{1F550}', saved: '\u2B50',
+  myloc: '\u25CE'
+};
+
+function renderResults(list, heading) {
+  lastList = list; selIdx = -1;
+  resultsEl.innerHTML = '';
+  
+  // Inject "My Location" option for waypoint fields if empty
+  if (activeStopIdx >= 0 && activeInput.value.trim() === '' && myLocation) {
+      list = [{ label: 'My Location', sub: 'Current GPS Position', lng: myLocation[0], lat: myLocation[1], kind: 'myloc', isMyLoc: true }, ...list];
+  }
+
+  if (!list.length) { closeResults(); return; }
+
+  const here = myLocation || [map.getCenter().lng, map.getCenter().lat];
+  
+  // Sort results by proximity
+  list.sort((a, b) => {
+    if (a.isMyLoc) return -1;
+    if (b.isMyLoc) return 1;
+    return dist2(here, [a.lng, a.lat]) - dist2(here, [b.lng, b.lat])
+  });
+
+  if (heading) {
+    const h = document.createElement('div');
+    h.className = 'head';
+    h.innerHTML = `<span>${esc(heading)}</span>`;
+    if (activeStopIdx === -1) {
+      const clear = document.createElement('button');
+      clear.textContent = 'Clear';
+      clear.onclick = ev => { ev.stopPropagation(); save('recent', []); closeResults(); };
+      h.appendChild(clear);
+    }
+    resultsEl.appendChild(h);
+  }
+
+  list.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.setAttribute('role', 'option');
+    row.setAttribute('aria-selected', 'false');
+    row.tabIndex = 0;
+    const away = dist2(here, [p.lng, p.lat]);
+    row.innerHTML =
+      `<span class="kind" aria-hidden="true">${KIND_ICON[p.kind] || KIND_ICON.place}</span>` +
+      `<span class="col"><span class="t ell">${esc(p.label)}</span>` +
+      `<span class="s ell">${esc(p.sub || '')}</span></span>` +
+      `<span class="far">${away > 200 && !p.isMyLoc ? fmtDist(away) : ''}</span>`;
+    row.onclick = () => pickPlace(p);
+    row.onkeydown = e => { if (e.key === 'Enter') pickPlace(p); };
+    resultsEl.appendChild(row);
+  });
+  
+  resultsEl.classList.add('on');
+  if (activeInput) activeInput.setAttribute('aria-expanded', 'true');
+}
+
+function showRecents() {
+  const recent = load('recent', []);
+  const saved = load('saved', []).map(s => ({ ...s, kind: 'saved' }));
+  const list = [...saved.slice(0, 3), ...recent.slice(0, 6)];
+  if (activeStopIdx >= 0 || list.length > 0) renderResults(list, 'Recent & saved');
+  else closeResults();
+}
+
+function pushRecent(p) {
+  if (p.isMyLoc) return;
+  const recent = load('recent', [])
+    .filter(r => Math.abs(r.lat - p.lat) > 1e-5 || Math.abs(r.lng - p.lng) > 1e-5);
+  recent.unshift({ label: p.label, sub: p.sub || '', lng: p.lng, lat: p.lat, kind: 'recent' });
+  save('recent', recent.slice(0, 12));
+}
+
+document.addEventListener('click', e => {
+  if (!$('panel').contains(e.target)) closeResults();
 });
 
-[fromInput, toInput].forEach(inp => inp.addEventListener('keydown', e => {
-  if (e.key === 'Enter') dirGo.click();
-}));
-
-async function fetchRoute() {
-  // If the user asks for a route before the style finishes loading, wait for
-  // the load handler (which adds the route source/layers) to run first.
-  if (!map.getSource('route')) {
-    await new Promise(resolve => {
-      if (map.getSource('route')) return resolve();
-      map.once('idle', resolve);
+function pickPlace(p) {
+  closeResults();
+  pushRecent(p);
+  
+  if ($('dir').classList.contains('on') && activeStopIdx >= 0) {
+    // We are routing
+    setStop(activeStopIdx, p);
+    if (readyToRoute()) {
+       requestRoute();
+       activeInput.blur();
+    } else {
+       // Smart focus logic: If we just filled stop A, focus stop B.
+       if (activeStopIdx < stops.length - 1) {
+           stopInputs()[activeStopIdx + 1].focus();
+       }
+    }
+  } else {
+    // Standard Main Search Drop
+    qEl.value = p.label;
+    $('qClear').classList.add('on');
+    dropPin(p.lng, p.lat);
+    showPlace(p.label, p.sub || fmtLngLat(p), { lng: p.lng, lat: p.lat });
+    map.flyTo({
+      center: [p.lng, p.lat],
+      zoom: p.broad ? 12.4 : 16.4,
+      pitch: map.getPitch() > 10 ? 58 : 0,
+      duration: reduceMotion ? 0 : 2000,
+      essential: true
     });
   }
-  const profiles = { car: 'routed-car', bike: 'routed-bike', foot: 'routed-foot' };
-  const profile = profiles[dirMode] || profiles['car'];
-  const url = 'https://routing.openstreetmap.de/' + profile +
-    '/route/v1/driving/' + fromPoint.lng + ',' + fromPoint.lat + ';' +
-    toPoint.lng + ',' + toPoint.lat +
-    '?overview=full&geometries=geojson&steps=true';
+}
+
+function dropPin(lng, lat) {
+  if (searchMarker) searchMarker.remove();
+  searchMarker = new maplibregl.Marker({ color: '#e14b4b' }).setLngLat([lng, lat]).addTo(map);
+}
+const fmtLngLat = p => p.lat.toFixed(5) + ', ' + p.lng.toFixed(5);
+
+/* ---------------------------------------------------------- place card */
+let placeCtx = null;
+
+function showPlace(name, sub, coord, extra) {
+  placeCtx = { name, sub, coord };
+  $('placeName').textContent = name;
+  $('placeSub').textContent = sub || '';
+  const here = myLocation || [map.getCenter().lng, map.getCenter().lat];
+  const chips = [fmtLngLat(coord) + ''];
+  const away = dist2(here, [coord.lng, coord.lat]);
+  if (away > 200) chips.unshift(fmtDist(away) + ' away');
+  if (extra) chips.push(extra);
+  $('placeMeta').innerHTML = chips.map(c => `<span class="chip">${esc(c)}</span>`).join('');
+  const isSaved = load('saved', []).some(s =>
+    Math.abs(s.coord.lat - coord.lat) < 1e-5 && Math.abs(s.coord.lng - coord.lng) < 1e-5);
+  $('placeSave').textContent = isSaved ? 'Saved' : 'Save';
+  $('place').classList.add('on');
+}
+
+$('placeClose').onclick = () => $('place').classList.remove('on');
+
+$('placeTo').onclick = () => {
+  if (!placeCtx) return;
+  openDirections();
+  setStop(stops.length - 1, { ...placeCtx.coord, q: placeCtx.name, label: placeCtx.name });
+  if (!stops[0].point && myLocation) {
+     setStop(0, { lng: myLocation[0], lat: myLocation[1], q: null, label: 'My location', isMyLoc: true });
+     requestRoute();
+  } else if (!stops[0].point) {
+     stopInputs()[0].focus();
+  } else {
+     requestRoute();
+  }
+};
+
+$('placeFrom').onclick = () => {
+  if (!placeCtx) return;
+  openDirections();
+  setStop(0, { ...placeCtx.coord, q: placeCtx.name, label: placeCtx.name });
+  if (stops[stops.length - 1].point) requestRoute();
+  else stopInputs()[stops.length - 1].focus();
+};
+
+$('placeSave').onclick = () => {
+  if (!placeCtx) return;
+  const saved = load('saved', []);
+  const at = saved.findIndex(s =>
+    Math.abs(s.coord.lat - placeCtx.coord.lat) < 1e-5 && Math.abs(s.coord.lng - placeCtx.coord.lng) < 1e-5);
+  if (at >= 0) {
+    saved.splice(at, 1);
+    save('saved', saved);
+    $('placeSave').textContent = 'Save';
+    toast('Removed from saved places.');
+  } else {
+    saved.unshift({ label: placeCtx.name, sub: placeCtx.sub || '', coord: placeCtx.coord,
+                    lng: placeCtx.coord.lng, lat: placeCtx.coord.lat, at: Date.now() });
+    save('saved', saved.slice(0, 60));
+    $('placeSave').textContent = 'Saved';
+    toast('Saved "' + placeCtx.name + '"');
+  }
+};
+$('placeShare').onclick = async () => {
+  if (!placeCtx) return;
+  const url = new URL(location.href.split('?')[0]);
+  url.searchParams.set('to', placeCtx.coord.lat.toFixed(5) + ',' + placeCtx.coord.lng.toFixed(5));
+  const link = url.toString();
+  try {
+    if (navigator.share) await navigator.share({ title: placeCtx.name, url: link });
+    else { await navigator.clipboard.writeText(link); toast('Link copied to clipboard.'); }
+  } catch (e) { toast('Could not share that link.'); }
+};
+
+// Tapping the map: POI label first, otherwise reverse geocode the point.
+map.on('click', async e => {
+  if ($('dir').classList.contains('on') || navState.active) return;
+  const hit = map.queryRenderedFeatures(e.point)
+    .find(f => f.layer.type === 'symbol' && f.properties && f.properties.name);
+  dropPin(e.lngLat.lng, e.lngLat.lat);
+  if (hit) {
+    showPlace(hit.properties.name, hit.properties.class || hit.properties.subclass || '',
+      { lng: e.lngLat.lng, lat: e.lngLat.lat });
+    return;
+  }
+  showPlace('Locating...', '', { lng: e.lngLat.lng, lat: e.lngLat.lat });
+  const info = await reverse(e.lngLat.lng, e.lngLat.lat);
+  showPlace(info.label, info.sub, { lng: e.lngLat.lng, lat: e.lngLat.lat });
+});
+
+map.on('mouseenter', 'route-alts-line', () => map.getCanvas().style.cursor = 'pointer');
+map.on('mouseleave', 'route-alts-line', () => map.getCanvas().style.cursor = '');
+map.on('click', 'route-alts-line', e => {
+  if (navState.active) return;
+  e.originalEvent.stopPropagation();
+  const other = routes.map((_, i) => i).filter(i => i !== routeIdx);
+  if (other.length) { selectRoute(other[0], false); toast('Switched route.'); }
+});
+
+/* ============================== DIRECTIONS ============================== */
+const OSRM = { car: 'routed-car', bike: 'routed-bike', foot: 'routed-foot' };
+let mode = load('mode', 'car');
+let routes = [], routeIdx = 0, activeRoute = null;
+let routeSeq = 0;
+
+// Waypoints: first is the start, last the destination, middles are stops.
+let stops = [{ point: null, marker: null }, { point: null, marker: null }];
+
+function openDirections() {
+  $('dir').classList.add('on');
+  $('place').classList.remove('on');
+  $('searchCard').classList.add('hide');
+  closeResults();
+}
+function closeDirections() {
+  $('dir').classList.remove('on');
+  $('searchCard').classList.remove('hide');
+  activeStopIdx = -1;
+  activeInput = qEl;
+}
+$('dirClose').onclick = closeDirections;
+
+document.querySelectorAll('#modes button').forEach(b => {
+  b.setAttribute('aria-pressed', String(b.dataset.mode === mode));
+  b.onclick = () => {
+    press('#modes', b);
+    mode = b.dataset.mode;
+    save('mode', mode);
+    if (readyToRoute()) requestRoute();
+  };
+});
+
+const readyToRoute = () => stops.filter(s => s.point).length >= 2 &&
+  stops[0].point && stops[stops.length - 1].point;
+
+/* ---- waypoint rows are rebuilt from `stops` so indices stay honest ---- */
+function renderStops() {
+  const box = $('stops');
+  box.innerHTML = '';
+  stops.forEach((s, i) => {
+    const last = i === stops.length - 1;
+    const row = document.createElement('div');
+    row.className = 'field';
+
+    const dot = document.createElement('span');
+    dot.className = 'dot ' + (i === 0 ? 'dotA' : last ? 'dotB' : 'dotV');
+    dot.setAttribute('aria-hidden', 'true');
+
+    const input = document.createElement('input');
+    input.value = s.point ? (s.point.label || fmtLngLat(s.point)) : '';
+    input.placeholder = i === 0 ? 'Start - search, or map click' : last ? 'Destination' : 'Stop ' + i;
+    input.autocomplete = 'off';
+    input.setAttribute('aria-label', i === 0 ? 'Start' : last ? 'Destination' : 'Stop ' + i);
+    
+    // Bind universal autocomplete
+    bindAutocomplete(input, i);
+
+    input.addEventListener('input', () => {
+      // Typing invalidates the resolved coordinate for this row.
+      if (s.point && s.point.label !== input.value) s.point = { ...s.point, stale: true };
+    });
+
+    row.append(dot, input);
+
+    if (i !== 0 && i !== stops.length - 1 && stops.length > 2) {
+      const del = document.createElement('button');
+      del.className = 'iconbtn';
+      del.title = 'Remove this stop';
+      del.setAttribute('aria-label', 'Remove this stop');
+      del.innerHTML = '\u2212';
+      del.onclick = () => {
+        stops.splice(i, 1);
+        resetMarkers();          
+        renderStops();
+        if (readyToRoute()) requestRoute(); else clearRouteGeometry();
+      };
+      row.append(del);
+    }
+    box.append(row);
+  });
+}
+
+function stopInputs() { return [...$('stops').querySelectorAll('input')]; }
+
+function setStop(i, point) {
+  if (i < 0 || i >= stops.length) return;
+  stops[i].point = point;
+  const input = stopInputs()[i];
+  if (input) input.value = point ? (point.label || fmtLngLat(point)) : '';
+  syncMarkers();
+}
+
+$('addStopBtn').onclick = () => {
+  if (stops.length >= 6) return toast('Up to six waypoints.');
+  stops.splice(stops.length - 1, 0, { point: null, marker: null });
+  renderStops();
+  stopInputs()[stops.length - 2].focus();
+};
+
+$('swap').onclick = () => {
+  stops.reverse();
+  resetMarkers();              // start and destination swap colours
+  renderStops();
+  if (readyToRoute()) requestRoute();
+};
+
+function markerColor(i) {
+  return i === 0 ? '#12b76a' : i === stops.length - 1 ? '#e14b4b' : '#5b6577';
+}
+
+/** Drop every marker so syncMarkers rebuilds them with the right colour. */
+function resetMarkers() {
+  stops.forEach(s => { if (s.marker) { s.marker.remove(); s.marker = null; } });
+  syncMarkers();
+}
+function syncMarkers() {
+  stops.forEach((s, i) => {
+    if (!s.point) {
+      if (s.marker) { s.marker.remove(); s.marker = null; }
+      return;
+    }
+    if (!s.marker) {
+      s.marker = new maplibregl.Marker({ color: markerColor(i), draggable: true });
+      s.marker.on('dragend', () => {
+        const p = s.marker.getLngLat();
+        const idx = stops.indexOf(s);
+        s.point = { lng: p.lng, lat: p.lat, q: null, label: null };
+        const input = stopInputs()[idx];
+        if (input) input.value = fmtLngLat(s.point);
+        if (readyToRoute()) requestRoute();
+      });
+    }
+    s.marker.setLngLat([s.point.lng, s.point.lat]).addTo(map);
+  });
+}
+
+// With the panel open, map clicks fill the first empty waypoint.
+map.on('click', e => {
+  if (!$('dir').classList.contains('on') || navState.active) return;
+  const p = { lng: e.lngLat.lng, lat: e.lngLat.lat, q: null, label: null };
+  const empty_i = stops.findIndex(s => !s.point);
+  setStop(empty_i >= 0 ? empty_i : stops.length - 1, p);
+  const input = stopInputs()[empty_i >= 0 ? empty_i : stops.length - 1];
+  if (input) input.value = fmtLngLat(p);
+  if (readyToRoute()) requestRoute();
+});
+
+function clearRouteGeometry() {
+  routes = []; activeRoute = null; routeIdx = 0;
+  $('summary').classList.remove('on');
+  $('alts').classList.remove('on');
+  $('steps').innerHTML = '';
+  $('navBtn').disabled = true;
+  ['route-line', 'route-pins', 'route-alts']
+    .forEach(s => { if (map.getSource(s)) map.getSource(s).setData(empty()); });
+}
+
+async function waitForSources() {
+  if (map.getSource('route-line')) return;
+  await new Promise(res => {
+    const tick = () => map.getSource('route-line') ? res() : map.once('idle', tick);
+    tick();
+  });
+}
+
+async function requestRoute(opts = {}) {
+  await waitForSources();
+  const pts = stops.filter(s => s.point).map(s => `${s.point.lng},${s.point.lat}`).join(';');
+  const url = `https://routing.openstreetmap.de/${OSRM[mode]}/route/v1/driving/${pts}` +
+    `?overview=full&geometries=geojson&steps=true&annotations=duration,distance` +
+    `&alternatives=true`;
+
+  const seq = ++routeSeq;
   let data;
   try {
-    const res = await fetch(url);
-    data = await res.json();
-  } catch (err) {
-    showToast('Routing service unreachable — try again in a moment.');
+    data = await getJSON(url, { timeout: 15000 });
+  } catch (e) {
+    toast(e.name === 'AbortError' ? 'Routing timed out. Try again.' : 'Routing service unreachable.');
     return;
   }
-  if (data.code !== 'Ok' || !data.routes || !data.routes.length) {
-    showToast('No route found between those points.');
+  if (seq !== routeSeq) return;                       // a newer request landed first
+  if (data.code !== 'Ok' || !data.routes?.length) {
+    toast(data.code === 'NoRoute'
+      ? 'No route between those points for this mode.'
+      : 'Routing failed: ' + (data.code || 'unknown error'));
     return;
   }
-  const route = data.routes[0];
+  routes = data.routes;
+  routeIdx = 0;
+  renderAlts();
+  selectRoute(0, opts.fit !== false);
+  $('navBtn').disabled = false;
+}
 
-  map.getSource('route').setData({
-    type: 'Feature', properties: {}, geometry: route.geometry
+function renderAlts() {
+  const box = $('alts');
+  box.innerHTML = '';
+  if (routes.length < 2) { box.classList.remove('on'); return; }
+  const best = Math.min(...routes.map(r => r.duration));
+  routes.forEach((r, i) => {
+    const b = document.createElement('button');
+    const delta = Math.round((r.duration - best) / 60);
+    b.textContent = (r.duration === best ? 'Fastest' : 'Option ' + (i + 1)) + ' \u00B7 ' +
+      fmtDur(r.duration) + (delta > 0 ? ` (+${delta} min)` : '') + ' \u00B7 ' + fmtDist(r.distance);
+    b.setAttribute('aria-pressed', String(i === routeIdx));
+    b.onclick = () => selectRoute(i, true);
+    box.appendChild(b);
+  });
+  box.classList.add('on');
+}
+
+function selectRoute(i, fit) {
+  routeIdx = i;
+  activeRoute = prepareRoute(routes[i]);
+  [...$('alts').children].forEach((c, k) => c.setAttribute('aria-pressed', String(k === i)));
+
+  map.getSource('route-alts').setData({
+    type: 'FeatureCollection',
+    features: routes.filter((_, k) => k !== i)
+      .map(r => ({ type: 'Feature', properties: {}, geometry: r.geometry }))
   });
 
-  // Zoom to fit the whole route
-  const coords = route.geometry.coordinates;
-  const bounds = coords.reduce(
-    (b, c) => b.extend(c),
-    new maplibregl.LngLatBounds(coords[0], coords[0])
-  );
-  map.fitBounds(bounds, { padding: { top: 90, bottom: 60, left: 40, right: 40 }, pitch: 45, duration: 1400 });
+  const built = buildRouteLines(activeRoute);
+  map.getSource('route-line').setData(built.lines);
+  map.getSource('route-pins').setData(built.pins);
 
-  // Summary + turn-by-turn (Apple-like conversational phrasing)
-  const mins = Math.round(route.duration / 60);
-  const timeTxt = mins >= 60 ? Math.floor(mins / 60) + ' h ' + (mins % 60) + ' min' : mins + ' min';
-  dirSummary.textContent = timeTxt + '  ·  ' + fmtDist(route.distance);
+  paintRoute();
+  renderSummary(activeRoute);
+  renderSteps(activeRoute);
+  if (fit) fitRoute(activeRoute);
+}
 
-  dirSteps.innerHTML = '';
-  route.legs[0].steps.forEach(step => {
-    const div = document.createElement('div');
-    const instr = document.createElement('div');
-    instr.className = 'instr';
-    instr.innerHTML = describeStep(step);
-    const meta = document.createElement('div');
-    meta.className = 'meta';
-    meta.textContent = (step.distance > 15 ? fmtDist(step.distance) : '');
-    div.appendChild(instr);
-    div.appendChild(meta);
-    dirSteps.appendChild(div);
+function fitRoute(rt) {
+  const b = rt.coords.reduce((bb, c) => bb.extend(c),
+    new maplibregl.LngLatBounds(rt.coords[0], rt.coords[0]));
+  const wide = innerWidth > 560;
+  
+  // Set pitch to 0 for a top-down view and intelligently pad the route completely 
+  // out of the way of the directions UI box on wide screens.
+  map.fitBounds(b, {
+    padding: { top: 80, bottom: wide ? 80 : 360, left: wide ? 420 : 40, right: 60 },
+    pitch: 0, 
+    bearing: 0, 
+    duration: reduceMotion ? 0 : 1300
   });
 }
 
-function fmtDist(m) {
-  const useImperial = navigator.language && /^en(-|$)/i.test(navigator.language) && (navigator.language.indexOf('US') !== -1 || navigator.language.indexOf('en-US') !== -1);
-  if (useImperial) {
-    const feet = m * 3.28084;
-    if (feet < 1000) return Math.round(feet) + ' ft';
-    const miles = feet / 5280;
-    return miles.toFixed(1) + ' mi';
-  } else {
-    if (m >= 1000) return (m / 1000).toFixed(1) + ' km';
-    return Math.round(m) + ' m';
-  }
-}
-
-function esc(s) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-}
-
-function describeStep(step) {
-  // Apple-like conversational directions: "In 0.1 mi, turn right onto Main St."
-  const distText = step.distance >= 0 ? fmtShort(step.distance) : '';
-  const name = step.name ? esc(step.name) : '';
-  const mod = step.maneuver && step.maneuver.modifier ? step.maneuver.modifier : '';
-  const type = step.maneuver && step.maneuver.type ? step.maneuver.type : '';
-
-  function actionText() {
-    switch (type) {
-      case 'depart': return name ? 'Head out on <b>' + name + '</b>' : 'Head out';
-      case 'arrive': return '<b>You have arrived</b>' + (name ? ' at ' + name : '');
-      case 'roundabout': return 'At the roundabout, take the ' + (step.maneuver.exit || 1) + ' exit' + (name ? ' onto <b>' + name + '</b>' : '');
-      case 'merge': return 'Merge ' + (mod || '') + (name ? ' onto <b>' + name + '</b>' : '');
-      case 'on ramp': return 'Take the ramp' + (name ? ' onto <b>' + name + '</b>' : '');
-      case 'off ramp': return 'Take the exit' + (name ? ' onto <b>' + name + '</b>' : '');
-      case 'fork': return 'Keep ' + (mod || 'straight') + ' at the fork' + (name ? ' onto <b>' + name + '</b>' : '');
-      case 'end of road': return 'At the end of the road, turn ' + (mod || 'right') + (name ? ' onto <b>' + name + '</b>' : '');
-      case 'continue':
-      case 'new name': return (mod && mod !== 'straight') ? 'Continue ' + mod + (name ? ' onto <b>' + name + '</b>' : '') : 'Continue' + (name ? ' onto <b>' + name + '</b>' : '');
-      case 'turn': return 'Turn ' + (mod || '') + (name ? ' onto <b>' + name + '</b>' : '');
-      default: return 'Continue' + (name ? ' onto <b>' + name + '</b>' : '');
+/**
+ * Flatten an OSRM route into coords, cumulative distances, per-step offsets,
+ * and a lane count per step taken from intersection lane data when present.
+ */
+function prepareRoute(route) {
+  const steps = route.legs.flatMap(l => l.steps);
+  const coords = [];
+  for (const s of steps) {
+    const c = s.geometry.coordinates;
+    for (let i = 0; i < c.length; i++) {
+      if (coords.length && i === 0) continue;      // dedupe the shared vertex
+      coords.push(c[i]);
     }
   }
+  const cum = new Float64Array(coords.length);
+  for (let i = 1; i < coords.length; i++) cum[i] = cum[i - 1] + dist2(coords[i - 1], coords[i]);
 
-  // Build the sentence: "In X, ACTION"
-  if (distText) return 'In ' + distText + ', ' + actionText();
-  return actionText();
+  // Cumulative distance at the start of each step, from the step distances.
+  let acc = 0;
+  const starts = steps.map(s => { const v = acc; acc += s.distance; return v; });
+  // Cumulative duration too, so the ETA respects per-step speeds.
+  let tacc = 0;
+  const tstarts = steps.map(s => { const v = tacc; tacc += s.duration; return v; });
+
+  const laneOf = s => {
+    let n = 0;
+    for (const it of (s.intersections || [])) if (it.lanes) n = Math.max(n, it.lanes.length);
+    if (n) return Math.min(n, 6);
+    if (mode !== 'car') return 1;
+    return /motorway|trunk|freeway|highway|interstate|expressway/i.test(s.name || '') ? 2 : 1;
+  };
+
+  return {
+    raw: route, steps, coords, cum, starts, tstarts,
+    lanes: steps.map(laneOf),
+    total: route.distance, duration: route.duration,
+    speed: Math.max(1.3, route.distance / Math.max(route.duration, 1))
+  };
 }
 
-function fmtShort(m) {
-  // Shorter distance text (use for the "In X" prefix)
-  const useImperial = navigator.language && /^en(-|$)/i.test(navigator.language) && (navigator.language.indexOf('US') !== -1 || navigator.language.indexOf('en-US') !== -1);
-  if (useImperial) {
-    const feet = m * 3.28084;
-    if (feet < 500) return Math.round(feet) + ' ft';
-    const miles = feet / 5280;
-    return miles.toFixed(1) + ' mi';
-  } else {
-    if (m < 1000) return Math.round(m) + ' m';
-    return (m / 1000).toFixed(1) + ' km';
+/**
+ * Slice the route into 2D lines with simulated traffic properties attached to each 
+ * individual segment, generating a real-world dynamic map feel based on step speeds.
+ */
+function buildRouteLines(rt) {
+  const lines = [], pins = [];
+
+  rt.steps.forEach(step => {
+    // Calculate speed in m/s for this specific segment
+    const speedMps = step.duration > 0 ? step.distance / step.duration : 10;
+    
+    let congestion = 'low';
+    
+    // Simulate traffic blockages based on speed (cars only)
+    if (mode === 'car') {
+      if (speedMps < 4.5) congestion = 'heavy';        // Under ~10 mph
+      else if (speedMps < 11.2) congestion = 'moderate'; // Under ~25 mph
+    }
+
+    lines.push({
+      type: 'Feature',
+      properties: { congestion: congestion },
+      geometry: step.geometry
+    });
+
+    if (/turn|roundabout|rotary|fork|ramp|merge|end of road|arrive/.test(step.maneuver.type)) {
+      pins.push({
+        type: 'Feature', properties: { t: step.maneuver.type },
+        geometry: { type: 'Point', coordinates: step.maneuver.location }
+      });
+    }
+  });
+
+  return {
+    lines: { type: 'FeatureCollection', features: lines },
+    pins: { type: 'FeatureCollection', features: pins }
+  };
+}
+
+/* --------------------------------------------------- step presentation */
+const GLYPH = {
+  'turn-left': '\u2190', 'turn-right': '\u2192',
+  'turn-slight left': '\u2196', 'turn-slight right': '\u2197',
+  'turn-sharp left': '\u21B0', 'turn-sharp right': '\u21B1',
+  'turn-straight': '\u2191', 'turn-uturn': '\u21A9',
+  depart: '\u21E7', arrive: '\u2691', roundabout: '\u27F3', rotary: '\u27F3',
+  merge: '\u2935', 'on ramp': '\u2934', 'off ramp': '\u2935',
+  fork: 'Y', 'end of road': '\u22A5', continue: '\u2191', 'new name': '\u2191',
+  'waypoint': '\u25C9'
+};
+function glyphFor(step) {
+  if (!step) return '\u2691';
+  const t = step.maneuver.type, mod = step.maneuver.modifier || 'straight';
+  return GLYPH[t + '-' + mod] || GLYPH[t] || GLYPH['turn-' + mod] || '\u2191';
+}
+const LANE_GLYPH = {
+  left: '\u2190', right: '\u2192', straight: '\u2191',
+  'slight left': '\u2196', 'slight right': '\u2197',
+  'sharp left': '\u21B0', 'sharp right': '\u21B1', uturn: '\u21A9', none: '\u2191'
+};
+const laneGlyph = ind => (ind && ind.length && LANE_GLYPH[ind[0]]) || '\u2191';
+
+function describe(step) {
+  if (!step) return 'Arrive at your destination';
+  const road = step.name ? `<b>${esc(step.name)}</b>` : '';
+  const onto = road ? ' onto ' + road : '';
+  const on = road ? ' on ' + road : '';
+  const mod = step.maneuver.modifier || '';
+  const exitRef = step.ref ? ` (${esc(step.ref)})` : '';
+  switch (step.maneuver.type) {
+    case 'depart': return 'Start' + on;
+    case 'arrive': return '<b>Arrive at your destination</b>' + (mod ? ' on the ' + mod : '');
+    case 'roundabout':
+    case 'rotary': return `At the roundabout take exit ${step.maneuver.exit || 1}${onto}`;
+    case 'roundabout turn': return `At the roundabout turn ${mod}${onto}`;
+    case 'merge': return 'Merge ' + mod + onto;
+    case 'on ramp': return 'Take the ramp' + onto + exitRef;
+    case 'off ramp': return 'Take the exit' + onto + exitRef;
+    case 'fork': return `Keep ${mod || 'straight'} at the fork${onto}`;
+    case 'end of road': return `At the end of the road turn ${mod}${onto}`;
+    case 'turn': return `Turn ${mod}${onto}`;
+    case 'continue': return mod && mod !== 'straight' ? `Continue ${mod}${onto}` : 'Continue' + on;
+    case 'new name': return 'Continue' + on;
+    case 'notification': return 'Continue' + on;
+    default: return 'Continue' + on;
   }
+}
+
+function lanesHtml(step, extraClass = '') {
+  if (!step) return '';
+  const it = (step.intersections || []).find(x => x.lanes && x.lanes.length);
+  if (!it) return '';
+  return `<span class="lanes ${extraClass}">` + it.lanes.map(l =>
+    `<span class="lane${l.valid ? ' ok' : ''}" aria-hidden="true">${laneGlyph(l.indications)}</span>`
+  ).join('') + '</span>';
+}
+
+function renderSummary(rt) {
+  const eta = new Date(Date.now() + rt.duration * 1000);
+  $('sumTime').textContent = fmtDur(rt.duration);
+  $('sumDist').textContent = `${fmtDist(rt.total)} \u00B7 arrive ${fmtClock(eta)}`;
+  $('summary').classList.add('on');
+}
+
+function renderSteps(rt) {
+  const box = $('steps');
+  box.innerHTML = '';
+  rt.steps.forEach((s, i) => {
+    const el = document.createElement('div');
+    el.className = 'st';
+    el.dataset.i = i;
+    el.innerHTML = `<span class="gl" aria-hidden="true">${glyphFor(s)}</span>` +
+      `<span class="tx">${describe(s)}${lanesHtml(s)}` +
+      `<span class="d">${s.distance > 12 ? fmtDist(s.distance) : ''}</span></span>`;
+    el.onclick = () => {
+      map.easeTo({
+        center: s.maneuver.location, zoom: 17.4, pitch: 40,
+        bearing: s.maneuver.bearing_after ?? map.getBearing(),
+        duration: reduceMotion ? 0 : 900
+      });
+      document.querySelectorAll('#steps .st').forEach(node => node.classList.remove('now'));
+      el.classList.add('now');
+    }
+    box.appendChild(el);
+  });
+}
+
+/* ============================== NAVIGATION ============================== */
+const navState = {
+  active: false, progress: 0, speedMul: 1, voice: load('voice', true), live: false,
+  lastFrame: 0, raf: 0, spoken: new Set(), bearing: 0, lastPaint: 0,
+  watchId: null, offSince: 0, rerouting: false, freeLook: 0, stepShown: -1
+};
+let puck = null;
+
+$('navBtn').onclick = () => activeRoute && startNav();
+$('navEnd').onclick = () => endNav();
+$('navVoice').onclick = e => {
+  navState.voice = e.currentTarget.getAttribute('aria-pressed') !== 'true';
+  save('voice', navState.voice);
+  e.currentTarget.setAttribute('aria-pressed', String(navState.voice));
+  e.currentTarget.textContent = navState.voice ? '\u{1F50A}' : '\u{1F507}';
+  if (!navState.voice && 'speechSynthesis' in window) speechSynthesis.cancel();
+};
+$('navOverview').onclick = () => {
+  if (!activeRoute) return;
+  navState.freeLook = performance.now() + 6000;      // pause camera follow briefly
+  fitRoute(activeRoute);
+};
+
+function speak(text) {
+  if (!navState.voice || !('speechSynthesis' in window)) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.05;
+  u.lang = navigator.language || 'en-US';
+  speechSynthesis.speak(u);
+}
+
+/** Position and heading at a distance along the route. */
+function locateAt(rt, d) {
+  const { coords, cum } = rt;
+  const last = cum.length - 1;
+  if (last < 1) return { p: coords[0], brg: 0, i: 0 };
+  if (d <= 0) return { p: coords[0], brg: bearingOf(coords[0], coords[1]), i: 0 };
+  if (d >= cum[last]) return { p: coords[last], brg: bearingOf(coords[last - 1], coords[last]), i: last - 1 };
+  let lo = 0, hi = last;
+  while (lo < hi - 1) { const mid = (lo + hi) >> 1; if (cum[mid] <= d) lo = mid; else hi = mid; }
+  const a = coords[lo], b = coords[lo + 1];
+  const t = (d - cum[lo]) / Math.max(cum[lo + 1] - cum[lo], 1e-6);
+  return { p: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], brg: bearingOf(a, b), i: lo };
+}
+
+/** Nearest point on the route as a distance-along value, for GPS snapping. */
+function snapToRoute(rt, lngLat, near) {
+  // Search a window around the last known progress first; fall back to full scan.
+  let lo = 1, hi = rt.coords.length - 1;
+  if (near != null) {
+    const at = locateAt(rt, Math.max(0, near - 150));
+    const to = locateAt(rt, near + 400);
+    lo = Math.max(1, at.i);
+    hi = Math.min(rt.coords.length - 1, to.i + 2);
+  }
+  let best = { d: Infinity, along: near || 0 };
+  const scan = (from, to) => {
+    for (let i = from; i <= to; i++) {
+      const a = rt.coords[i - 1], b = rt.coords[i];
+      const m = mpd(a[1]);
+      const bx = (b[0] - a[0]) * m.lng, by = (b[1] - a[1]) * m.lat;
+      const px = (lngLat[0] - a[0]) * m.lng, py = (lngLat[1] - a[1]) * m.lat;
+      const len2 = bx * bx + by * by || 1e-9;
+      const t = clamp((px * bx + py * by) / len2, 0, 1);
+      const d = Math.hypot(px - bx * t, py - by * t);
+      if (d < best.d) best = { d, along: rt.cum[i - 1] + Math.sqrt(len2) * t };
+    }
+  };
+  scan(lo, hi);
+  if (best.d > 80 && near != null) { best = { d: Infinity, along: 0 }; scan(1, rt.coords.length - 1); }
+  return best;
+}
+
+const stepIndexAt = (rt, d) => {
+  let i = 0;
+  while (i + 1 < rt.starts.length && rt.starts[i + 1] <= d) i++;
+  return i;
+};
+
+/** Duration-aware remaining time: leftover of this step plus later steps. */
+function remainingSeconds(rt, d) {
+  const i = stepIndexAt(rt, d);
+  const stepLen = rt.steps[i].distance || 1;
+  const doneInStep = clamp((d - rt.starts[i]) / stepLen, 0, 1);
+  const restOfStep = rt.steps[i].duration * (1 - doneInStep);
+  const later = rt.duration - (rt.tstarts[i] + rt.steps[i].duration);
+  return Math.max(0, restOfStep + Math.max(0, later));
+}
+
+function startNav() {
+  const rt = activeRoute;
+  if (!rt) return;
+  navState.active = true;
+  navState.progress = 0;
+  navState.spoken.clear();
+  navState.live = false;
+  navState.offSince = 0;
+  navState.freeLook = 0;
+  navState.stepShown = -1;
+  navState.bearing = locateAt(rt, 0).brg;
+
+  $('panel').classList.add('hide');
+  $('hud').classList.add('hide');
+  $('stack').classList.add('hide');
+  $('brand').classList.add('hide');
+  $('navTop').classList.add('on');
+  $('navBottom').classList.add('on');
+  $('navMode').classList.add('on');
+  $('navMode').textContent = 'WAITING FOR GPS...';
+  map.setPadding({ top: 150, bottom: Math.round(innerHeight * 0.40), left: 0, right: 0 });
+
+  if (!puck) {
+    const el = document.createElement('div');
+    el.className = 'puck';
+    puck = new maplibregl.Marker({ element: el, rotationAlignment: 'map', pitchAlignment: 'map' });
+  }
+  const start = locateAt(rt, 0);
+  puck.setLngLat(start.p).setRotation(start.brg).addTo(map);
+
+  map.easeTo({ center: start.p, zoom: 17.8, pitch: 60, bearing: start.brg,
+    duration: reduceMotion ? 0 : 1400 });
+  speak('Starting navigation. ' + stripTags(describe(rt.steps[0])));
+
+  // Real GPS when available, otherwise stay stationary until GPS locks.
+  if (navigator.geolocation) {
+    navState.watchId = navigator.geolocation.watchPosition(pos => {
+      if (!navState.active) return;
+      myLocation = [pos.coords.longitude, pos.coords.latitude];
+      const snap = snapToRoute(activeRoute, myLocation, navState.live ? navState.progress : null);
+      if (snap.d < 55) {
+        if (!navState.live) { navState.live = true; $('navMode').textContent = 'LIVE GPS'; }
+        navState.progress = snap.along;
+        navState.offSince = 0;
+      } else if (navState.live) {
+        // Two seconds off-route before recalculating, to ride out GPS noise.
+        if (!navState.offSince) navState.offSince = performance.now();
+        else if (performance.now() - navState.offSince > 2000) reroute();
+      }
+    }, () => {}, { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 });
+  }
+
+  // A manual drag pauses camera follow so the user can look around.
+  map.on('dragstart', pauseFollow);
+
+  navState.lastFrame = performance.now();
+  navState.raf = requestAnimationFrame(navFrame);
+  updateBanner(rt);
+}
+
+function pauseFollow() {
+  if (navState.active) navState.freeLook = performance.now() + 6000;
+}
+
+/** Recalculate from the current position to the remaining waypoints. */
+async function reroute() {
+  if (navState.rerouting || !myLocation) return;
+  navState.rerouting = true;
+  navState.offSince = 0;
+  $('navMode').textContent = 'REROUTING';
+  toast('Off route - recalculating.', 2500);
+  try {
+    const rest = stops.slice(1).filter(s => s.point).map(s => `${s.point.lng},${s.point.lat}`);
+    const pts = [myLocation.join(','), ...rest].join(';');
+    const data = await getJSON(
+      `https://routing.openstreetmap.de/${OSRM[mode]}/route/v1/driving/${pts}` +
+      `?overview=full&geometries=geojson&steps=true&annotations=duration,distance&alternatives=false`,
+      { timeout: 12000 });
+    if (data.code === 'Ok' && data.routes?.length) {
+      routes = data.routes;
+      routeIdx = 0;
+      activeRoute = prepareRoute(routes[0]);
+      
+      const built = buildRouteLines(activeRoute);
+      map.getSource('route-line').setData(built.lines);
+      map.getSource('route-alts').setData(empty());
+      map.getSource('route-pins').setData(built.pins);
+      
+      renderSummary(activeRoute);
+      renderSteps(activeRoute);
+      navState.progress = 0;
+      navState.spoken.clear();
+      navState.stepShown = -1;
+      paintRoute();
+      $('navMode').textContent = 'LIVE GPS';
+      speak('Route updated.');
+    } else {
+      $('navMode').textContent = 'OFF ROUTE';
+    }
+  } catch (e) {
+    $('navMode').textContent = 'OFF ROUTE';
+    toast('Could not recalculate. Still showing the old route.');
+  } finally {
+    navState.rerouting = false;
+  }
+}
+
+function navFrame(ts) {
+  if (!navState.active) return;
+  const rt = activeRoute;
+  const dt = Math.min((ts - navState.lastFrame) / 1000, 0.4);
+  navState.lastFrame = ts;
+
+  if (!navState.live) {
+    $('navMode').textContent = 'LOCATING...';
+  }
+
+  navState.progress = clamp(navState.progress, 0, rt.total);
+
+  const at = locateAt(rt, navState.progress);
+  // Smooth the heading so the camera does not snap at every vertex.
+  const delta = ((at.brg - navState.bearing + 540) % 360) - 180;
+  navState.bearing = (navState.bearing + delta * Math.min(1, dt * 3.2) + 360) % 360;
+
+  puck.setLngLat(at.p).setRotation(at.brg);
+  if (ts > navState.freeLook) {
+    map.jumpTo({
+      center: at.p, bearing: navState.bearing, pitch: 60,
+      zoom: map.getZoom() < 16.5 ? 17.6 : map.getZoom()
+    });
+  }
+
+  if (ts - navState.lastPaint > 400) {
+    navState.lastPaint = ts;
+    paintRoute();
+    updateBanner(rt);
+  }
+
+  if (navState.progress >= rt.total - 8) {
+    speak('You have arrived.');
+    toast('You have arrived at your destination.');
+    endNav();
+    return;
+  }
+  navState.raf = requestAnimationFrame(navFrame);
+}
+
+function updateBanner(rt) {
+  const i = stepIndexAt(rt, navState.progress);
+  const stepEnd = rt.starts[i + 1] ?? rt.total;
+  const toManeuver = Math.max(0, stepEnd - navState.progress);
+  const next = rt.steps[i + 1];
+  const target = next || rt.steps[rt.steps.length - 1];
+
+  $('navArrow').textContent = glyphFor(target);
+  $('navDist').textContent = fmtDist(toManeuver);
+  $('navRoad').innerHTML = describe(target);
+
+  const lanes = lanesHtml(target);
+  $('navLanes').innerHTML = lanes ? lanes.replace(/^<span class="lanes[^"]*">|<\/span>$/g, '') : '';
+
+  const after = rt.steps[i + 2];
+  $('navThen').innerHTML = after ? 'Then ' + describe(after) : 'Then arrive';
+
+  const remainD = rt.total - navState.progress;
+  const remainS = remainingSeconds(rt, navState.progress);
+
+  const eta = new Date(Date.now() + remainS * 1000);
+  $('navEta').textContent = fmtClock(eta);
+  $('navRemain').innerHTML = `<b>${fmtDur(remainS)}</b> \u00B7 ${fmtDist(remainD)}`;
+}
+
+function endNav(clear = false) {
+  navState.active = false;
+  if (navState.watchId) navigator.geolocation.clearWatch(navState.watchId);
+  cancelAnimationFrame(navState.raf);
+  if (puck) puck.remove();
+  
+  $('navTop').classList.remove('on');
+  $('navBottom').classList.remove('on');
+  $('navMode').classList.remove('on');
+  
+  $('panel').classList.remove('hide');
+  $('hud').classList.remove('hide');
+  $('stack').classList.remove('hide');
+  $('brand').classList.remove('hide');
+  
+  map.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+  map.easeTo({ pitch: 0, bearing: 0, duration: 800 });
+  
+  if (clear) clearRouteGeometry();
+  else paintRoute();
+}
+
+function runDeepLink() {
+  const params = new URLSearchParams(location.search);
+  const to = params.get('to');
+  if (to) {
+    const [lat, lng] = to.split(',').map(Number);
+    if (lat && lng) {
+      setStop(1, { lat, lng, q: null, label: 'Shared Location' });
+      openDirections();
+    }
+  }
+}
+
+/* --------------------------------------------------------------- startup */
+renderStops();
+if (!load('seen', false)) {
+  save('seen', true);
+  setTimeout(() => toast('Press / to search, D for directions, N to start navigation.', 6000), 1200);
 }
 </script>
 </body>
