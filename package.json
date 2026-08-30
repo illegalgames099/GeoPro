@@ -10,4 +10,23 @@
     "jest": "^30.5.0",
     "jsdom": "^22.1.0"
   }
+  "name": "app",
+  "version": "1.0.0",
+  "description": "Hello! This is GeoPro, a map website based on multiple different free APIs! If this gets enough traction, it can get better, a better website, and maybe Mapbox search, map tiles, and satellite!",
+  "main": "service-worker.js",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/illegalgames099/GeoPro.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/illegalgames099/GeoPro/issues"
+  },
+  "homepage": "https://github.com/illegalgames099/GeoPro#readme"
 }
