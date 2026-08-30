@@ -861,14 +861,6 @@ function parseLatLng(text) {
   return { lat, lng, label: lat.toFixed(5) + ', ' + lng.toFixed(5), sub: 'Coordinates', kind: 'place' };
 }
 
-async function geocodeOne(text) {
-  const coord = parseLatLng(text);
-  if (coord) return { lng: coord.lng, lat: coord.lat, q: text, label: coord.label };
-  const list = await suggest(text);
-  if (!list.length) throw new Error(`No match for "${text}"`);
-  return { lng: list[0].lng, lat: list[0].lat, q: text, label: list[0].label };
-}
-
 async function reverse(lng, lat) {
   try {
     const j = await getJSON(`${NOMINATIM}reverse?format=jsonv2&lat=${lat}&lon=${lng}&zoom=18`,
