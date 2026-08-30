@@ -576,7 +576,7 @@ async function probeOverture() {
       pmProtocol.add(p);
       return { url, layer: layer.id, maxzoom: header.maxZoom ?? 15 };
     } catch (e) {
-      console.warn('[geopro] Overture mirror unavailable:', url, e && e.message);
+      // Ignore errors; loop continues to the next fallback mirror.
     }
   }
   return null;
