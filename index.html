@@ -388,12 +388,24 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const stripTags = s => String(s).replace(/<[^>]+>/g, '');
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
+const _storeCache = new Map();
 function load(key, fallback) {
-  try { return JSON.parse(localStorage.getItem(STORE + key)) ?? fallback; }
-  catch (e) { return fallback; }
+  let raw;
+  if (_storeCache.has(key)) {
+    raw = _storeCache.get(key);
+  } else {
+    try { raw = localStorage.getItem(STORE + key); } catch (e) {}
+    _storeCache.set(key, raw);
+  }
+  if (raw == null) return fallback;
+  try { return JSON.parse(raw) ?? fallback; } catch (e) { return fallback; }
 }
 function save(key, val) {
-  try { localStorage.setItem(STORE + key, JSON.stringify(val)); } catch (e) {}
+  try {
+    const raw = JSON.stringify(val);
+    _storeCache.set(key, raw);
+    localStorage.setItem(STORE + key, raw);
+  } catch (e) {}
 }
 
 /** Metres per degree of lat / lng at a given latitude. */
