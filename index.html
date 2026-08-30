@@ -990,6 +990,8 @@ function renderResults(list, heading) {
     return a._dist - b._dist;
   });
 
+  const fragment = document.createDocumentFragment();
+
   if (heading) {
     const h = document.createElement('div');
     h.className = 'head';
@@ -1000,7 +1002,7 @@ function renderResults(list, heading) {
       clear.onclick = ev => { ev.stopPropagation(); save('recent', []); closeResults(); };
       h.appendChild(clear);
     }
-    resultsEl.appendChild(h);
+    fragment.appendChild(h);
   }
 
   list.forEach(p => {
@@ -1017,9 +1019,10 @@ function renderResults(list, heading) {
       `<span class="far">${away > 200 && !p.isMyLoc ? fmtDist(away) : ''}</span>`;
     row.onclick = () => pickPlace(p);
     row.onkeydown = e => { if (e.key === 'Enter') pickPlace(p); };
-    resultsEl.appendChild(row);
+    fragment.appendChild(row);
   });
   
+  resultsEl.appendChild(fragment);
   resultsEl.classList.add('on');
   if (activeInput) activeInput.setAttribute('aria-expanded', 'true');
 }
