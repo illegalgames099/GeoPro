@@ -116,6 +116,7 @@
   #dir{display:none;flex-direction:column;gap:12px;padding:12px;overflow:hidden; position:relative;}
   #dir.on{display:flex}
   #dir .hdr{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+  #navBtn{width:100%;padding:12px;font-size:15px}
   #dir .hdr b{flex:1;font-size:16px; letter-spacing:-.2px;}
   
   .waypoint-block { position:relative; display:flex; flex-direction:column; gap:10px; padding-right: 44px; }
@@ -291,7 +292,7 @@
     <div id="alts" role="group" aria-label="Route options"></div>
     <div id="summary" aria-live="polite"><b id="sumTime"></b><span id="sumDist"></span></div>
     <div id="steps"></div>
-    <button class="btn fill" id="navBtn" disabled style="width: 100%; padding: 12px; font-size: 15px;">Start Navigation</button>
+    <button class="btn fill" id="navBtn" disabled>Start Navigation</button>
   </div>
   
   <div id="results" class="glass" role="listbox" aria-label="Search results"></div>
@@ -581,6 +582,7 @@ async function probeOverture() {
       if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
         console.warn('[geopro] Overture mirror unavailable:', url, e && e.message);
       }
+      // Ignore errors; loop continues to the next fallback mirror.
     }
   }
   return null;
@@ -969,6 +971,23 @@ const KIND_ICON = {
   myloc: '\u25CE'
 };
 
+function createResultRow(p, here) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.setAttribute('role', 'option');
+  row.setAttribute('aria-selected', 'false');
+  row.tabIndex = 0;
+  const away = dist2(here, [p.lng, p.lat]);
+  row.innerHTML =
+    `<span class="kind" aria-hidden="true">${KIND_ICON[p.kind] || KIND_ICON.place}</span>` +
+    `<span class="col"><span class="t ell">${esc(p.label)}</span>` +
+    `<span class="s ell">${esc(p.sub || '')}</span></span>` +
+    `<span class="far">${away > 200 && !p.isMyLoc ? fmtDist(away) : ''}</span>`;
+  row.onclick = () => pickPlace(p);
+  row.onkeydown = e => { if (e.key === 'Enter') pickPlace(p); };
+  return row;
+}
+
 function renderResults(list, heading) {
   lastList = list; selIdx = -1;
   resultsEl.innerHTML = '';
@@ -982,12 +1001,19 @@ function renderResults(list, heading) {
 
   const here = myLocation || [map.getCenter().lng, map.getCenter().lat];
   
+  // Precompute distance for sorting
+  list.forEach(p => {
+    if (!p.isMyLoc) p._dist = dist2(here, [p.lng, p.lat]);
+  });
+
   // Sort results by proximity
   list.sort((a, b) => {
     if (a.isMyLoc) return -1;
     if (b.isMyLoc) return 1;
-    return dist2(here, [a.lng, a.lat]) - dist2(here, [b.lng, b.lat])
+    return a._dist - b._dist;
   });
+
+  const fragment = document.createDocumentFragment();
 
   if (heading) {
     const h = document.createElement('div');
@@ -999,16 +1025,17 @@ function renderResults(list, heading) {
       clear.onclick = ev => { ev.stopPropagation(); save('recent', []); closeResults(); };
       h.appendChild(clear);
     }
-    resultsEl.appendChild(h);
+    fragment.appendChild(h);
   }
 
   list.forEach(p => {
+    resultsEl.appendChild(createResultRow(p, here));
     const row = document.createElement('div');
     row.className = 'row';
     row.setAttribute('role', 'option');
     row.setAttribute('aria-selected', 'false');
     row.tabIndex = 0;
-    const away = dist2(here, [p.lng, p.lat]);
+    const away = p._dist !== undefined ? p._dist : dist2(here, [p.lng, p.lat]);
     row.innerHTML =
       `<span class="kind" aria-hidden="true">${KIND_ICON[p.kind] || KIND_ICON.place}</span>` +
       `<span class="col"><span class="t ell">${esc(p.label)}</span>` +
@@ -1016,9 +1043,10 @@ function renderResults(list, heading) {
       `<span class="far">${away > 200 && !p.isMyLoc ? fmtDist(away) : ''}</span>`;
     row.onclick = () => pickPlace(p);
     row.onkeydown = e => { if (e.key === 'Enter') pickPlace(p); };
-    resultsEl.appendChild(row);
+    fragment.appendChild(row);
   });
   
+  resultsEl.appendChild(fragment);
   resultsEl.classList.add('on');
   if (activeInput) activeInput.setAttribute('aria-expanded', 'true');
 }
@@ -1533,13 +1561,13 @@ function describe(step) {
   const road = step.name ? `<b>${esc(step.name)}</b>` : '';
   const onto = road ? ' onto ' + road : '';
   const on = road ? ' on ' + road : '';
-  const mod = step.maneuver.modifier || '';
+  const mod = step.maneuver.modifier ? esc(step.maneuver.modifier) : '';
   const exitRef = step.ref ? ` (${esc(step.ref)})` : '';
   switch (step.maneuver.type) {
     case 'depart': return 'Start' + on;
     case 'arrive': return '<b>Arrive at your destination</b>' + (mod ? ' on the ' + mod : '');
     case 'roundabout':
-    case 'rotary': return `At the roundabout take exit ${step.maneuver.exit || 1}${onto}`;
+    case 'rotary': return `At the roundabout take exit ${esc(step.maneuver.exit || 1)}${onto}`;
     case 'roundabout turn': return `At the roundabout turn ${mod}${onto}`;
     case 'merge': return 'Merge ' + mod + onto;
     case 'on ramp': return 'Take the ramp' + onto + exitRef;
@@ -1683,18 +1711,7 @@ function remainingSeconds(rt, d) {
   return Math.max(0, restOfStep + Math.max(0, later));
 }
 
-function startNav() {
-  const rt = activeRoute;
-  if (!rt) return;
-  navState.active = true;
-  navState.progress = 0;
-  navState.spoken.clear();
-  navState.live = false;
-  navState.offSince = 0;
-  navState.freeLook = 0;
-  navState.stepShown = -1;
-  navState.bearing = locateAt(rt, 0).brg;
-
+function setupNavUI() {
   $('panel').classList.add('hide');
   $('hud').classList.add('hide');
   $('stack').classList.add('hide');
@@ -1703,6 +1720,9 @@ function startNav() {
   $('navBottom').classList.add('on');
   $('navMode').classList.add('on');
   $('navMode').textContent = 'WAITING FOR GPS...';
+}
+
+function setupNavMap(rt) {
   map.setPadding({ top: 150, bottom: Math.round(innerHeight * 0.40), left: 0, right: 0 });
 
   if (!puck) {
@@ -1715,9 +1735,9 @@ function startNav() {
 
   map.easeTo({ center: start.p, zoom: 17.8, pitch: 60, bearing: start.brg,
     duration: reduceMotion ? 0 : 1400 });
-  speak('Starting navigation. ' + stripTags(describe(rt.steps[0])));
+}
 
-  // Real GPS when available, otherwise stay stationary until GPS locks.
+function startGeolocationTracking() {
   if (navigator.geolocation) {
     navState.watchId = navigator.geolocation.watchPosition(pos => {
       if (!navState.active) return;
@@ -1734,6 +1754,26 @@ function startNav() {
       }
     }, () => {}, { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 });
   }
+}
+
+function startNav() {
+  const rt = activeRoute;
+  if (!rt) return;
+  navState.active = true;
+  navState.progress = 0;
+  navState.spoken.clear();
+  navState.live = false;
+  navState.offSince = 0;
+  navState.freeLook = 0;
+  navState.stepShown = -1;
+  navState.bearing = locateAt(rt, 0).brg;
+
+  setupNavUI();
+  setupNavMap(rt);
+
+  speak('Starting navigation. ' + stripTags(describe(rt.steps[0])));
+
+  startGeolocationTracking();
 
   // A manual drag pauses camera follow so the user can look around.
   map.on('dragstart', pauseFollow);
