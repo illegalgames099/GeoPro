@@ -978,11 +978,16 @@ function renderResults(list, heading) {
 
   const here = myLocation || [map.getCenter().lng, map.getCenter().lat];
   
+  // Precompute distance for sorting
+  list.forEach(p => {
+    if (!p.isMyLoc) p._dist = dist2(here, [p.lng, p.lat]);
+  });
+
   // Sort results by proximity
   list.sort((a, b) => {
     if (a.isMyLoc) return -1;
     if (b.isMyLoc) return 1;
-    return dist2(here, [a.lng, a.lat]) - dist2(here, [b.lng, b.lat])
+    return a._dist - b._dist;
   });
 
   if (heading) {
@@ -1004,7 +1009,7 @@ function renderResults(list, heading) {
     row.setAttribute('role', 'option');
     row.setAttribute('aria-selected', 'false');
     row.tabIndex = 0;
-    const away = dist2(here, [p.lng, p.lat]);
+    const away = p._dist !== undefined ? p._dist : dist2(here, [p.lng, p.lat]);
     row.innerHTML =
       `<span class="kind" aria-hidden="true">${KIND_ICON[p.kind] || KIND_ICON.place}</span>` +
       `<span class="col"><span class="t ell">${esc(p.label)}</span>` +
