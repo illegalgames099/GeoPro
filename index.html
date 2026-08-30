@@ -485,7 +485,9 @@ let myLocation = null;
 
 map.on('error', e => {
   const m = e && e.error ? (e.error.message || e.error.status || String(e.error)) : String(e);
-  console.warn('[geopro]', m, e && e.sourceId ? 'source=' + e.sourceId : '');
+  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+    console.warn('[geopro]', m, e && e.sourceId ? 'source=' + e.sourceId : '');
+  }
 });
 setTimeout(() => { if (!map.loaded()) toast('Loading tiles...', 2500); }, 1600);
 
@@ -577,6 +579,9 @@ async function probeOverture() {
       pmProtocol.add(p);
       return { url, layer: layer.id, maxzoom: header.maxZoom ?? 15 };
     } catch (e) {
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        console.warn('[geopro] Overture mirror unavailable:', url, e && e.message);
+      }
       // Ignore errors; loop continues to the next fallback mirror.
     }
   }
