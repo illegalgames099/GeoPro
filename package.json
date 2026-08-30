@@ -1,0 +1,14 @@
+{
+  "name": "geopro",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.html",
+  "scripts": {
+    "test": "jest",
+    "build": "echo 'No build step required'"
+  },
+  "devDependencies": {
+    "jest": "^30.5.0",
+    "jsdom": "^22.1.0"
+  }
+}
