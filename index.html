@@ -1529,13 +1529,13 @@ function describe(step) {
   const road = step.name ? `<b>${esc(step.name)}</b>` : '';
   const onto = road ? ' onto ' + road : '';
   const on = road ? ' on ' + road : '';
-  const mod = step.maneuver.modifier || '';
+  const mod = step.maneuver.modifier ? esc(step.maneuver.modifier) : '';
   const exitRef = step.ref ? ` (${esc(step.ref)})` : '';
   switch (step.maneuver.type) {
     case 'depart': return 'Start' + on;
     case 'arrive': return '<b>Arrive at your destination</b>' + (mod ? ' on the ' + mod : '');
     case 'roundabout':
-    case 'rotary': return `At the roundabout take exit ${step.maneuver.exit || 1}${onto}`;
+    case 'rotary': return `At the roundabout take exit ${esc(step.maneuver.exit || 1)}${onto}`;
     case 'roundabout turn': return `At the roundabout turn ${mod}${onto}`;
     case 'merge': return 'Merge ' + mod + onto;
     case 'on ramp': return 'Take the ramp' + onto + exitRef;
