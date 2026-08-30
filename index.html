@@ -1688,18 +1688,7 @@ function remainingSeconds(rt, d) {
   return Math.max(0, restOfStep + Math.max(0, later));
 }
 
-function startNav() {
-  const rt = activeRoute;
-  if (!rt) return;
-  navState.active = true;
-  navState.progress = 0;
-  navState.spoken.clear();
-  navState.live = false;
-  navState.offSince = 0;
-  navState.freeLook = 0;
-  navState.stepShown = -1;
-  navState.bearing = locateAt(rt, 0).brg;
-
+function setupNavUI() {
   $('panel').classList.add('hide');
   $('hud').classList.add('hide');
   $('stack').classList.add('hide');
@@ -1708,6 +1697,9 @@ function startNav() {
   $('navBottom').classList.add('on');
   $('navMode').classList.add('on');
   $('navMode').textContent = 'WAITING FOR GPS...';
+}
+
+function setupNavMap(rt) {
   map.setPadding({ top: 150, bottom: Math.round(innerHeight * 0.40), left: 0, right: 0 });
 
   if (!puck) {
@@ -1720,9 +1712,9 @@ function startNav() {
 
   map.easeTo({ center: start.p, zoom: 17.8, pitch: 60, bearing: start.brg,
     duration: reduceMotion ? 0 : 1400 });
-  speak('Starting navigation. ' + stripTags(describe(rt.steps[0])));
+}
 
-  // Real GPS when available, otherwise stay stationary until GPS locks.
+function startGeolocationTracking() {
   if (navigator.geolocation) {
     navState.watchId = navigator.geolocation.watchPosition(pos => {
       if (!navState.active) return;
@@ -1739,6 +1731,26 @@ function startNav() {
       }
     }, () => {}, { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 });
   }
+}
+
+function startNav() {
+  const rt = activeRoute;
+  if (!rt) return;
+  navState.active = true;
+  navState.progress = 0;
+  navState.spoken.clear();
+  navState.live = false;
+  navState.offSince = 0;
+  navState.freeLook = 0;
+  navState.stepShown = -1;
+  navState.bearing = locateAt(rt, 0).brg;
+
+  setupNavUI();
+  setupNavMap(rt);
+
+  speak('Starting navigation. ' + stripTags(describe(rt.steps[0])));
+
+  startGeolocationTracking();
 
   // A manual drag pauses camera follow so the user can look around.
   map.on('dragstart', pauseFollow);
