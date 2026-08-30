@@ -966,6 +966,23 @@ const KIND_ICON = {
   myloc: '\u25CE'
 };
 
+function createResultRow(p, here) {
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.setAttribute('role', 'option');
+  row.setAttribute('aria-selected', 'false');
+  row.tabIndex = 0;
+  const away = dist2(here, [p.lng, p.lat]);
+  row.innerHTML =
+    `<span class="kind" aria-hidden="true">${KIND_ICON[p.kind] || KIND_ICON.place}</span>` +
+    `<span class="col"><span class="t ell">${esc(p.label)}</span>` +
+    `<span class="s ell">${esc(p.sub || '')}</span></span>` +
+    `<span class="far">${away > 200 && !p.isMyLoc ? fmtDist(away) : ''}</span>`;
+  row.onclick = () => pickPlace(p);
+  row.onkeydown = e => { if (e.key === 'Enter') pickPlace(p); };
+  return row;
+}
+
 function renderResults(list, heading) {
   lastList = list; selIdx = -1;
   resultsEl.innerHTML = '';
@@ -1007,6 +1024,7 @@ function renderResults(list, heading) {
   }
 
   list.forEach(p => {
+    resultsEl.appendChild(createResultRow(p, here));
     const row = document.createElement('div');
     row.className = 'row';
     row.setAttribute('role', 'option');
