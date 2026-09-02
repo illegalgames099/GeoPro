@@ -6,6 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
 <meta name="description" content="GeoPro: free, open 3D maps with lane-level turn-by-turn navigation. Built on MapLibre, Overture Maps and OpenStreetMap." />
 <meta name="theme-color" content="#f6f7f9" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; style-src 'self' 'unsafe-inline' https://unpkg.com; connect-src 'self' https://data.source.coop https://nominatim.openstreetmap.org https://photon.komoot.io https://routing.openstreetmap.de https://tiles.openfreemap.org https://s3.amazonaws.com https://services.arcgisonline.com; img-src 'self' data: https://tiles.openfreemap.org https://s3.amazonaws.com https://services.arcgisonline.com; worker-src 'self' blob:; child-src blob:; object-src 'none'; base-uri 'self';" />
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>&#127758;</text></svg>" />
 <link href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css" rel="stylesheet" integrity="sha384-Nq6PQ+9vJPvw7U/VfDELyrWoGQMsy0gi6QShhaSrGzkpF5KkM40csg2leky+YMTd" crossorigin="anonymous" />
 <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js" integrity="sha384-GfxBM9x46BaAFxtCq39Fxir8fNZ4VDnwgfi6Kzi5/F1tAFsm0amuuV8kd+Pxzuf/" crossorigin="anonymous"></script>
@@ -388,12 +389,24 @@ const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;',
 const stripTags = s => String(s).replace(/<[^>]+>/g, '');
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
+const _storeCache = new Map();
 function load(key, fallback) {
-  try { return JSON.parse(localStorage.getItem(STORE + key)) ?? fallback; }
-  catch (e) { return fallback; }
+  let raw;
+  if (_storeCache.has(key)) {
+    raw = _storeCache.get(key);
+  } else {
+    try { raw = localStorage.getItem(STORE + key); } catch (e) {}
+    _storeCache.set(key, raw);
+  }
+  if (raw == null) return fallback;
+  try { return JSON.parse(raw) ?? fallback; } catch (e) { return fallback; }
 }
 function save(key, val) {
-  try { localStorage.setItem(STORE + key, JSON.stringify(val)); } catch (e) {}
+  try {
+    const raw = JSON.stringify(val);
+    _storeCache.set(key, raw);
+    localStorage.setItem(STORE + key, raw);
+  } catch (e) {}
 }
 
 /** Metres per degree of lat / lng at a given latitude. */
@@ -865,14 +878,6 @@ function parseLatLng(text) {
   const lat = +m[1], lng = +m[2];
   if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
   return { lat, lng, label: lat.toFixed(5) + ', ' + lng.toFixed(5), sub: 'Coordinates', kind: 'place' };
-}
-
-async function geocodeOne(text) {
-  const coord = parseLatLng(text);
-  if (coord) return { lng: coord.lng, lat: coord.lat, q: text, label: coord.label };
-  const list = await suggest(text);
-  if (!list.length) throw new Error(`No match for "${text}"`);
-  return { lng: list[0].lng, lat: list[0].lat, q: text, label: list[0].label };
 }
 
 async function reverse(lng, lat) {
