@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 
 const html = fs.readFileSync('index.html', 'utf8');
-const code = html.match(/function load\(key, fallback\) \{[\s\S]*?catch \(e\) \{\}\r?\n\}/)[0];
+const code = html.match(/const _storeCache = new Map\(\);\s*function load\(key, fallback\) \{[\s\S]*?catch \(e\) \{\}\r?\n\}/)[0];
 
 const setup = () => {
     const store = new Map();
