@@ -1189,7 +1189,8 @@ $('placeShare').onclick = async () => {
 // Tapping the map: POI label first, otherwise reverse geocode the point.
 map.on('click', async e => {
   if ($('dir').classList.contains('on') || navState.active) return;
-  const hit = map.queryRenderedFeatures(e.point)
+  const symbolLayers = map.getStyle()?.layers?.filter(l => l.type === 'symbol').map(l => l.id);
+  const hit = map.queryRenderedFeatures(e.point, symbolLayers ? { layers: symbolLayers } : undefined)
     .find(f => f.layer.type === 'symbol' && f.properties && f.properties.name);
   dropPin(e.lngLat.lng, e.lngLat.lat);
   if (hit) {
