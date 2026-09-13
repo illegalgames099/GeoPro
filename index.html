@@ -375,6 +375,8 @@ const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const IMPERIAL = /^en-(US|LR)|^my/i.test(navigator.language || 'en');
 const STORE = 'geopro.';
 
+let ipLocationPromise = fetch('https://get.geojs.io/v1/ip/geo.json').then(r => r.json()).catch(() => null);
+
 let toastT;
 function toast(msg, ms = 4200) {
   const el = $('toast');
@@ -474,10 +476,22 @@ const geolocate = new maplibregl.GeolocateControl({
 map.addControl(geolocate, 'top-right');
 map.addControl(new maplibregl.ScaleControl({ unit: IMPERIAL ? 'imperial' : 'metric' }), 'bottom-left');
 
-geolocate.on('error', err => {
-  toast(err && err.code === 1
-    ? 'Location permission denied. Allow location access to use GPS.'
-    : 'Could not get your location. GPS needs an https connection.');
+geolocate.on('error', async err => {
+  toast('Precise GPS unavailable. Attempting IP fallback...', 1500);
+  const ipLoc = await ipLocationPromise;
+  if (ipLoc && ipLoc.longitude && ipLoc.latitude) {
+    myLocation = [parseFloat(ipLoc.longitude), parseFloat(ipLoc.latitude)];
+    map.flyTo({ center: myLocation, zoom: 14, essential: true });
+
+    // Simulate a geolocate event for other handlers
+    geolocate.fire('geolocate', { coords: { longitude: myLocation[0], latitude: myLocation[1] } });
+
+    toast('Using approximate location from IP.', 4000);
+  } else {
+    toast(err && err.code === 1
+      ? 'Location permission denied and IP fallback failed.'
+      : 'Could not get your location. GPS needs HTTPS, IP fallback failed.');
+  }
 });
 geolocate.on('geolocate', e => { myLocation = [e.coords.longitude, e.coords.latitude]; });
 let myLocation = null;
