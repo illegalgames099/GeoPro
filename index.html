@@ -827,8 +827,12 @@ function labelFor(p) {
   return p.name || street || p.city || p.county || 'Unnamed place';
 }
 function subFor(p) {
-  const street = p.name && p.street ? (p.housenumber ? p.housenumber + ' ' + p.street : p.street) : null;
-  return [street, p.city || p.county, p.state, p.country].filter(Boolean).join(', ');
+  const parts = [];
+  if (p.name && (p.housenumber || p.street)) parts.push(`${p.housenumber || ''} ${p.street || ''}`.trim());
+  if (p.city || p.town || p.village) parts.push(p.city || p.town || p.village);
+  if (p.state) parts.push(p.state);
+  if (p.country) parts.push(p.country);
+  return parts.filter(Boolean).join(', ');
 }
 
 /** Typeahead. Photon first (no rate ceiling), Nominatim as a backup. */
