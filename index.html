@@ -982,7 +982,7 @@ function createResultRow(p, here) {
   row.setAttribute('role', 'option');
   row.setAttribute('aria-selected', 'false');
   row.tabIndex = 0;
-  const away = dist2(here, [p.lng, p.lat]);
+  const away = p._dist !== undefined ? p._dist : dist2(here, [p.lng, p.lat]);
   row.innerHTML =
     `<span class="kind" aria-hidden="true">${KIND_ICON[p.kind] || KIND_ICON.place}</span>` +
     `<span class="col"><span class="t ell">${esc(p.label)}</span>` +
@@ -993,62 +993,56 @@ function createResultRow(p, here) {
   return row;
 }
 
-function renderResults(list, heading) {
-  lastList = list; selIdx = -1;
-  resultsEl.innerHTML = '';
-  
-  // Inject "My Location" option for waypoint fields if empty
+
+function injectMyLocation(list) {
   if (activeStopIdx >= 0 && activeInput.value.trim() === '' && myLocation) {
-      list = [{ label: 'My Location', sub: 'Current GPS Position', lng: myLocation[0], lat: myLocation[1], kind: 'myloc', isMyLoc: true }, ...list];
+      return [{ label: 'My Location', sub: 'Current GPS Position', lng: myLocation[0], lat: myLocation[1], kind: 'myloc', isMyLoc: true }, ...list];
   }
+  return list;
+}
 
-  if (!list.length) { closeResults(); return; }
-
-  const here = myLocation || [map.getCenter().lng, map.getCenter().lat];
-  
-  // Precompute distance for sorting
+function sortResultsByDistance(list, here) {
   list.forEach(p => {
     if (!p.isMyLoc) p._dist = dist2(here, [p.lng, p.lat]);
   });
-
-  // Sort results by proximity
   list.sort((a, b) => {
     if (a.isMyLoc) return -1;
     if (b.isMyLoc) return 1;
     return a._dist - b._dist;
   });
+}
+
+function createResultsHeading(heading) {
+  const h = document.createElement('div');
+  h.className = 'head';
+  h.innerHTML = `<span>${esc(heading)}</span>`;
+  if (activeStopIdx === -1) {
+    const clear = document.createElement('button');
+    clear.textContent = 'Clear';
+    clear.onclick = ev => { ev.stopPropagation(); save('recent', []); closeResults(); };
+    h.appendChild(clear);
+  }
+  return h;
+}
+
+function renderResults(list, heading) {
+  list = injectMyLocation(list);
+  lastList = list; selIdx = -1;
+  resultsEl.innerHTML = '';
+
+  if (!list.length) { closeResults(); return; }
+
+  const here = myLocation || [map.getCenter().lng, map.getCenter().lat];
+  sortResultsByDistance(list, here);
 
   const fragment = document.createDocumentFragment();
 
   if (heading) {
-    const h = document.createElement('div');
-    h.className = 'head';
-    h.innerHTML = `<span>${esc(heading)}</span>`;
-    if (activeStopIdx === -1) {
-      const clear = document.createElement('button');
-      clear.textContent = 'Clear';
-      clear.onclick = ev => { ev.stopPropagation(); save('recent', []); closeResults(); };
-      h.appendChild(clear);
-    }
-    fragment.appendChild(h);
+    fragment.appendChild(createResultsHeading(heading));
   }
 
   list.forEach(p => {
-    resultsEl.appendChild(createResultRow(p, here));
-    const row = document.createElement('div');
-    row.className = 'row';
-    row.setAttribute('role', 'option');
-    row.setAttribute('aria-selected', 'false');
-    row.tabIndex = 0;
-    const away = p._dist !== undefined ? p._dist : dist2(here, [p.lng, p.lat]);
-    row.innerHTML =
-      `<span class="kind" aria-hidden="true">${KIND_ICON[p.kind] || KIND_ICON.place}</span>` +
-      `<span class="col"><span class="t ell">${esc(p.label)}</span>` +
-      `<span class="s ell">${esc(p.sub || '')}</span></span>` +
-      `<span class="far">${away > 200 && !p.isMyLoc ? fmtDist(away) : ''}</span>`;
-    row.onclick = () => pickPlace(p);
-    row.onkeydown = e => { if (e.key === 'Enter') pickPlace(p); };
-    fragment.appendChild(row);
+    fragment.appendChild(createResultRow(p, here));
   });
   
   resultsEl.appendChild(fragment);
