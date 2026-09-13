@@ -611,10 +611,13 @@ const H_OMT = ['coalesce',
   ['get', 'render_height'], ['get', 'height'],
   ['*', ['coalesce', ['get', 'levels'], ['get', 'building:levels'], 2], 3.2]
 ];
-let H_ACTIVE = H_OVERTURE;
+
+function getActiveHeight() {
+  return map.getSource('overture') ? H_OVERTURE : H_OMT;
+}
 
 function bldColor(stops) {
-  const e = ['interpolate', ['linear'], H_ACTIVE];
+  const e = ['interpolate', ['linear'], getActiveHeight()];
   for (let i = 0; i < stops.length; i += 2) e.push(stops[i], stops[i + 1]);
   return e;
 }
@@ -652,14 +655,12 @@ map.on('load', async () => {
 
   const ov = await probeOverture();
   if (ov) {
-    H_ACTIVE = H_OVERTURE;
     map.addSource('overture', {
       type: 'vector', url: 'pmtiles://' + ov.url,
       attribution: '&copy; Overture Maps Foundation'
     });
     addBuildings('overture', ov.layer);
   } else {
-    H_ACTIVE = H_OMT;
     const sources = map.getStyle().sources;
     const src = sources.openmaptiles ? 'openmaptiles' : Object.keys(sources)[0];
     addBuildings(src, 'building');
@@ -734,7 +735,7 @@ function addBuildings(source, sourceLayer) {
     id: 'geo-buildings', type: 'fill-extrusion', source, 'source-layer': sourceLayer, minzoom: 13.5,
     paint: {
       'fill-extrusion-color': bldColor(PRESETS[preset].bld),
-      'fill-extrusion-height': ['interpolate', ['exponential', 1.4], ['zoom'], 13.5, 0, 15.6, H_ACTIVE],
+      'fill-extrusion-height': ['interpolate', ['exponential', 1.4], ['zoom'], 13.5, 0, 15.6, getActiveHeight()],
       'fill-extrusion-base': ['case', ['has', 'render_min_height'], ['get', 'render_min_height'], 0],
       'fill-extrusion-opacity': .96,
       'fill-extrusion-vertical-gradient': true
