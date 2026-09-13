@@ -964,6 +964,8 @@ $('qClear').onclick = () => {
 };
 
 function closeResults() {
+  clearTimeout(searchT);
+  searchSeq++;
   resultsEl.classList.remove('on');
   if (activeInput) activeInput.setAttribute('aria-expanded', 'false');
   lastList = []; selIdx = -1;
