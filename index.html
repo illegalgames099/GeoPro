@@ -1025,7 +1025,9 @@ function renderResults(list, heading) {
   if (heading) {
     const h = document.createElement('div');
     h.className = 'head';
-    h.innerHTML = `<span>${esc(heading)}</span>`;
+    const span = document.createElement('span');
+    span.textContent = heading;
+    h.appendChild(span);
     if (activeStopIdx === -1) {
       const clear = document.createElement('button');
       clear.textContent = 'Clear';
@@ -1085,8 +1087,8 @@ function pickPlace(p) {
   if ($('dir').classList.contains('on') && activeStopIdx >= 0) {
     // We are routing
     setStop(activeStopIdx, p);
+    updateRoute();
     if (readyToRoute()) {
-       requestRoute();
        activeInput.blur();
     } else {
        // Smart focus logic: If we just filled stop A, focus stop B.
@@ -1143,20 +1145,18 @@ $('placeTo').onclick = () => {
   setStop(stops.length - 1, { ...placeCtx.coord, q: placeCtx.name, label: placeCtx.name });
   if (!stops[0].point && myLocation) {
      setStop(0, { lng: myLocation[0], lat: myLocation[1], q: null, label: 'My location', isMyLoc: true });
-     requestRoute();
   } else if (!stops[0].point) {
      stopInputs()[0].focus();
-  } else {
-     requestRoute();
   }
+  updateRoute();
 };
 
 $('placeFrom').onclick = () => {
   if (!placeCtx) return;
   openDirections();
   setStop(0, { ...placeCtx.coord, q: placeCtx.name, label: placeCtx.name });
-  if (stops[stops.length - 1].point) requestRoute();
-  else stopInputs()[stops.length - 1].focus();
+  updateRoute();
+  if (!stops[stops.length - 1].point) stopInputs()[stops.length - 1].focus();
 };
 
 $('placeSave').onclick = () => {
@@ -1191,7 +1191,8 @@ $('placeShare').onclick = async () => {
 // Tapping the map: POI label first, otherwise reverse geocode the point.
 map.on('click', async e => {
   if ($('dir').classList.contains('on') || navState.active) return;
-  const hit = map.queryRenderedFeatures(e.point)
+  const symbolLayers = map.getStyle()?.layers?.filter(l => l.type === 'symbol').map(l => l.id);
+  const hit = map.queryRenderedFeatures(e.point, symbolLayers ? { layers: symbolLayers } : undefined)
     .find(f => f.layer.type === 'symbol' && f.properties && f.properties.name);
   dropPin(e.lngLat.lng, e.lngLat.lat);
   if (hit) {
@@ -1242,12 +1243,17 @@ document.querySelectorAll('#modes button').forEach(b => {
     press('#modes', b);
     mode = b.dataset.mode;
     save('mode', mode);
-    if (readyToRoute()) requestRoute();
+    updateRoute();
   };
 });
 
 const readyToRoute = () => stops.filter(s => s.point).length >= 2 &&
   stops[0].point && stops[stops.length - 1].point;
+
+function updateRoute() {
+  if (readyToRoute()) requestRoute();
+  else clearRouteGeometry();
+}
 
 /* ---- waypoint rows are rebuilt from `stops` so indices stay honest ---- */
 function renderStops() {
@@ -1288,7 +1294,7 @@ function renderStops() {
         stops.splice(i, 1);
         resetMarkers();          
         renderStops();
-        if (readyToRoute()) requestRoute(); else clearRouteGeometry();
+        updateRoute();
       };
       row.append(del);
     }
@@ -1317,7 +1323,7 @@ $('swap').onclick = () => {
   stops.reverse();
   resetMarkers();              // start and destination swap colours
   renderStops();
-  if (readyToRoute()) requestRoute();
+  updateRoute();
 };
 
 function markerColor(i) {
@@ -1343,7 +1349,7 @@ function syncMarkers() {
         s.point = { lng: p.lng, lat: p.lat, q: null, label: null };
         const input = stopInputs()[idx];
         if (input) input.value = fmtLngLat(s.point);
-        if (readyToRoute()) requestRoute();
+        updateRoute();
       });
     }
     s.marker.setLngLat([s.point.lng, s.point.lat]).addTo(map);
@@ -1358,7 +1364,7 @@ map.on('click', e => {
   setStop(empty_i >= 0 ? empty_i : stops.length - 1, p);
   const input = stopInputs()[empty_i >= 0 ? empty_i : stops.length - 1];
   if (input) input.value = fmtLngLat(p);
-  if (readyToRoute()) requestRoute();
+  updateRoute();
 });
 
 function clearRouteGeometry() {
