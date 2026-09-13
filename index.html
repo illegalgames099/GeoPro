@@ -1023,7 +1023,9 @@ function renderResults(list, heading) {
   if (heading) {
     const h = document.createElement('div');
     h.className = 'head';
-    h.innerHTML = `<span>${esc(heading)}</span>`;
+    const span = document.createElement('span');
+    span.textContent = heading;
+    h.appendChild(span);
     if (activeStopIdx === -1) {
       const clear = document.createElement('button');
       clear.textContent = 'Clear';

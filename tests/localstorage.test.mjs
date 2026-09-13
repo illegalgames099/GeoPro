@@ -17,6 +17,7 @@ const setup = () => {
     const sandbox = new Function('global', `
         const STORE = global.STORE;
         const localStorage = global.localStorage;
+        const _storeCache = new Map();
         ${code}
         return { load, save };
     `);
