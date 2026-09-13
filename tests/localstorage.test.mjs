@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 
 const html = fs.readFileSync('index.html', 'utf8');
-const code = html.match(/function load\(key, fallback\) \{[\s\S]*?catch \(e\) \{\}\r?\n\}/)[0];
+const code = html.match(/const _storeCache = new Map\(\);\r?\nfunction load\(key, fallback\) \{[\s\S]*?catch \(e\) \{\}\r?\n\}/)[0];
 
 const setup = () => {
     const store = new Map();
@@ -18,11 +18,11 @@ const setup = () => {
         const STORE = global.STORE;
         const localStorage = global.localStorage;
         ${code}
-        return { load, save };
+        return { load, save, _storeCache };
     `);
 
-    const { load, save } = sandbox(global);
-    return { load, save, store };
+    const { load, save, _storeCache } = sandbox(global);
+    return { load, save, store, _storeCache };
 };
 
 test('save and load basic functionality', () => {
@@ -60,4 +60,32 @@ test('save error handling', () => {
 
     // The previous value (none) or fallback should be returned
     assert.strictEqual(load('circular', 'fallback_value'), 'fallback_value');
+});
+
+test('caching behavior', () => {
+    const { load, save, store, _storeCache } = setup();
+
+    // Directly set something in localStorage that bypasses the cache
+    store.set('geopro.direct', '{"from":"storage"}');
+
+    // First load reads from storage and sets cache
+    assert.deepStrictEqual(load('direct', null), { from: 'storage' });
+    assert.strictEqual(_storeCache.get('direct'), '{"from":"storage"}');
+
+    // Modify the storage directly to simulate another tab or external change
+    store.set('geopro.direct', '{"from":"changed_storage"}');
+
+    // Should return cached parsed version instead of reading storage again
+    assert.deepStrictEqual(load('direct', null), { from: 'storage' });
+
+    // Now verify caching for save
+    save('direct', { from: 'cache' });
+    assert.strictEqual(_storeCache.get('direct'), '{"from":"cache"}');
+    assert.strictEqual(store.get('geopro.direct'), '{"from":"cache"}');
+
+    // Clear storage but keep cache
+    store.delete('geopro.direct');
+
+    // Load should still work because it checks cache first
+    assert.deepStrictEqual(load('direct', null), { from: 'cache' });
 });
