@@ -3,7 +3,7 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 
 const html = fs.readFileSync('index.html', 'utf8');
-const code = html.match(/function load\(key, fallback\) \{[\s\S]*?catch \(e\) \{\}\r?\n\}/)[0];
+const code = html.match(/const _storeCache = new Map\(\);\s*function load\(key, fallback\) \{[\s\S]*?catch \(e\) \{\}\r?\n\}/)[0];
 
 const setup = () => {
     const store = new Map();
@@ -18,11 +18,11 @@ const setup = () => {
         const STORE = global.STORE;
         const localStorage = global.localStorage;
         ${code}
-        return { load, save };
+        return { load, save, _storeCache };
     `);
 
-    const { load, save } = sandbox(global);
-    return { load, save, store };
+    const { load, save, _storeCache } = sandbox(global);
+    return { load, save, store, _storeCache };
 };
 
 test('save and load basic functionality', () => {
@@ -60,4 +60,25 @@ test('save error handling', () => {
 
     // The previous value (none) or fallback should be returned
     assert.strictEqual(load('circular', 'fallback_value'), 'fallback_value');
+});
+
+test('load error handling (localStorage throws)', () => {
+    const store = new Map();
+    global.localStorage = {
+        getItem: (key) => { throw new Error('localStorage is disabled'); },
+        setItem: (key, val) => store.set(key, String(val)),
+    };
+    global.STORE = 'geopro.';
+
+    const sandbox = new Function('global', `
+        const STORE = global.STORE;
+        const localStorage = global.localStorage;
+        ${code}
+        return { load, save, _storeCache };
+    `);
+
+    const { load, save, _storeCache } = sandbox(global);
+
+    // Verify that the fallback is returned when localStorage throws
+    assert.strictEqual(load('throws', 'fallback_value'), 'fallback_value');
 });
