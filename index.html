@@ -581,24 +581,28 @@ const OVERTURE_URLS = [
 ];
 
 async function probeOverture() {
-  for (const url of OVERTURE_URLS) {
-    try {
-      const p = new pmtiles.PMTiles(url);
-      const header = await p.getHeader();
-      const meta = await p.getMetadata();
-      const layers = (meta && meta.vector_layers) || [];
-      const layer = layers.find(l => /^buildings?$/i.test(l.id)) || layers.find(l => /build/i.test(l.id));
-      if (!layer) continue;
-      pmProtocol.add(p);
-      return { url, layer: layer.id, maxzoom: header.maxZoom ?? 15 };
-    } catch (e) {
-      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-        console.warn('[geopro] Overture mirror unavailable:', url, e && e.message);
+  try {
+    const result = await Promise.any(OVERTURE_URLS.map(async (url) => {
+      try {
+        const p = new pmtiles.PMTiles(url);
+        const header = await p.getHeader();
+        const meta = await p.getMetadata();
+        const layers = (meta && meta.vector_layers) || [];
+        const layer = layers.find(l => /^buildings?$/i.test(l.id)) || layers.find(l => /build/i.test(l.id));
+        if (!layer) throw new Error('No building layer found');
+        return { url, layer: layer.id, maxzoom: header.maxZoom ?? 15, p };
+      } catch (e) {
+        if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+          console.warn('[geopro] Overture mirror unavailable:', url, e && e.message);
+        }
+        throw e;
       }
-      // Ignore errors; loop continues to the next fallback mirror.
-    }
+    }));
+    pmProtocol.add(result.p);
+    return { url: result.url, layer: result.layer, maxzoom: result.maxzoom };
+  } catch (e) {
+    return null; // All promises were rejected
   }
-  return null;
 }
 
 // Height in metres where Overture knows it, else floors x 3.2, else a default.
@@ -827,8 +831,12 @@ function labelFor(p) {
   return p.name || street || p.city || p.county || 'Unnamed place';
 }
 function subFor(p) {
-  const street = p.name && p.street ? (p.housenumber ? p.housenumber + ' ' + p.street : p.street) : null;
-  return [street, p.city || p.county, p.state, p.country].filter(Boolean).join(', ');
+  const parts = [];
+  if (p.name && (p.housenumber || p.street)) parts.push(`${p.housenumber || ''} ${p.street || ''}`.trim());
+  if (p.city || p.town || p.village) parts.push(p.city || p.town || p.village);
+  if (p.state) parts.push(p.state);
+  if (p.country) parts.push(p.country);
+  return parts.filter(Boolean).join(', ');
 }
 
 /** Typeahead. Photon first (no rate ceiling), Nominatim as a backup. */
@@ -964,6 +972,8 @@ $('qClear').onclick = () => {
 };
 
 function closeResults() {
+  clearTimeout(searchT);
+  searchSeq++;
   resultsEl.classList.remove('on');
   if (activeInput) activeInput.setAttribute('aria-expanded', 'false');
   lastList = []; selIdx = -1;
@@ -982,7 +992,7 @@ function createResultRow(p, here) {
   row.setAttribute('role', 'option');
   row.setAttribute('aria-selected', 'false');
   row.tabIndex = 0;
-  const away = dist2(here, [p.lng, p.lat]);
+  const away = p._dist !== undefined ? p._dist : dist2(here, [p.lng, p.lat]);
   row.innerHTML =
     `<span class="kind" aria-hidden="true">${KIND_ICON[p.kind] || KIND_ICON.place}</span>` +
     `<span class="col"><span class="t ell">${esc(p.label)}</span>` +
@@ -993,37 +1003,57 @@ function createResultRow(p, here) {
   return row;
 }
 
-function renderResults(list, heading) {
-  lastList = list; selIdx = -1;
-  resultsEl.innerHTML = '';
-  
-  // Inject "My Location" option for waypoint fields if empty
+
+function injectMyLocation(list) {
   if (activeStopIdx >= 0 && activeInput.value.trim() === '' && myLocation) {
-      list = [{ label: 'My Location', sub: 'Current GPS Position', lng: myLocation[0], lat: myLocation[1], kind: 'myloc', isMyLoc: true }, ...list];
+      return [{ label: 'My Location', sub: 'Current GPS Position', lng: myLocation[0], lat: myLocation[1], kind: 'myloc', isMyLoc: true }, ...list];
   }
+  return list;
+}
 
-  if (!list.length) { closeResults(); return; }
-
-  const here = myLocation || [map.getCenter().lng, map.getCenter().lat];
-  
-  // Precompute distance for sorting
+function sortResultsByDistance(list, here) {
   list.forEach(p => {
     if (!p.isMyLoc) p._dist = dist2(here, [p.lng, p.lat]);
   });
-
-  // Sort results by proximity
   list.sort((a, b) => {
     if (a.isMyLoc) return -1;
     if (b.isMyLoc) return 1;
     return a._dist - b._dist;
   });
+}
+
+function createResultsHeading(heading) {
+  const h = document.createElement('div');
+  h.className = 'head';
+  h.innerHTML = `<span>${esc(heading)}</span>`;
+  if (activeStopIdx === -1) {
+    const clear = document.createElement('button');
+    clear.textContent = 'Clear';
+    clear.onclick = ev => { ev.stopPropagation(); save('recent', []); closeResults(); };
+    h.appendChild(clear);
+  }
+  return h;
+}
+
+function renderResults(list, heading) {
+  list = injectMyLocation(list);
+  lastList = list; selIdx = -1;
+  resultsEl.innerHTML = '';
+
+  if (!list.length) { closeResults(); return; }
+
+  const here = myLocation || [map.getCenter().lng, map.getCenter().lat];
+  sortResultsByDistance(list, here);
 
   const fragment = document.createDocumentFragment();
 
   if (heading) {
+    fragment.appendChild(createResultsHeading(heading));
     const h = document.createElement('div');
     h.className = 'head';
-    h.innerHTML = `<span>${esc(heading)}</span>`;
+    const span = document.createElement('span');
+    span.textContent = heading;
+    h.appendChild(span);
     if (activeStopIdx === -1) {
       const clear = document.createElement('button');
       clear.textContent = 'Clear';
@@ -1034,21 +1064,7 @@ function renderResults(list, heading) {
   }
 
   list.forEach(p => {
-    resultsEl.appendChild(createResultRow(p, here));
-    const row = document.createElement('div');
-    row.className = 'row';
-    row.setAttribute('role', 'option');
-    row.setAttribute('aria-selected', 'false');
-    row.tabIndex = 0;
-    const away = p._dist !== undefined ? p._dist : dist2(here, [p.lng, p.lat]);
-    row.innerHTML =
-      `<span class="kind" aria-hidden="true">${KIND_ICON[p.kind] || KIND_ICON.place}</span>` +
-      `<span class="col"><span class="t ell">${esc(p.label)}</span>` +
-      `<span class="s ell">${esc(p.sub || '')}</span></span>` +
-      `<span class="far">${away > 200 && !p.isMyLoc ? fmtDist(away) : ''}</span>`;
-    row.onclick = () => pickPlace(p);
-    row.onkeydown = e => { if (e.key === 'Enter') pickPlace(p); };
-    fragment.appendChild(row);
+    fragment.appendChild(createResultRow(p, here));
   });
   
   resultsEl.appendChild(fragment);
@@ -1083,8 +1099,8 @@ function pickPlace(p) {
   if ($('dir').classList.contains('on') && activeStopIdx >= 0) {
     // We are routing
     setStop(activeStopIdx, p);
+    updateRoute();
     if (readyToRoute()) {
-       requestRoute();
        activeInput.blur();
     } else {
        // Smart focus logic: If we just filled stop A, focus stop B.
@@ -1141,20 +1157,18 @@ $('placeTo').onclick = () => {
   setStop(stops.length - 1, { ...placeCtx.coord, q: placeCtx.name, label: placeCtx.name });
   if (!stops[0].point && myLocation) {
      setStop(0, { lng: myLocation[0], lat: myLocation[1], q: null, label: 'My location', isMyLoc: true });
-     requestRoute();
   } else if (!stops[0].point) {
      stopInputs()[0].focus();
-  } else {
-     requestRoute();
   }
+  updateRoute();
 };
 
 $('placeFrom').onclick = () => {
   if (!placeCtx) return;
   openDirections();
   setStop(0, { ...placeCtx.coord, q: placeCtx.name, label: placeCtx.name });
-  if (stops[stops.length - 1].point) requestRoute();
-  else stopInputs()[stops.length - 1].focus();
+  updateRoute();
+  if (!stops[stops.length - 1].point) stopInputs()[stops.length - 1].focus();
 };
 
 $('placeSave').onclick = () => {
@@ -1189,7 +1203,8 @@ $('placeShare').onclick = async () => {
 // Tapping the map: POI label first, otherwise reverse geocode the point.
 map.on('click', async e => {
   if ($('dir').classList.contains('on') || navState.active) return;
-  const hit = map.queryRenderedFeatures(e.point)
+  const symbolLayers = map.getStyle()?.layers?.filter(l => l.type === 'symbol').map(l => l.id);
+  const hit = map.queryRenderedFeatures(e.point, symbolLayers ? { layers: symbolLayers } : undefined)
     .find(f => f.layer.type === 'symbol' && f.properties && f.properties.name);
   dropPin(e.lngLat.lng, e.lngLat.lat);
   if (hit) {
@@ -1240,12 +1255,17 @@ document.querySelectorAll('#modes button').forEach(b => {
     press('#modes', b);
     mode = b.dataset.mode;
     save('mode', mode);
-    if (readyToRoute()) requestRoute();
+    updateRoute();
   };
 });
 
 const readyToRoute = () => stops.filter(s => s.point).length >= 2 &&
   stops[0].point && stops[stops.length - 1].point;
+
+function updateRoute() {
+  if (readyToRoute()) requestRoute();
+  else clearRouteGeometry();
+}
 
 /* ---- waypoint rows are rebuilt from `stops` so indices stay honest ---- */
 function renderStops() {
@@ -1286,7 +1306,7 @@ function renderStops() {
         stops.splice(i, 1);
         resetMarkers();          
         renderStops();
-        if (readyToRoute()) requestRoute(); else clearRouteGeometry();
+        updateRoute();
       };
       row.append(del);
     }
@@ -1315,7 +1335,7 @@ $('swap').onclick = () => {
   stops.reverse();
   resetMarkers();              // start and destination swap colours
   renderStops();
-  if (readyToRoute()) requestRoute();
+  updateRoute();
 };
 
 function markerColor(i) {
@@ -1341,7 +1361,7 @@ function syncMarkers() {
         s.point = { lng: p.lng, lat: p.lat, q: null, label: null };
         const input = stopInputs()[idx];
         if (input) input.value = fmtLngLat(s.point);
-        if (readyToRoute()) requestRoute();
+        updateRoute();
       });
     }
     s.marker.setLngLat([s.point.lng, s.point.lat]).addTo(map);
@@ -1356,7 +1376,7 @@ map.on('click', e => {
   setStop(empty_i >= 0 ? empty_i : stops.length - 1, p);
   const input = stopInputs()[empty_i >= 0 ? empty_i : stops.length - 1];
   if (input) input.value = fmtLngLat(p);
-  if (readyToRoute()) requestRoute();
+  updateRoute();
 });
 
 function clearRouteGeometry() {
