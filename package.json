@@ -17,5 +17,8 @@
   "bugs": {
     "url": "https://github.com/illegalgames099/GeoPro/issues"
   },
-  "homepage": "https://github.com/illegalgames099/GeoPro#readme"
+  "homepage": "https://github.com/illegalgames099/GeoPro#readme",
+  "devDependencies": {
+    "playwright": "^1.63.0"
+  }
 }
