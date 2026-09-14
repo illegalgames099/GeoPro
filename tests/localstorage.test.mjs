@@ -3,6 +3,8 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 
 const html = fs.readFileSync('index.html', 'utf8');
+const codeMatch = html.match(/(const _storeCache = new Map\(\);\r?\nfunction load\(key, fallback\) \{[\s\S]*?catch \(e\) \{\}\r?\n\})/);
+const code = codeMatch ? codeMatch[1] : html.match(/function load\(key, fallback\) \{[\s\S]*?catch \(e\) \{\}\r?\n\}/)[0];
 const code = html.match(/const _storeCache = new Map\(\);\s*function load\(key, fallback\) \{[\s\S]*?catch \(e\) \{\}\r?\n\}/)[0];
 
 const setup = () => {
@@ -17,6 +19,9 @@ const setup = () => {
     const sandbox = new Function('global', `
         const STORE = global.STORE;
         const localStorage = global.localStorage;
+        // _storeCache is captured from the html code if it exists.
+        // We use global._storeCache if not matched in 'code'.
+        ${codeMatch ? '' : 'const _storeCache = new Map();'}
         const _storeCache = new Map();
         ${code}
         return { load, save };
