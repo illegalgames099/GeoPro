@@ -765,7 +765,16 @@ document.querySelectorAll('#lightPills button').forEach(b => {
 $('btnZin').onclick = () => map.zoomIn();
 $('btnZout').onclick = () => map.zoomOut();
 $('btnCompass').onclick = () => map.easeTo({ bearing: 0, duration: reduceMotion ? 0 : 500 });
-$('btnLoc').onclick = () => geolocate.trigger();
+$('btnLoc').onclick = async () => {
+  if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function') {
+    try {
+      await DeviceOrientationEvent.requestPermission();
+    } catch (e) {
+      console.warn('[geopro] Error requesting device orientation permission:', e);
+    }
+  }
+  geolocate.trigger();
+};
 
 $('btnTerrain').onclick = e => {
   const on = e.currentTarget.getAttribute('aria-pressed') !== 'true';
