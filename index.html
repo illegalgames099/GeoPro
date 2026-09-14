@@ -353,6 +353,7 @@
 
 <div id="toast" role="status" aria-live="polite"></div>
 
+<script src="./assets/utils.js"></script>
 <script>
 /* ============================================================================
    GEOPRO — an open-stack alternative to Apple Maps, in one HTML file.
@@ -427,17 +428,6 @@ function bearingOf(a, b) {
   const y = Math.sin(dl) * Math.cos(p2);
   const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
   return (Math.atan2(y, x) / RAD + 360) % 360;
-}
-function fmtDist(m, imperial = IMPERIAL) {
-  if (imperial) {
-    const ft = m * 3.28084;
-    if (ft < 1000) return Math.max(10, Math.round(ft / 10) * 10) + ' ft';
-    const mi = ft / 5280;
-    return (mi < 10 ? mi.toFixed(1) : Math.round(mi)) + ' mi';
-  }
-  if (m < 1000) return Math.max(10, Math.round(m / 10) * 10) + ' m';
-  const km = m / 1000;
-  return (km < 10 ? km.toFixed(1) : Math.round(km)) + ' km';
 }
 function fmtDur(s) {
   const m = Math.round(s / 60);
