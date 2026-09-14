@@ -163,8 +163,9 @@
   
   .lanes{display:flex;gap:4px;margin-top:6px;flex-wrap:wrap}
   .lane{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;
-    font-size:14px;background:var(--line);color:var(--dim)}
-  .lane.ok{background:var(--accent);color:var(--ink)}
+    font-size:14px;background:var(--line);color:var(--dim);
+    border: 1px solid rgba(12,18,32,0.1); box-shadow: 0 2px 0 var(--line);}
+  .lane.ok{background:var(--accent);color:var(--ink); border-color: transparent; box-shadow: 0 2px 0 rgba(10,104,255,0.4);}
 
   /* ---------- right control stack ---------- */
   #stack{position:absolute;top:calc(58px + var(--safe-t));right:14px;z-index:11;display:flex;
@@ -224,6 +225,7 @@
   #toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
 
   .maplibregl-user-location-dot,.maplibregl-user-location-dot::before{background-color:var(--red)}
+  body.nav-active .maplibregl-user-location-dot, body.nav-active .maplibregl-user-location-dot::before { display: none !important; }
   .puck{width:28px;height:28px;border-radius:50%;background:var(--red);border:3px solid #fff;
     box-shadow:0 2px 12px rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center}
   .puck::after{content:"";width:0;height:0;border-left:5px solid transparent;
@@ -692,7 +694,7 @@ map.on('load', async () => {
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: {
       'line-color': PRESETS.day.edge,
-      'line-width': ['interpolate', ['linear'], ['zoom'], 8, 6, 15, 14, 20, 20]
+      'line-width': ['*', ['interpolate', ['linear'], ['zoom'], 8, 6, 15, 14, 20, 20], ['max', 1, ['*', 0.7, ['get', 'lanes']]]]
     }
   }, firstSymbolId);
   
@@ -702,7 +704,7 @@ map.on('load', async () => {
     layout: { 'line-cap': 'round', 'line-join': 'round' },
     paint: {
       'line-color': PRESETS.day.route,
-      'line-width': ['interpolate', ['linear'], ['zoom'], 8, 3.4, 15, 9, 20, 14]
+      'line-width': ['*', ['interpolate', ['linear'], ['zoom'], 8, 3.4, 15, 9, 20, 14], ['max', 1, ['*', 0.7, ['get', 'lanes']]]]
     }
   }, firstSymbolId);
 
@@ -1527,7 +1529,7 @@ function prepareRoute(route) {
 function buildRouteLines(rt) {
   const lines = [], pins = [];
 
-  rt.steps.forEach(step => {
+  rt.steps.forEach((step, i) => {
     // Calculate speed in m/s for this specific segment
     const speedMps = step.duration > 0 ? step.distance / step.duration : 10;
     
@@ -1541,7 +1543,7 @@ function buildRouteLines(rt) {
 
     lines.push({
       type: 'Feature',
-      properties: { congestion: congestion },
+      properties: { congestion: congestion, lanes: (rt.lanes && rt.lanes[i]) || 1 },
       geometry: step.geometry
     });
 
@@ -1649,7 +1651,7 @@ function renderSteps(rt) {
 
 /* ============================== NAVIGATION ============================== */
 const navState = {
-  active: false, progress: 0, speedMul: 1, voice: load('voice', true), live: false,
+  active: false, progress: 0, targetProgress: 0, speedMul: 1, voice: load('voice', true), live: false,
   lastFrame: 0, raf: 0, spoken: new Set(), bearing: 0, lastPaint: 0,
   watchId: null, offSince: 0, rerouting: false, freeLook: 0, stepShown: -1
 };
@@ -1738,6 +1740,7 @@ function remainingSeconds(rt, d) {
 }
 
 function setupNavUI() {
+  document.body.classList.add('nav-active');
   $('panel').classList.add('hide');
   $('hud').classList.add('hide');
   $('stack').classList.add('hide');
@@ -1771,7 +1774,7 @@ function startGeolocationTracking() {
       const snap = snapToRoute(activeRoute, myLocation, navState.live ? navState.progress : null);
       if (snap.d < 55) {
         if (!navState.live) { navState.live = true; $('navMode').textContent = 'LIVE GPS'; }
-        navState.progress = snap.along;
+        navState.targetProgress = snap.along;
         navState.offSince = 0;
       } else if (navState.live) {
         // Two seconds off-route before recalculating, to ride out GPS noise.
@@ -1787,6 +1790,7 @@ function startNav() {
   if (!rt) return;
   navState.active = true;
   navState.progress = 0;
+  navState.targetProgress = 0;
   navState.spoken.clear();
   navState.live = false;
   navState.offSince = 0;
@@ -1840,6 +1844,7 @@ async function reroute() {
       renderSummary(activeRoute);
       renderSteps(activeRoute);
       navState.progress = 0;
+      navState.targetProgress = 0;
       navState.spoken.clear();
       navState.stepShown = -1;
       paintRoute();
@@ -1864,6 +1869,12 @@ function navFrame(ts) {
 
   if (!navState.live) {
     $('navMode').textContent = 'LOCATING...';
+  }
+
+  if (navState.live) {
+      navState.progress += (navState.targetProgress - navState.progress) * Math.min(1, dt * 2.5);
+  } else {
+      navState.progress = navState.targetProgress;
   }
 
   navState.progress = clamp(navState.progress, 0, rt.total);
@@ -1923,6 +1934,7 @@ function updateBanner(rt) {
 
 function endNav(clear = false) {
   navState.active = false;
+  document.body.classList.remove('nav-active');
   if (navState.watchId) navigator.geolocation.clearWatch(navState.watchId);
   cancelAnimationFrame(navState.raf);
   if (puck) puck.remove();
