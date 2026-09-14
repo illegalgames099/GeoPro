@@ -1456,12 +1456,18 @@ function fitRoute(rt) {
  */
 function prepareRoute(route) {
   const steps = route.legs.flatMap(l => l.steps);
-  const coords = [];
-  for (const s of steps) {
-    const c = s.geometry.coordinates;
-    for (let i = 0; i < c.length; i++) {
-      if (coords.length && i === 0) continue;      // dedupe the shared vertex
-      coords.push(c[i]);
+  let totalLength = 0;
+  for (let j = 0; j < steps.length; j++) {
+    const c = steps[j].geometry.coordinates;
+    totalLength += (j === 0 ? c.length : Math.max(0, c.length - 1));
+  }
+  const coords = new Array(totalLength);
+  let idx = 0;
+  for (let j = 0; j < steps.length; j++) {
+    const c = steps[j].geometry.coordinates;
+    const start = (j === 0) ? 0 : 1;
+    for (let i = start; i < c.length; i++) {
+      coords[idx++] = c[i];
     }
   }
   const cum = new Float64Array(coords.length);
