@@ -1,21 +1,7 @@
-const fs = require('fs');
 const assert = require('assert');
 const { test, describe, it } = require('node:test');
 
-const html = fs.readFileSync('index.html', 'utf8');
-
-// Match the exact function from the HTML file using a more robust regex
-// It looks for "function fmtDist(" up to the closing brace "}" that's on a new line or preceded by spaces
-const match = html.match(/function fmtDist\([^)]*\)\s*\{[^]*?\n\}/);
-
-if (!match) {
-    throw new Error("Could not find fmtDist function in index.html");
-}
-
-const fmtDistStr = match[0].replace(/=\s*IMPERIAL/, '= false');
-
-let fmtDist;
-eval(`fmtDist = ${fmtDistStr}`);
+const { fmtDist } = require('../assets/utils.js');
 
 describe('fmtDist', () => {
     describe('metric (imperial = false)', () => {

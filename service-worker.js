@@ -2,7 +2,8 @@ const GeoPro_CACHE = 'GeoPro-static-v1';
 const CORE_ASSETS = [
   './index.html',
   './manifest.webmanifest',
-  './assets/icon.svg'
+  './assets/icon.svg',
+  './assets/utils.js'
 ];
 
 self.addEventListener('install', (event) => {
