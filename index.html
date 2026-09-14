@@ -353,6 +353,7 @@
 
 <div id="toast" role="status" aria-live="polite"></div>
 
+<script src="./assets/utils.js"></script>
 <script>
 /* ============================================================================
    GEOPRO — an open-stack alternative to Apple Maps, in one HTML file.
@@ -427,17 +428,6 @@ function bearingOf(a, b) {
   const y = Math.sin(dl) * Math.cos(p2);
   const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
   return (Math.atan2(y, x) / RAD + 360) % 360;
-}
-function fmtDist(m, imperial = IMPERIAL) {
-  if (imperial) {
-    const ft = m * 3.28084;
-    if (ft < 1000) return Math.max(10, Math.round(ft / 10) * 10) + ' ft';
-    const mi = ft / 5280;
-    return (mi < 10 ? mi.toFixed(1) : Math.round(mi)) + ' mi';
-  }
-  if (m < 1000) return Math.max(10, Math.round(m / 10) * 10) + ' m';
-  const km = m / 1000;
-  return (km < 10 ? km.toFixed(1) : Math.round(km)) + ' km';
 }
 function fmtDur(s) {
   const m = Math.round(s / 60);
@@ -581,28 +571,24 @@ const OVERTURE_URLS = [
 ];
 
 async function probeOverture() {
-  try {
-    const result = await Promise.any(OVERTURE_URLS.map(async (url) => {
-      try {
-        const p = new pmtiles.PMTiles(url);
-        const header = await p.getHeader();
-        const meta = await p.getMetadata();
-        const layers = (meta && meta.vector_layers) || [];
-        const layer = layers.find(l => /^buildings?$/i.test(l.id)) || layers.find(l => /build/i.test(l.id));
-        if (!layer) throw new Error('No building layer found');
-        return { url, layer: layer.id, maxzoom: header.maxZoom ?? 15, p };
-      } catch (e) {
-        if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-          console.warn('[geopro] Overture mirror unavailable:', url, e && e.message);
-        }
-        throw e;
+  for (const url of OVERTURE_URLS) {
+    try {
+      const p = new pmtiles.PMTiles(url);
+      const header = await p.getHeader();
+      const meta = await p.getMetadata();
+      const layers = (meta && meta.vector_layers) || [];
+      const layer = layers.find(l => /^buildings?$/i.test(l.id)) || layers.find(l => /build/i.test(l.id));
+      if (!layer) continue;
+      pmProtocol.add(p);
+      return { url, layer: layer.id, maxzoom: header.maxZoom ?? 15 };
+    } catch (e) {
+      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+        console.warn('[geopro] Overture mirror unavailable:', url, e && e.message);
       }
-    }));
-    pmProtocol.add(result.p);
-    return { url: result.url, layer: result.layer, maxzoom: result.maxzoom };
-  } catch (e) {
-    return null; // All promises were rejected
+      // Ignore errors; loop continues to the next fallback mirror.
+    }
   }
+  return null;
 }
 
 // Height in metres where Overture knows it, else floors x 3.2, else a default.
@@ -615,10 +601,13 @@ const H_OMT = ['coalesce',
   ['get', 'render_height'], ['get', 'height'],
   ['*', ['coalesce', ['get', 'levels'], ['get', 'building:levels'], 2], 3.2]
 ];
-let H_ACTIVE = H_OVERTURE;
+
+function getActiveHeight() {
+  return map.getSource('overture') ? H_OVERTURE : H_OMT;
+}
 
 function bldColor(stops) {
-  const e = ['interpolate', ['linear'], H_ACTIVE];
+  const e = ['interpolate', ['linear'], getActiveHeight()];
   for (let i = 0; i < stops.length; i += 2) e.push(stops[i], stops[i + 1]);
   return e;
 }
@@ -656,14 +645,12 @@ map.on('load', async () => {
 
   const ov = await probeOverture();
   if (ov) {
-    H_ACTIVE = H_OVERTURE;
     map.addSource('overture', {
       type: 'vector', url: 'pmtiles://' + ov.url,
       attribution: '&copy; Overture Maps Foundation'
     });
     addBuildings('overture', ov.layer);
   } else {
-    H_ACTIVE = H_OMT;
     const sources = map.getStyle().sources;
     const src = sources.openmaptiles ? 'openmaptiles' : Object.keys(sources)[0];
     addBuildings(src, 'building');
@@ -738,7 +725,7 @@ function addBuildings(source, sourceLayer) {
     id: 'geo-buildings', type: 'fill-extrusion', source, 'source-layer': sourceLayer, minzoom: 13.5,
     paint: {
       'fill-extrusion-color': bldColor(PRESETS[preset].bld),
-      'fill-extrusion-height': ['interpolate', ['exponential', 1.4], ['zoom'], 13.5, 0, 15.6, H_ACTIVE],
+      'fill-extrusion-height': ['interpolate', ['exponential', 1.4], ['zoom'], 13.5, 0, 15.6, getActiveHeight()],
       'fill-extrusion-base': ['case', ['has', 'render_min_height'], ['get', 'render_min_height'], 0],
       'fill-extrusion-opacity': .96,
       'fill-extrusion-vertical-gradient': true
@@ -831,12 +818,8 @@ function labelFor(p) {
   return p.name || street || p.city || p.county || 'Unnamed place';
 }
 function subFor(p) {
-  const parts = [];
-  if (p.name && (p.housenumber || p.street)) parts.push(`${p.housenumber || ''} ${p.street || ''}`.trim());
-  if (p.city || p.town || p.village) parts.push(p.city || p.town || p.village);
-  if (p.state) parts.push(p.state);
-  if (p.country) parts.push(p.country);
-  return parts.filter(Boolean).join(', ');
+  const street = p.name && p.street ? (p.housenumber ? p.housenumber + ' ' + p.street : p.street) : null;
+  return [street, p.city || p.county, p.state, p.country].filter(Boolean).join(', ');
 }
 
 /** Typeahead. Photon first (no rate ceiling), Nominatim as a backup. */
@@ -972,8 +955,6 @@ $('qClear').onclick = () => {
 };
 
 function closeResults() {
-  clearTimeout(searchT);
-  searchSeq++;
   resultsEl.classList.remove('on');
   if (activeInput) activeInput.setAttribute('aria-expanded', 'false');
   lastList = []; selIdx = -1;
@@ -992,7 +973,7 @@ function createResultRow(p, here) {
   row.setAttribute('role', 'option');
   row.setAttribute('aria-selected', 'false');
   row.tabIndex = 0;
-  const away = p._dist !== undefined ? p._dist : dist2(here, [p.lng, p.lat]);
+  const away = dist2(here, [p.lng, p.lat]);
   row.innerHTML =
     `<span class="kind" aria-hidden="true">${KIND_ICON[p.kind] || KIND_ICON.place}</span>` +
     `<span class="col"><span class="t ell">${esc(p.label)}</span>` +
@@ -1003,57 +984,37 @@ function createResultRow(p, here) {
   return row;
 }
 
+function renderResults(list, heading) {
+  lastList = list; selIdx = -1;
+  resultsEl.innerHTML = '';
 
-function injectMyLocation(list) {
+  // Inject "My Location" option for waypoint fields if empty
   if (activeStopIdx >= 0 && activeInput.value.trim() === '' && myLocation) {
-      return [{ label: 'My Location', sub: 'Current GPS Position', lng: myLocation[0], lat: myLocation[1], kind: 'myloc', isMyLoc: true }, ...list];
+      list = [{ label: 'My Location', sub: 'Current GPS Position', lng: myLocation[0], lat: myLocation[1], kind: 'myloc', isMyLoc: true }, ...list];
   }
-  return list;
-}
 
-function sortResultsByDistance(list, here) {
+  if (!list.length) { closeResults(); return; }
+
+  const here = myLocation || [map.getCenter().lng, map.getCenter().lat];
+
+  // Precompute distance for sorting
   list.forEach(p => {
     if (!p.isMyLoc) p._dist = dist2(here, [p.lng, p.lat]);
   });
+
+  // Sort results by proximity
   list.sort((a, b) => {
     if (a.isMyLoc) return -1;
     if (b.isMyLoc) return 1;
     return a._dist - b._dist;
   });
-}
-
-function createResultsHeading(heading) {
-  const h = document.createElement('div');
-  h.className = 'head';
-  h.innerHTML = `<span>${esc(heading)}</span>`;
-  if (activeStopIdx === -1) {
-    const clear = document.createElement('button');
-    clear.textContent = 'Clear';
-    clear.onclick = ev => { ev.stopPropagation(); save('recent', []); closeResults(); };
-    h.appendChild(clear);
-  }
-  return h;
-}
-
-function renderResults(list, heading) {
-  list = injectMyLocation(list);
-  lastList = list; selIdx = -1;
-  resultsEl.innerHTML = '';
-
-  if (!list.length) { closeResults(); return; }
-
-  const here = myLocation || [map.getCenter().lng, map.getCenter().lat];
-  sortResultsByDistance(list, here);
 
   const fragment = document.createDocumentFragment();
 
   if (heading) {
-    fragment.appendChild(createResultsHeading(heading));
     const h = document.createElement('div');
     h.className = 'head';
-    const span = document.createElement('span');
-    span.textContent = heading;
-    h.appendChild(span);
+    h.innerHTML = `<span>${esc(heading)}</span>`;
     if (activeStopIdx === -1) {
       const clear = document.createElement('button');
       clear.textContent = 'Clear';
@@ -1064,7 +1025,21 @@ function renderResults(list, heading) {
   }
 
   list.forEach(p => {
-    fragment.appendChild(createResultRow(p, here));
+    resultsEl.appendChild(createResultRow(p, here));
+    const row = document.createElement('div');
+    row.className = 'row';
+    row.setAttribute('role', 'option');
+    row.setAttribute('aria-selected', 'false');
+    row.tabIndex = 0;
+    const away = p._dist !== undefined ? p._dist : dist2(here, [p.lng, p.lat]);
+    row.innerHTML =
+      `<span class="kind" aria-hidden="true">${KIND_ICON[p.kind] || KIND_ICON.place}</span>` +
+      `<span class="col"><span class="t ell">${esc(p.label)}</span>` +
+      `<span class="s ell">${esc(p.sub || '')}</span></span>` +
+      `<span class="far">${away > 200 && !p.isMyLoc ? fmtDist(away) : ''}</span>`;
+    row.onclick = () => pickPlace(p);
+    row.onkeydown = e => { if (e.key === 'Enter') pickPlace(p); };
+    fragment.appendChild(row);
   });
   
   resultsEl.appendChild(fragment);
@@ -1099,8 +1074,8 @@ function pickPlace(p) {
   if ($('dir').classList.contains('on') && activeStopIdx >= 0) {
     // We are routing
     setStop(activeStopIdx, p);
-    updateRoute();
     if (readyToRoute()) {
+       requestRoute();
        activeInput.blur();
     } else {
        // Smart focus logic: If we just filled stop A, focus stop B.
@@ -1157,18 +1132,20 @@ $('placeTo').onclick = () => {
   setStop(stops.length - 1, { ...placeCtx.coord, q: placeCtx.name, label: placeCtx.name });
   if (!stops[0].point && myLocation) {
      setStop(0, { lng: myLocation[0], lat: myLocation[1], q: null, label: 'My location', isMyLoc: true });
+     requestRoute();
   } else if (!stops[0].point) {
      stopInputs()[0].focus();
+  } else {
+     requestRoute();
   }
-  updateRoute();
 };
 
 $('placeFrom').onclick = () => {
   if (!placeCtx) return;
   openDirections();
   setStop(0, { ...placeCtx.coord, q: placeCtx.name, label: placeCtx.name });
-  updateRoute();
-  if (!stops[stops.length - 1].point) stopInputs()[stops.length - 1].focus();
+  if (stops[stops.length - 1].point) requestRoute();
+  else stopInputs()[stops.length - 1].focus();
 };
 
 $('placeSave').onclick = () => {
@@ -1203,8 +1180,7 @@ $('placeShare').onclick = async () => {
 // Tapping the map: POI label first, otherwise reverse geocode the point.
 map.on('click', async e => {
   if ($('dir').classList.contains('on') || navState.active) return;
-  const symbolLayers = map.getStyle()?.layers?.filter(l => l.type === 'symbol').map(l => l.id);
-  const hit = map.queryRenderedFeatures(e.point, symbolLayers ? { layers: symbolLayers } : undefined)
+  const hit = map.queryRenderedFeatures(e.point)
     .find(f => f.layer.type === 'symbol' && f.properties && f.properties.name);
   dropPin(e.lngLat.lng, e.lngLat.lat);
   if (hit) {
@@ -1255,17 +1231,12 @@ document.querySelectorAll('#modes button').forEach(b => {
     press('#modes', b);
     mode = b.dataset.mode;
     save('mode', mode);
-    updateRoute();
+    if (readyToRoute()) requestRoute();
   };
 });
 
 const readyToRoute = () => stops.filter(s => s.point).length >= 2 &&
   stops[0].point && stops[stops.length - 1].point;
-
-function updateRoute() {
-  if (readyToRoute()) requestRoute();
-  else clearRouteGeometry();
-}
 
 /* ---- waypoint rows are rebuilt from `stops` so indices stay honest ---- */
 function renderStops() {
@@ -1306,7 +1277,7 @@ function renderStops() {
         stops.splice(i, 1);
         resetMarkers();          
         renderStops();
-        updateRoute();
+        if (readyToRoute()) requestRoute(); else clearRouteGeometry();
       };
       row.append(del);
     }
@@ -1335,7 +1306,7 @@ $('swap').onclick = () => {
   stops.reverse();
   resetMarkers();              // start and destination swap colours
   renderStops();
-  updateRoute();
+  if (readyToRoute()) requestRoute();
 };
 
 function markerColor(i) {
@@ -1361,7 +1332,7 @@ function syncMarkers() {
         s.point = { lng: p.lng, lat: p.lat, q: null, label: null };
         const input = stopInputs()[idx];
         if (input) input.value = fmtLngLat(s.point);
-        updateRoute();
+        if (readyToRoute()) requestRoute();
       });
     }
     s.marker.setLngLat([s.point.lng, s.point.lat]).addTo(map);
@@ -1376,7 +1347,7 @@ map.on('click', e => {
   setStop(empty_i >= 0 ? empty_i : stops.length - 1, p);
   const input = stopInputs()[empty_i >= 0 ? empty_i : stops.length - 1];
   if (input) input.value = fmtLngLat(p);
-  updateRoute();
+  if (readyToRoute()) requestRoute();
 });
 
 function clearRouteGeometry() {

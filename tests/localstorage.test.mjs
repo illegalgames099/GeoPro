@@ -20,10 +20,6 @@ const setup = () => {
     const sandbox = new Function('global', `
         const STORE = global.STORE;
         const localStorage = global.localStorage;
-        // _storeCache is captured from the html code if it exists.
-        // We use global._storeCache if not matched in 'code'.
-        ${codeMatch ? '' : 'const _storeCache = new Map();'}
-        const _storeCache = new Map();
         ${code}
         return { load, save, _storeCache };
     `);
@@ -95,4 +91,23 @@ test('caching behavior', () => {
 
     // Load should still work because it checks cache first
     assert.deepStrictEqual(load('direct', null), { from: 'cache' });
+test('load error handling (localStorage throws)', () => {
+    const store = new Map();
+    global.localStorage = {
+        getItem: (key) => { throw new Error('localStorage is disabled'); },
+        setItem: (key, val) => store.set(key, String(val)),
+    };
+    global.STORE = 'geopro.';
+
+    const sandbox = new Function('global', `
+        const STORE = global.STORE;
+        const localStorage = global.localStorage;
+        ${code}
+        return { load, save, _storeCache };
+    `);
+
+    const { load, save, _storeCache } = sandbox(global);
+
+    // Verify that the fallback is returned when localStorage throws
+    assert.strictEqual(load('throws', 'fallback_value'), 'fallback_value');
 });
