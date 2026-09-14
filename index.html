@@ -581,24 +581,28 @@ const OVERTURE_URLS = [
 ];
 
 async function probeOverture() {
-  for (const url of OVERTURE_URLS) {
-    try {
-      const p = new pmtiles.PMTiles(url);
-      const header = await p.getHeader();
-      const meta = await p.getMetadata();
-      const layers = (meta && meta.vector_layers) || [];
-      const layer = layers.find(l => /^buildings?$/i.test(l.id)) || layers.find(l => /build/i.test(l.id));
-      if (!layer) continue;
-      pmProtocol.add(p);
-      return { url, layer: layer.id, maxzoom: header.maxZoom ?? 15 };
-    } catch (e) {
-      if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-        console.warn('[geopro] Overture mirror unavailable:', url, e && e.message);
+  try {
+    const result = await Promise.any(OVERTURE_URLS.map(async (url) => {
+      try {
+        const p = new pmtiles.PMTiles(url);
+        const header = await p.getHeader();
+        const meta = await p.getMetadata();
+        const layers = (meta && meta.vector_layers) || [];
+        const layer = layers.find(l => /^buildings?$/i.test(l.id)) || layers.find(l => /build/i.test(l.id));
+        if (!layer) throw new Error('No building layer found');
+        return { url, layer: layer.id, maxzoom: header.maxZoom ?? 15, p };
+      } catch (e) {
+        if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+          console.warn('[geopro] Overture mirror unavailable:', url, e && e.message);
+        }
+        throw e;
       }
-      // Ignore errors; loop continues to the next fallback mirror.
-    }
+    }));
+    pmProtocol.add(result.p);
+    return { url: result.url, layer: result.layer, maxzoom: result.maxzoom };
+  } catch (e) {
+    return null; // All promises were rejected
   }
-  return null;
 }
 
 // Height in metres where Overture knows it, else floors x 3.2, else a default.
