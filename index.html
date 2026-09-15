@@ -688,13 +688,12 @@ map.on('load', async () => {
     paint: {
       'line-color': PRESETS.day.edge,
       'line-width': [
-        '*',
-        ['max', 1, ['*', 0.7, ['coalesce', ['get', 'lanes'], 1]]],
+        'let', 'm', ['max', 1, ['*', 0.7, ['coalesce', ['get', 'lanes'], 1]]],
         [
           'interpolate', ['linear'], ['zoom'],
-          8,  6,
-          15, 14,
-          20, 20
+          8,  ['*', ['var', 'm'], 6],
+          15, ['*', ['var', 'm'], 14],
+          20, ['*', ['var', 'm'], 20]
         ]
       ]
     }
@@ -707,13 +706,12 @@ map.on('load', async () => {
     paint: {
       'line-color': PRESETS.day.route,
       'line-width': [
-        '*',
-        ['max', 1, ['*', 0.7, ['coalesce', ['get', 'lanes'], 1]]],
+        'let', 'm', ['max', 1, ['*', 0.7, ['coalesce', ['get', 'lanes'], 1]]],
         [
           'interpolate', ['linear'], ['zoom'],
-          8,  3.4,
-          15, 9,
-          20, 14
+          8,  ['*', ['var', 'm'], 3.4],
+          15, ['*', ['var', 'm'], 9],
+          20, ['*', ['var', 'm'], 14]
         ]
       ]
     }
