@@ -604,8 +604,15 @@ const H_OMT = ['coalesce',
   ['*', ['coalesce', ['get', 'levels'], ['get', 'building:levels'], 2], 3.2]
 ];
 
+const B_OVERTURE = ['coalesce', ['get', 'min_height'], 0];
+const B_OMT = ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0];
+
 function getActiveHeight() {
   return map.getSource('overture') ? H_OVERTURE : H_OMT;
+}
+
+function getActiveBase() {
+  return map.getSource('overture') ? B_OVERTURE : B_OMT;
 }
 
 function bldColor(stops) {
@@ -738,7 +745,7 @@ function addBuildings(source, sourceLayer) {
     paint: {
       'fill-extrusion-color': bldColor(PRESETS[preset].bld),
       'fill-extrusion-height': ['interpolate', ['exponential', 1.4], ['zoom'], 13.5, 0, 15.6, getActiveHeight()],
-      'fill-extrusion-base': ['case', ['has', 'render_min_height'], ['get', 'render_min_height'], 0],
+      'fill-extrusion-base': getActiveBase(),
       'fill-extrusion-opacity': .96,
       'fill-extrusion-vertical-gradient': true
     }
