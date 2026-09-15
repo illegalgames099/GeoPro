@@ -688,10 +688,9 @@ map.on('load', async () => {
     paint: {
       'line-color': PRESETS.day.edge,
       'line-width': [
-        'interpolate', ['linear'], ['zoom'],
-        8,  ['*', 6,  ['max', 1, ['*', 0.7, ['coalesce', ['get', 'lanes'], 1]]]],
-        15, ['*', 14, ['max', 1, ['*', 0.7, ['coalesce', ['get', 'lanes'], 1]]]],
-        20, ['*', 20, ['max', 1, ['*', 0.7, ['coalesce', ['get', 'lanes'], 1]]]]
+        '*',
+        ['interpolate', ['linear'], ['zoom'], 8, 6, 15, 14, 20, 20],
+        ['max', 1, ['*', 0.7, ['coalesce', ['get', 'lanes'], 1]]]
       ]
     }
   }, firstSymbolId);
@@ -703,10 +702,9 @@ map.on('load', async () => {
     paint: {
       'line-color': PRESETS.day.route,
       'line-width': [
-        'interpolate', ['linear'], ['zoom'],
-        8,  ['*', 3.4, ['max', 1, ['*', 0.7, ['coalesce', ['get', 'lanes'], 1]]]],
-        15, ['*', 9,   ['max', 1, ['*', 0.7, ['coalesce', ['get', 'lanes'], 1]]]],
-        20, ['*', 14,  ['max', 1, ['*', 0.7, ['coalesce', ['get', 'lanes'], 1]]]]
+        '*',
+        ['interpolate', ['linear'], ['zoom'], 8, 3.4, 15, 9, 20, 14],
+        ['max', 1, ['*', 0.7, ['coalesce', ['get', 'lanes'], 1]]]
       ]
     }
   }, firstSymbolId);
