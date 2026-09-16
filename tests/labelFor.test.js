@@ -1,23 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert');
-const fs = require('fs');
-const path = require('path');
+const { labelFor } = require('../assets/utils');
 
 test('labelFor function', async (t) => {
-    // Read the index.html file
-    const htmlPath = path.join(__dirname, '..', 'index.html');
-    const html = fs.readFileSync(htmlPath, 'utf8');
-
-    // Extract the labelFor function definition
-    const match = html.match(/function labelFor\(p\) \{[\s\S]*?\n\}/);
-    if (!match) {
-        throw new Error("Could not find 'labelFor' function in index.html");
-    }
-
-    // Evaluate the function
-    const labelForCode = match[0];
-    const labelFor = new Function('return ' + labelForCode)();
-
     await t.test('returns name if present (no housenumber or street)', () => {
         assert.strictEqual(labelFor({ name: 'Central Park' }), 'Central Park');
     });
@@ -35,8 +20,8 @@ test('labelFor function', async (t) => {
         assert.strictEqual(labelFor({ name: 'Central Park', street: '5th Ave', city: 'New York' }), '5th Ave');
     });
 
-    await t.test('returns city if name and housenumber are missing', () => {
-        assert.strictEqual(labelFor({ city: 'New York', street: '5th Ave' }), 'New York');
+    await t.test('returns city if name, street, and housenumber are missing', () => {
+        assert.strictEqual(labelFor({ city: 'New York', town: 'Springfield' }), 'New York');
     });
 
     await t.test('returns town if city is missing', () => {
@@ -57,5 +42,14 @@ test('labelFor function', async (t) => {
 
     await t.test('returns "?" if only unhandled properties are present', () => {
         assert.strictEqual(labelFor({ county: 'New York County' }), '?');
+    });
+
+    await t.test('handles null or undefined input', () => {
+        assert.strictEqual(labelFor(null), '?');
+        assert.strictEqual(labelFor(undefined), '?');
+    });
+
+    await t.test('trims whitespace when assembling string', () => {
+        assert.strictEqual(labelFor({ housenumber: '', street: 'Main St' }), 'Main St');
     });
 });

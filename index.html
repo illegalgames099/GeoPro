@@ -847,9 +847,6 @@ const acceptLang = { 'Accept-Language': navigator.language || 'en' };
 
 const suggestCache = new Map();
 
-function labelFor(p) {
-  return p.name || p.housenumber ? `${p.housenumber || ''} ${p.street || p.name || ''}`.trim() : p.city || p.town || p.village || p.state || '?';
-}
 function subFor(p) {
   const street = p.name && p.street ? (p.housenumber ? p.housenumber + ' ' + p.street : p.street) : null;
   return [street, p.city || p.county, p.state, p.country].filter(Boolean).join(', ');
