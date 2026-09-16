@@ -10,6 +10,11 @@ function fmtDist(m, imperial = typeof IMPERIAL !== 'undefined' ? IMPERIAL : fals
   return (km < 10 ? km.toFixed(1) : Math.round(km)) + ' km';
 }
 
+function labelFor(p) {
+  if (!p) return '?';
+  return p.name || p.street || p.housenumber ? `${p.housenumber || ''} ${p.street || p.name || ''}`.trim() : p.city || p.town || p.village || p.state || '?';
+}
+
 if (typeof module !== 'undefined' && module.exports) {
-  module.exports = { fmtDist };
+  module.exports = { fmtDist, labelFor };
 }
